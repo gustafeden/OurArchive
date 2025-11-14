@@ -1,9 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../providers/providers.dart';
 import '../../data/models/household.dart';
+import '../theme/extensions/context_ext.dart';
+import '../widgets/forms/app_text_field.dart';
+import '../widgets/forms/app_photo_picker_field.dart';
+import '../widgets/forms/app_container_dropdown.dart';
+import '../widgets/shared/app_snackbar.dart';
 
 class AddGameScreen extends ConsumerStatefulWidget {
   final Household? household;
@@ -86,14 +90,6 @@ class _AddGameScreenState extends ConsumerState<AddGameScreen> {
     super.dispose();
   }
 
-  Future<void> _pickPhoto(ImageSource source) async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: source);
-    if (pickedFile != null) {
-      setState(() => _photo = File(pickedFile.path));
-    }
-  }
-
   Future<void> _saveGame() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
@@ -128,15 +124,11 @@ class _AddGameScreenState extends ConsumerState<AddGameScreen> {
 
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Game added successfully!')),
-        );
+        AppSnackbar.showSuccess(context, 'Game added successfully!');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        AppSnackbar.showError(context, 'Error: $e');
         setState(() => _isLoading = false);
       }
     }
@@ -144,77 +136,128 @@ class _AddGameScreenState extends ConsumerState<AddGameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final containersAsync = ref.watch(allContainersProvider);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Game'),
         actions: [
           if (_isLoading)
-            const Center(child: Padding(padding: EdgeInsets.all(16), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))))
+            Center(
+              child: Padding(
+                padding: context.spacing.allMd,
+                child: const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            )
           else
-            IconButton(icon: const Icon(Icons.check), onPressed: _saveGame),
+            IconButton(
+              icon: const Icon(Icons.check),
+              onPressed: _saveGame,
+            ),
         ],
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: context.spacing.allMd,
           children: [
-            GestureDetector(
-              onTap: () => showModalBottomSheet(
-                context: context,
-                builder: (context) => SafeArea(
-                  child: Wrap(children: [
-                    ListTile(leading: const Icon(Icons.camera_alt), title: const Text('Take Photo'), onTap: () { Navigator.pop(context); _pickPhoto(ImageSource.camera); }),
-                    ListTile(leading: const Icon(Icons.photo_library), title: const Text('Choose from Gallery'), onTap: () { Navigator.pop(context); _pickPhoto(ImageSource.gallery); }),
-                    if (_photo != null) ListTile(leading: const Icon(Icons.delete), title: const Text('Remove Photo'), onTap: () { Navigator.pop(context); setState(() => _photo = null); }),
-                  ]),
-                ),
-              ),
-              child: Container(
-                height: 200,
-                decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey[400]!)),
-                child: _photo != null
-                    ? ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.file(_photo!, fit: BoxFit.cover))
-                    : const Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.sports_esports, size: 64, color: Colors.grey), SizedBox(height: 8), Text('Tap to add cover photo', style: TextStyle(color: Colors.grey))]),
-              ),
+            // Photo picker - was 20 lines, now 1 component
+            AppPhotoPickerField(
+              photo: _photo,
+              onPhotoSelected: (photo) => setState(() => _photo = photo),
             ),
-            const SizedBox(height: 24),
-            TextFormField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder(), prefixIcon: Icon(Icons.title)), validator: (v) => v?.trim().isEmpty ?? true ? 'Title is required' : null, textCapitalization: TextCapitalization.words),
-            const SizedBox(height: 16),
+            context.spacing.gapLg,
+
+            // Title field - cleaner with AppTextField
+            AppTextField(
+              controller: _titleController,
+              label: 'Title',
+              prefixIcon: Icons.title,
+              validator: (v) => v?.trim().isEmpty ?? true ? 'Title is required' : null,
+            ),
+            context.spacing.gapMd,
+
+            // Platform dropdown
             DropdownButtonFormField<String>(
-              value: _selectedPlatform,
-              decoration: const InputDecoration(labelText: 'Platform', border: OutlineInputBorder(), prefixIcon: Icon(Icons.videogame_asset)),
+              initialValue: _selectedPlatform,
+              decoration: const InputDecoration(
+                labelText: 'Platform',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.videogame_asset),
+              ),
               items: _platforms.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
               onChanged: (v) => setState(() => _selectedPlatform = v),
             ),
-            const SizedBox(height: 16),
-            Row(children: [
-              Expanded(flex: 2, child: TextFormField(controller: _publisherController, decoration: const InputDecoration(labelText: 'Publisher', border: OutlineInputBorder(), prefixIcon: Icon(Icons.business)), textCapitalization: TextCapitalization.words)),
-              const SizedBox(width: 12),
-              Expanded(child: TextFormField(controller: _yearController, decoration: const InputDecoration(labelText: 'Year', border: OutlineInputBorder()), keyboardType: TextInputType.number, maxLength: 4, buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null)),
-            ]),
-            const SizedBox(height: 16),
-            Row(children: [
-              Expanded(child: TextFormField(controller: _genreController, decoration: const InputDecoration(labelText: 'Genre', border: OutlineInputBorder(), prefixIcon: Icon(Icons.category)), textCapitalization: TextCapitalization.words)),
-              const SizedBox(width: 12),
-              Expanded(child: TextFormField(controller: _playersController, decoration: const InputDecoration(labelText: 'Players', border: OutlineInputBorder(), prefixIcon: Icon(Icons.people), hintText: '1-4'))),
-            ]),
-            const SizedBox(height: 16),
-            containersAsync.when(
-              data: (containers) => DropdownButtonFormField<String>(
-                value: _selectedContainerId,
-                decoration: const InputDecoration(labelText: 'Container (optional)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.place)),
-                items: [const DropdownMenuItem<String>(value: null, child: Text('No container')), ...containers.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))],
-                onChanged: (v) => setState(() => _selectedContainerId = v),
-              ),
-              loading: () => const LinearProgressIndicator(),
-              error: (_, __) => const Text('Failed to load containers'),
+            context.spacing.gapMd,
+
+            // Publisher and Year row
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: AppTextField(
+                    controller: _publisherController,
+                    label: 'Publisher',
+                    prefixIcon: Icons.business,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextFormField(
+                    controller: _yearController,
+                    decoration: const InputDecoration(
+                      labelText: 'Year',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    maxLength: 4,
+                    buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            TextFormField(controller: _notesController, decoration: const InputDecoration(labelText: 'Notes (optional)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.note), alignLabelWithHint: true), maxLines: 4, textCapitalization: TextCapitalization.sentences),
-            const SizedBox(height: 24),
+            context.spacing.gapMd,
+
+            // Genre and Players row
+            Row(
+              children: [
+                Expanded(
+                  child: AppTextField(
+                    controller: _genreController,
+                    label: 'Genre',
+                    prefixIcon: Icons.category,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: AppTextField(
+                    controller: _playersController,
+                    label: 'Players',
+                    hint: '1-4',
+                    prefixIcon: Icons.people,
+                  ),
+                ),
+              ],
+            ),
+            context.spacing.gapMd,
+
+            // Container dropdown - was complex .when() block, now 1 component
+            AppContainerDropdown(
+              value: _selectedContainerId,
+              onChanged: (v) => setState(() => _selectedContainerId = v),
+            ),
+            context.spacing.gapMd,
+
+            // Notes field
+            AppTextField(
+              controller: _notesController,
+              label: 'Notes (optional)',
+              prefixIcon: Icons.note,
+              maxLines: 4,
+            ),
+            context.spacing.gapLg,
           ],
         ),
       ),
