@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import '../../data/services/logger_service.dart';
 
 enum TaskPriority { high, normal, low }
 
@@ -29,11 +30,13 @@ class SyncQueue {
   bool _isProcessing = false;
   StreamSubscription? _connectivitySubscription;
   Timer? _retryTimer;
+  final LoggerService _logger = LoggerService();
 
   SyncQueue() {
     // Listen for connectivity changes
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((result) {
       if (result.first != ConnectivityResult.none) {
+        _logger.info('SyncQueue', 'Connectivity restored, processing queue');
         process();
       }
     });
@@ -43,6 +46,8 @@ class SyncQueue {
   }
 
   void add(SyncTask task) {
+    _logger.debug('SyncQueue', 'Adding task ${task.id} with priority ${task.priority.name}');
+
     switch (task.priority) {
       case TaskPriority.high:
         _highPriority.add(task);
@@ -67,8 +72,11 @@ class SyncQueue {
       // Check connectivity
       final connectivityResult = await Connectivity().checkConnectivity();
       if (connectivityResult.first == ConnectivityResult.none) {
+        _logger.warn('SyncQueue', 'No connectivity, skipping queue processing');
         return;
       }
+
+      _logger.debug('SyncQueue', 'Processing sync queues (H:${_highPriority.length}, N:${_normalPriority.length}, L:${_lowPriority.length})');
 
       // Process high priority first
       await _processQueue(_highPriority);
@@ -86,20 +94,21 @@ class SyncQueue {
 
       try {
         task.lastAttempt = DateTime.now();
+        _logger.debug('SyncQueue', 'Executing task ${task.id} (attempt ${task.attempts + 1}/${task.maxRetries})');
         await task.execute();
+        _logger.info('SyncQueue', 'Task ${task.id} completed successfully');
         // Success - task is done
-      } catch (error) {
+      } catch (error, stackTrace) {
         task.attempts++;
         task.lastError = error.toString();
 
         if (task.attempts < task.maxRetries) {
           // Re-add to queue for retry
+          _logger.warn('SyncQueue', 'Task ${task.id} failed (attempt ${task.attempts}/${task.maxRetries}), will retry', error);
           queue.add(task);
         } else {
-          // Max retries reached - log error
-          // In production, you might want to log to Crashlytics
-          // ignore: avoid_print
-          print('Task ${task.id} failed after ${task.maxRetries} attempts: $error');
+          // Max retries reached - log error to both logger and Crashlytics
+          _logger.error('SyncQueue', 'Task ${task.id} failed after ${task.maxRetries} attempts', error, stackTrace);
         }
       }
     }

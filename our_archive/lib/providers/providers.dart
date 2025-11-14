@@ -4,6 +4,7 @@ import '../data/services/auth_service.dart';
 import '../data/services/household_service.dart';
 import '../data/services/container_service.dart';
 import '../data/services/book_lookup_service.dart';
+import '../data/services/logger_service.dart';
 import '../services/vinyl_lookup_service.dart';
 import '../data/repositories/item_repository.dart';
 import '../core/sync/sync_queue.dart';
@@ -18,6 +19,7 @@ final containerServiceProvider = Provider((ref) => ContainerService());
 final bookLookupServiceProvider = Provider((ref) => BookLookupService());
 final vinylLookupServiceProvider = Provider((ref) => VinylLookupService());
 final syncQueueProvider = Provider((ref) => SyncQueue());
+final loggerServiceProvider = Provider((ref) => LoggerService());
 
 final itemRepositoryProvider = Provider((ref) {
   final syncQueue = ref.watch(syncQueueProvider);

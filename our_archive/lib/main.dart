@@ -7,30 +7,43 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:async';
 import 'firebase_options.dart';
 import 'ui/screens/auth_gate.dart';
+import 'data/services/logger_service.dart';
 
 void main() {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
 
+    // Initialize logger service first
+    final logger = LoggerService();
+    await logger.initialize();
+    await logger.info('App', 'Application starting...');
+
     // Load environment variables
     await dotenv.load(fileName: ".env");
+    await logger.info('App', 'Environment variables loaded');
 
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    await logger.info('App', 'Firebase initialized');
 
     // Enable Firestore offline persistence
     FirebaseFirestore.instance.settings = const Settings(
       persistenceEnabled: true,
       cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
     );
+    await logger.info('App', 'Firestore offline persistence enabled');
 
-    // Error handling
-    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    // Error handling - combine logger and Crashlytics
+    FlutterError.onError = (FlutterErrorDetails details) {
+      FirebaseCrashlytics.instance.recordFlutterError(details);
+      logger.error('Flutter', 'Flutter error caught', details.exception, details.stack);
+    };
 
     runApp(const ProviderScope(child: OurArchiveApp()));
   }, (error, stack) {
     FirebaseCrashlytics.instance.recordError(error, stack);
+    LoggerService().error('App', 'Uncaught error in runZonedGuarded', error, stack);
   });
 }
 

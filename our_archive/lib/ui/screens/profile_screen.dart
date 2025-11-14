@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/providers.dart';
+import '../../data/services/log_export_service.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -95,7 +96,7 @@ class ProfileScreen extends ConsumerWidget {
           _InfoTile(
             icon: Icons.fingerprint,
             title: 'User ID',
-            value: userId.substring(0, 8) + '...',
+            value: '${userId.substring(0, 8)}...',
             subtitle: 'Tap to copy full ID',
             onTap: () {
               // Could add clipboard copy here
@@ -149,6 +150,14 @@ class ProfileScreen extends ConsumerWidget {
             ),
 
           ListTile(
+            leading: const Icon(Icons.bug_report, color: Colors.orange),
+            title: const Text('Send Debug Logs'),
+            subtitle: const Text('Share logs to help diagnose issues'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () => _sendLogs(context, ref),
+          ),
+
+          ListTile(
             leading: Icon(Icons.logout, color: Colors.red[700]),
             title: const Text('Sign Out'),
             subtitle: const Text('Sign out of your account'),
@@ -189,6 +198,12 @@ class ProfileScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  void _sendLogs(BuildContext context, WidgetRef ref) {
+    final logger = ref.read(loggerServiceProvider);
+    final exportService = LogExportService(logger);
+    exportService.showSendLogsDialog(context);
   }
 
   void _showSignOutDialog(BuildContext context, WidgetRef ref) {
