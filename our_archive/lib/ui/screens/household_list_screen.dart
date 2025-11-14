@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/providers.dart';
 import '../../data/models/household.dart';
@@ -97,7 +98,33 @@ class HouseholdListScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('$memberCount ${memberCount == 1 ? 'member' : 'members'}'),
-                          if (isOwner) Text('Code: ${household.code}'),
+                          if (isOwner)
+                            Row(
+                              children: [
+                                Text('Code: ${household.code}'),
+                                const SizedBox(width: 4),
+                                InkWell(
+                                  onTap: () {
+                                    Clipboard.setData(ClipboardData(text: household.code));
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Code copied!'),
+                                        duration: Duration(seconds: 1),
+                                      ),
+                                    );
+                                  },
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(4.0),
+                                    child: Icon(
+                                      Icons.copy,
+                                      size: 16,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                         ],
                       ),
                       trailing: isOwner && pendingCount > 0
