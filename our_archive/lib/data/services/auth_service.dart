@@ -63,4 +63,41 @@ class AuthService {
   Future<void> signOut() async {
     await _auth.signOut();
   }
+
+  // User profile management
+  Future<void> createUserProfile({
+    required String uid,
+    required String displayName,
+    String? email,
+    String? photoURL,
+  }) async {
+    await _firestore.collection('users').doc(uid).set({
+      'displayName': displayName,
+      'email': email,
+      'photoURL': photoURL,
+      'createdAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> updateUserProfile({
+    required String uid,
+    String? displayName,
+    String? photoURL,
+  }) async {
+    final updates = <String, dynamic>{};
+    if (displayName != null) updates['displayName'] = displayName;
+    if (photoURL != null) updates['photoURL'] = photoURL;
+
+    if (updates.isNotEmpty) {
+      await _firestore.collection('users').doc(uid).update(updates);
+    }
+  }
+
+  Stream<Map<String, dynamic>?> getUserProfile(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .snapshots()
+        .map((snapshot) => snapshot.exists ? snapshot.data() : null);
+  }
 }

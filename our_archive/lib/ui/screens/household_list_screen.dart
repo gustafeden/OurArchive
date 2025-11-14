@@ -6,6 +6,7 @@ import 'create_household_screen.dart';
 import 'join_household_screen.dart';
 import 'container_screen.dart';
 import 'profile_screen.dart';
+import 'scan_to_check_screen.dart';
 
 class HouseholdListScreen extends ConsumerWidget {
   const HouseholdListScreen({super.key});
@@ -141,6 +142,25 @@ class HouseholdListScreen extends ConsumerWidget {
                     // Show pending members if owner
                     if (isOwner && pendingCount > 0)
                       _PendingMembersSection(household: household),
+                    // Scan to Check button
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: FilledButton.tonalIcon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ScanToCheckScreen(
+                                householdId: household.id,
+                                householdName: household.name,
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.qr_code_scanner),
+                        label: const Text('Scan to Check Books'),
+                      ),
+                    ),
                   ],
                 ),
               );
@@ -226,56 +246,10 @@ class _PendingMembersSection extends ConsumerWidget {
           const SizedBox(height: 12),
           ...pendingMembers.map((entry) {
             final userId = entry.key;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 16,
-                    child: Text(userId.substring(0, 1).toUpperCase()),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'User ${userId.substring(0, 8)}...',
-                          style: const TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                        const Text(
-                          'Requested to join',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Approve button
-                  FilledButton.icon(
-                    onPressed: () => _approveMember(context, ref, userId),
-                    icon: const Icon(Icons.check, size: 16),
-                    label: const Text('Approve'),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Deny button
-                  OutlinedButton(
-                    onPressed: () => _denyMember(context, ref, userId),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                    child: const Icon(Icons.close, size: 16),
-                  ),
-                ],
-              ),
+            return _PendingMemberRow(
+              userId: userId,
+              onApprove: () => _approveMember(context, ref, userId),
+              onDeny: () => _denyMember(context, ref, userId),
             );
           }),
         ],
@@ -362,5 +336,87 @@ class _PendingMembersSection extends ConsumerWidget {
         );
       }
     }
+  }
+}
+
+class _PendingMemberRow extends ConsumerWidget {
+  final String userId;
+  final VoidCallback onApprove;
+  final VoidCallback onDeny;
+
+  const _PendingMemberRow({
+    required this.userId,
+    required this.onApprove,
+    required this.onDeny,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userProfileAsync = ref.watch(userProfileProvider(userId));
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: userProfileAsync.when(
+        loading: () => const LinearProgressIndicator(),
+        error: (_, __) => _buildRow(context, 'User ${userId.substring(0, 8)}...', null),
+        data: (profile) {
+          final displayName = profile?['displayName'] as String? ??
+                             profile?['email'] as String? ??
+                             'User ${userId.substring(0, 8)}...';
+          return _buildRow(context, displayName, profile);
+        },
+      ),
+    );
+  }
+
+  Widget _buildRow(BuildContext context, String displayName, Map<String, dynamic>? profile) {
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 16,
+          child: Text(displayName[0].toUpperCase()),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                displayName,
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+              const Text(
+                'Requested to join',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+        // Approve button
+        FilledButton.icon(
+          onPressed: onApprove,
+          icon: const Icon(Icons.check, size: 16),
+          label: const Text('Approve'),
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Deny button
+        OutlinedButton(
+          onPressed: onDeny,
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
+            ),
+          ),
+          child: const Icon(Icons.close, size: 16),
+        ),
+      ],
+    );
   }
 }

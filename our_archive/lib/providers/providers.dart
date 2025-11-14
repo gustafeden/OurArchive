@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../data/services/auth_service.dart';
 import '../data/services/household_service.dart';
 import '../data/services/container_service.dart';
+import '../data/services/book_lookup_service.dart';
 import '../data/repositories/item_repository.dart';
 import '../core/sync/sync_queue.dart';
 import '../data/models/household.dart';
@@ -13,6 +14,7 @@ import '../data/models/container.dart' as model;
 final authServiceProvider = Provider((ref) => AuthService());
 final householdServiceProvider = Provider((ref) => HouseholdService());
 final containerServiceProvider = Provider((ref) => ContainerService());
+final bookLookupServiceProvider = Provider((ref) => BookLookupService());
 final syncQueueProvider = Provider((ref) => SyncQueue());
 
 final itemRepositoryProvider = Provider((ref) {
@@ -24,6 +26,12 @@ final itemRepositoryProvider = Provider((ref) {
 final currentUserProvider = StreamProvider<User?>((ref) {
   final authService = ref.watch(authServiceProvider);
   return authService.authStateChanges;
+});
+
+// User profile by UID
+final userProfileProvider = StreamProvider.family<Map<String, dynamic>?, String>((ref, uid) {
+  final authService = ref.watch(authServiceProvider);
+  return authService.getUserProfile(uid);
 });
 
 // Current household
@@ -52,6 +60,8 @@ final filteredItemsProvider = Provider<List<Item>>((ref) {
   final items = ref.watch(householdItemsProvider).value ?? [];
   final searchQuery = ref.watch(searchQueryProvider);
   final selectedType = ref.watch(selectedTypeProvider);
+  final selectedContainer = ref.watch(selectedContainerFilterProvider);
+  final selectedTag = ref.watch(selectedTagFilterProvider);
 
   return items.where((item) {
     if (searchQuery.isNotEmpty &&
@@ -63,6 +73,18 @@ final filteredItemsProvider = Provider<List<Item>>((ref) {
       return false;
     }
 
+    if (selectedContainer != null) {
+      if (selectedContainer == 'unorganized') {
+        if (item.containerId != null) return false;
+      } else if (item.containerId != selectedContainer) {
+        return false;
+      }
+    }
+
+    if (selectedTag != null && !item.tags.contains(selectedTag)) {
+      return false;
+    }
+
     return !item.archived;
   }).toList();
 });
@@ -70,6 +92,8 @@ final filteredItemsProvider = Provider<List<Item>>((ref) {
 // UI state
 final searchQueryProvider = StateProvider<String>((ref) => '');
 final selectedTypeProvider = StateProvider<String?>((ref) => null);
+final selectedContainerFilterProvider = StateProvider<String?>((ref) => null);
+final selectedTagFilterProvider = StateProvider<String?>((ref) => null);
 
 // Pending members for current household (for owners)
 final pendingMembersProvider = StreamProvider<List<Map<String, String>>>((ref) {
@@ -104,6 +128,17 @@ final allContainersProvider = StreamProvider<List<model.Container>>((ref) {
 
   final containerService = ref.watch(containerServiceProvider);
   return containerService.getAllContainers(householdId);
+});
+
+// All unique tags from items in current household
+final allTagsProvider = Provider<List<String>>((ref) {
+  final items = ref.watch(householdItemsProvider).value ?? [];
+  final tagsSet = <String>{};
+  for (final item in items) {
+    tagsSet.addAll(item.tags);
+  }
+  final tags = tagsSet.toList()..sort();
+  return tags;
 });
 
 // Items in a specific container

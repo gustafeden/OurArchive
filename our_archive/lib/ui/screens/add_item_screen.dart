@@ -2,18 +2,27 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import '../../providers/providers.dart';
 import '../../data/models/household.dart';
+import '../../data/models/book_metadata.dart';
+import 'barcode_scan_screen.dart';
 
 class AddItemScreen extends ConsumerStatefulWidget {
-  final Household household;
+  final Household? household;
+  final String? householdId; // Alternative to household object
   final String? preSelectedContainerId;
+  final BookMetadata? bookData;
 
   const AddItemScreen({
     super.key,
-    required this.household,
+    this.household,
+    this.householdId,
     this.preSelectedContainerId,
-  });
+    this.bookData,
+  }) : assert(household != null || householdId != null,
+            'Either household or householdId must be provided');
 
   @override
   ConsumerState<AddItemScreen> createState() => _AddItemScreenState();
@@ -31,6 +40,9 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
   File? _photo;
   bool _isLoading = false;
 
+  // Helper to get household ID from either household object or direct ID
+  String get _householdId => widget.householdId ?? widget.household!.id;
+
   final List<String> _itemTypes = [
     'general',
     'tool',
@@ -47,6 +59,74 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
   void initState() {
     super.initState();
     _selectedContainerId = widget.preSelectedContainerId;
+
+    // Pre-fill form if book data is provided
+    if (widget.bookData != null) {
+      _titleController.text = widget.bookData!.title ?? '';
+      _selectedType = 'book';
+
+      // Add book-specific info to tags
+      final bookTags = <String>[];
+      if (widget.bookData!.authors.isNotEmpty) {
+        bookTags.add('author:${widget.bookData!.authors.first}');
+      }
+      if (widget.bookData!.publisher != null) {
+        bookTags.add('publisher:${widget.bookData!.publisher}');
+      }
+      _tagsController.text = bookTags.join(', ');
+
+      // Download book cover if available
+      if (widget.bookData!.thumbnailUrl != null) {
+        _downloadBookCover(widget.bookData!.thumbnailUrl!);
+      }
+    }
+  }
+
+  Future<void> _downloadBookCover(String url) async {
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final tempDir = await getTemporaryDirectory();
+        final file = File('${tempDir.path}/book_cover_${DateTime.now().millisecondsSinceEpoch}.jpg');
+        await file.writeAsBytes(response.bodyBytes);
+
+        if (mounted) {
+          setState(() {
+            _photo = file;
+          });
+        }
+      }
+    } catch (e) {
+      // Silently fail - user can add photo manually
+      debugPrint('Failed to download book cover: $e');
+    }
+  }
+
+  Future<void> _scanBook() async {
+    // Only allow scanning if we have the full household object
+    if (widget.household == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot scan books from this screen')),
+      );
+      return;
+    }
+
+    // Navigate to BarcodeScanScreen for batch scanning
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BarcodeScanScreen(
+          household: widget.household!,
+          preSelectedContainerId: widget.preSelectedContainerId,
+        ),
+      ),
+    );
+
+    // If we return here, the user finished scanning
+    // Close this screen too since books are added during scanning
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 
   @override
@@ -118,8 +198,19 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
         'containerId': _selectedContainerId,
       };
 
+      // Add book-specific fields if available
+      if (widget.bookData != null) {
+        itemData['authors'] = widget.bookData!.authors;
+        itemData['publisher'] = widget.bookData!.publisher;
+        itemData['isbn'] = widget.bookData!.isbn;
+        itemData['coverUrl'] = widget.bookData!.thumbnailUrl;
+        itemData['pageCount'] = widget.bookData!.pageCount;
+        itemData['description'] = widget.bookData!.description;
+        itemData['barcode'] = widget.bookData!.isbn;
+      }
+
       await itemRepo.addItem(
-        householdId: widget.household.id,
+        householdId: _householdId,
         userId: userId,
         itemData: itemData,
         photo: _photo,
@@ -149,6 +240,15 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Item'),
+        actions: [
+          // Only show scan button if we have full household object
+          if (widget.household != null)
+            IconButton(
+              icon: const Icon(Icons.qr_code_scanner),
+              tooltip: 'Scan Book',
+              onPressed: _scanBook,
+            ),
+        ],
       ),
       body: Form(
         key: _formKey,

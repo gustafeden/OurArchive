@@ -24,6 +24,14 @@ class Item {
   final Map<String, dynamic>? reminder;
   final String? containerId; // Reference to Container (room, shelf, box, fridge, etc.)
 
+  // Book-specific fields
+  final List<String>? authors;
+  final String? publisher;
+  final String? isbn;
+  final String? coverUrl;
+  final int? pageCount;
+  final String? description;
+
   Item({
     required this.id,
     required this.title,
@@ -45,6 +53,12 @@ class Item {
     this.barcode,
     this.reminder,
     this.containerId,
+    this.authors,
+    this.publisher,
+    this.isbn,
+    this.coverUrl,
+    this.pageCount,
+    this.description,
   });
 
   factory Item.fromFirestore(DocumentSnapshot doc) {
@@ -72,6 +86,14 @@ class Item {
       barcode: data['barcode'],
       reminder: data['reminder'],
       containerId: data['containerId'],
+      authors: data['authors'] != null
+        ? List<String>.from(data['authors'])
+        : null,
+      publisher: data['publisher'],
+      isbn: data['isbn'],
+      coverUrl: data['coverUrl'],
+      pageCount: data['pageCount'],
+      description: data['description'],
     );
   }
 
@@ -95,6 +117,12 @@ class Item {
     'barcode': barcode,
     'reminder': reminder,
     'containerId': containerId,
+    'authors': authors,
+    'publisher': publisher,
+    'isbn': isbn,
+    'coverUrl': coverUrl,
+    'pageCount': pageCount,
+    'description': description,
   };
 
   static SyncStatus _parseSyncStatus(String? status) {
@@ -132,6 +160,12 @@ class Item {
     String? barcode,
     Map<String, dynamic>? reminder,
     String? containerId,
+    List<String>? authors,
+    String? publisher,
+    String? isbn,
+    String? coverUrl,
+    int? pageCount,
+    String? description,
   }) {
     return Item(
       id: id ?? this.id,
@@ -154,6 +188,12 @@ class Item {
       barcode: barcode ?? this.barcode,
       reminder: reminder ?? this.reminder,
       containerId: containerId ?? this.containerId,
+      authors: authors ?? this.authors,
+      publisher: publisher ?? this.publisher,
+      isbn: isbn ?? this.isbn,
+      coverUrl: coverUrl ?? this.coverUrl,
+      pageCount: pageCount ?? this.pageCount,
+      description: description ?? this.description,
     );
   }
 }

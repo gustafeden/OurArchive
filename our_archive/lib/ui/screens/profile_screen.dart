@@ -90,6 +90,8 @@ class ProfileScreen extends ConsumerWidget {
             subtitle: isAnonymous ? 'Sign up to secure your account' : null,
           ),
 
+          _DisplayNameTile(userId: userId),
+
           _InfoTile(
             icon: Icons.fingerprint,
             title: 'User ID',
@@ -230,6 +232,132 @@ class ProfileScreen extends ConsumerWidget {
       return '${(difference.inDays / 30).floor()} months ago';
     } else {
       return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+}
+
+class _DisplayNameTile extends ConsumerStatefulWidget {
+  final String userId;
+
+  const _DisplayNameTile({required this.userId});
+
+  @override
+  ConsumerState<_DisplayNameTile> createState() => _DisplayNameTileState();
+}
+
+class _DisplayNameTileState extends ConsumerState<_DisplayNameTile> {
+  bool _isEditing = false;
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final userProfileAsync = ref.watch(userProfileProvider(widget.userId));
+
+    return userProfileAsync.when(
+      loading: () => const ListTile(
+        leading: Icon(Icons.person),
+        title: Text('Display Name'),
+        subtitle: LinearProgressIndicator(),
+      ),
+      error: (_, __) => _buildTile('Not set', null),
+      data: (profile) {
+        final displayName = profile?['displayName'] as String?;
+        return _buildTile(displayName ?? 'Not set', displayName);
+      },
+    );
+  }
+
+  Widget _buildTile(String displayValue, String? currentName) {
+    if (_isEditing) {
+      return ListTile(
+        leading: const Icon(Icons.person),
+        title: TextField(
+          controller: _controller,
+          decoration: const InputDecoration(
+            hintText: 'Enter your name',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.check, color: Colors.green),
+              onPressed: () => _saveName(),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close, color: Colors.red),
+              onPressed: () {
+                setState(() {
+                  _isEditing = false;
+                  _controller.clear();
+                });
+              },
+            ),
+          ],
+        ),
+      );
+    }
+
+    return _InfoTile(
+      icon: Icons.person,
+      title: 'Display Name',
+      value: displayValue,
+      subtitle: 'Tap to edit',
+      onTap: () {
+        setState(() {
+          _isEditing = true;
+          _controller.text = currentName ?? '';
+        });
+      },
+    );
+  }
+
+  Future<void> _saveName() async {
+    final name = _controller.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Name cannot be empty')),
+      );
+      return;
+    }
+
+    try {
+      final authService = ref.read(authServiceProvider);
+      await authService.updateUserProfile(
+        uid: widget.userId,
+        displayName: name,
+      );
+
+      setState(() {
+        _isEditing = false;
+        _controller.clear();
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Display name updated!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
     }
   }
 }

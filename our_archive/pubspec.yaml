@@ -47,6 +47,7 @@ dependencies:
 
   # Networking & connectivity
   connectivity_plus: ^6.0.5
+  http: ^1.2.0
 
   # Image handling
   flutter_image_compress: ^2.3.0

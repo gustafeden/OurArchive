@@ -86,6 +86,44 @@ class ItemRepository {
     return itemId;
   }
 
+  // Move item to a different container (or null for unorganized)
+  Future<void> moveItem({
+    required String householdId,
+    required String itemId,
+    required String? newContainerId,
+  }) async {
+    try {
+      final docRef = _firestore
+          .collection('households')
+          .doc(householdId)
+          .collection('items')
+          .doc(itemId);
+
+      await docRef.update({
+        'containerId': newContainerId,
+        'lastModified': Timestamp.fromDate(DateTime.now()),
+      });
+    } catch (error) {
+      // Queue for retry
+      _syncQueue.add(SyncTask(
+        id: 'move_item_$itemId',
+        execute: () async {
+          final docRef = _firestore
+              .collection('households')
+              .doc(householdId)
+              .collection('items')
+              .doc(itemId);
+
+          await docRef.update({
+            'containerId': newContainerId,
+            'lastModified': Timestamp.fromDate(DateTime.now()),
+          });
+        },
+      ));
+      rethrow;
+    }
+  }
+
   Future<void> _uploadPhoto(
     String householdId,
     String itemId,
@@ -144,6 +182,46 @@ class ItemRepository {
             .map((doc) => Item.fromFirestore(doc))
             .where((item) => item.deletedAt == null) // Filter deleted items in memory
             .toList());
+  }
+
+  // Find item by ISBN in a household
+  // Note: Searches in memory rather than using Firestore query to avoid needing an index
+  Future<Item?> findItemByIsbn(String householdId, String isbn) async {
+    // Clean ISBN for consistent matching
+    final cleanIsbn = isbn.replaceAll(RegExp(r'[^0-9X]'), '').toLowerCase();
+
+    // Get all items for the household
+    final snapshot = await _firestore
+        .collection('households')
+        .doc(householdId)
+        .collection('items')
+        .get();
+
+    // Search through items in memory
+    for (final doc in snapshot.docs) {
+      final item = Item.fromFirestore(doc);
+
+      // Skip deleted items
+      if (item.deletedAt != null) continue;
+
+      // Check if ISBN matches (case-insensitive, cleaned)
+      if (item.isbn != null) {
+        final itemIsbn = item.isbn!.replaceAll(RegExp(r'[^0-9X]'), '').toLowerCase();
+        if (itemIsbn == cleanIsbn) {
+          return item;
+        }
+      }
+
+      // Also check barcode field as fallback
+      if (item.barcode != null) {
+        final itemBarcode = item.barcode!.replaceAll(RegExp(r'[^0-9X]'), '').toLowerCase();
+        if (itemBarcode == cleanIsbn) {
+          return item;
+        }
+      }
+    }
+
+    return null;
   }
 
   // Update item with conflict resolution
