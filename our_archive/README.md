@@ -1,16 +1,53 @@
-# our_archive
+# OurArchive - Flutter Application
 
-A new Flutter project.
+This directory contains the main Flutter application for **OurArchive**.
 
-## Getting Started
+For project information, setup instructions, and documentation, see the [root README](../README.md).
 
-This project is a starting point for a Flutter application.
+## Project Structure
 
-A few resources to get you started if this is your first Flutter project:
+```
+our_archive/
+├── lib/
+│   ├── main.dart              # Application entry point
+│   ├── core/sync/             # Offline sync queue
+│   ├── data/
+│   │   ├── models/            # Data models
+│   │   ├── services/          # Business logic
+│   │   └── repositories/      # Data access
+│   ├── providers/             # Riverpod state management
+│   ├── ui/screens/            # UI screens
+│   └── debug/                 # Debug tools
+├── test/                      # Test files
+├── firebase/                  # Firebase configuration
+└── pubspec.yaml               # Dependencies
+```
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Quick Commands
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+# Install dependencies
+fvm flutter pub get
+
+# Run app
+fvm flutter run
+
+# Run tests (use flutter, NOT dart test)
+fvm flutter test
+
+# Analyze code
+fvm flutter analyze
+
+# Build APK (debug)
+fvm flutter build apk --debug
+
+# Build APK (release)
+fvm flutter build apk --release
+```
+
+## Documentation
+
+See [docs/](../docs/) directory for:
+- Setup guide
+- Features documentation
+- Development roadmap

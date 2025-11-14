@@ -7,7 +7,8 @@
 .buildlog/
 .history
 
-
+# Environment variables
+.env
 
 # Flutter repo-specific
 /bin/cache/
@@ -86,6 +87,14 @@ unlinked_spec.ds
 **/ios/Flutter/flutter_export_environment.sh
 **/ios/ServiceDefinitions.json
 **/ios/Runner/GeneratedPluginRegistrant.*
+
+# Third-party documentation (Pods)
+**/ios/Pods/**/*.md
+**/ios/Pods/**/*.MD
+**/ios/Pods/**/*.markdown
+**/ios/Pods/**/README*
+**/ios/Pods/**/CHANGELOG*
+**/ios/Pods/**/LICENSE*
 
 # macOS
 **/Flutter/ephemeral/
