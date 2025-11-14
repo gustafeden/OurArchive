@@ -1,59 +1,68 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users collection
+
+    // Users
     match /users/{uid} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == uid;
     }
 
-    // Households collection
+    // Households
     match /households/{hid} {
-      allow create: if request.auth != null && request.resource.data.members[request.auth.uid] == 'owner';
-      allow read: if request.auth != null && request.auth.uid in resource.data.members.keys();
+
+      // Anyone signed in can create a household
+      allow create: if request.auth != null;
+
+      // Members (including pending) can read - check the map value directly
+      allow read: if request.auth != null
+        && resource.data.members[request.auth.uid] is string;
+
+      // Only owners can update/delete the household itself
       allow update: if isOwner(hid);
       allow delete: if isOwner(hid);
 
-      // Items subcollection
+      // Items under household
       match /items/{itemId} {
-        allow create: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/households/$(hid)).data.members.keys() && request.resource.data.createdBy == request.auth.uid;
-        allow read: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/households/$(hid)).data.members.keys();
-        allow update: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/households/$(hid)).data.members.keys() && (resource.data.createdBy == request.auth.uid || isOwner(hid));
-        allow delete: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/households/$(hid)).data.members.keys() && (resource.data.createdBy == request.auth.uid || isOwner(hid));
+        allow create: if request.auth != null
+          && isMemberOfHousehold(hid)
+          && request.resource.data.createdBy == request.auth.uid;
+
+        allow read: if isMemberOfHousehold(hid);
+
+        allow update: if isMemberOfHousehold(hid)
+          && (resource.data.createdBy == request.auth.uid || isOwner(hid));
+
+        allow delete: if isMemberOfHousehold(hid)
+          && (resource.data.createdBy == request.auth.uid || isOwner(hid));
       }
     }
 
-    // Containers collection (rooms, shelves, boxes, fridges, etc.)
+    // Global containers
     match /containers/{containerId} {
-      allow create: if request.auth != null && request.resource.data.createdBy == request.auth.uid;
-      allow read: if request.auth != null;
-      allow update: if request.auth != null;
-      allow delete: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.householdId is string
+        && isMemberOfHousehold(request.resource.data.householdId);
+
+      allow read: if isMemberOfHousehold(resource.data.householdId);
+      allow update: if isMemberOfHousehold(resource.data.householdId);
+      allow delete: if isMemberOfHousehold(resource.data.householdId);
     }
+
 
     // Helper functions
-    function isMember(hid) {
-      return request.auth != null
-        && exists(/databases/$(database)/documents/households/$(hid))
-        && get(/databases/$(database)/documents/households/$(hid)).data.members[request.auth.uid] in ['owner', 'member', 'viewer'];
-    }
-
     function isOwner(hid) {
       return request.auth != null
         && exists(/databases/$(database)/documents/households/$(hid))
         && get(/databases/$(database)/documents/households/$(hid)).data.members[request.auth.uid] == 'owner';
     }
 
-    function isPending(hid) {
-      return request.auth != null
-        && exists(/databases/$(database)/documents/households/$(hid))
-        && get(/databases/$(database)/documents/households/$(hid)).data.members[request.auth.uid] == 'pending';
-    }
-
     function isMemberOfHousehold(hid) {
       return request.auth != null
         && exists(/databases/$(database)/documents/households/$(hid))
-        && request.auth.uid in get(/databases/$(database)/documents/households/$(hid)).data.members.keys();
+        // direct map lookup - returns the role (string) or null
+        && get(/databases/$(database)/documents/households/$(hid)).data.members[request.auth.uid] in ['owner','member','viewer'];
     }
   }
 }

@@ -344,6 +344,8 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
     switch (type) {
       case 'book':
         return Icons.book;
+      case 'vinyl':
+        return Icons.album;
       case 'tool':
         return Icons.build;
       case 'pantry':

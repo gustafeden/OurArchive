@@ -48,9 +48,10 @@ class ContainerService {
   }
 
   // Get child containers for a parent container
-  Stream<List<model.Container>> getChildContainers(String parentId) {
+  Stream<List<model.Container>> getChildContainers(String parentId, String householdId) {
     return _firestore
         .collection('containers')
+        .where('householdId', isEqualTo: householdId)
         .where('parentId', isEqualTo: parentId)
         .orderBy('sortOrder')
         .orderBy('createdAt')

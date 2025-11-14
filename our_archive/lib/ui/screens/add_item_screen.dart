@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../providers/providers.dart';
 import '../../data/models/household.dart';
 import '../../data/models/book_metadata.dart';
+import '../../data/models/vinyl_metadata.dart';
 import 'barcode_scan_screen.dart';
 
 class AddItemScreen extends ConsumerStatefulWidget {
@@ -14,6 +15,7 @@ class AddItemScreen extends ConsumerStatefulWidget {
   final String? householdId; // Alternative to household object
   final String? preSelectedContainerId;
   final BookMetadata? bookData;
+  final VinylMetadata? vinylData;
 
   const AddItemScreen({
     super.key,
@@ -21,6 +23,7 @@ class AddItemScreen extends ConsumerStatefulWidget {
     this.householdId,
     this.preSelectedContainerId,
     this.bookData,
+    this.vinylData,
   }) : assert(household != null || householdId != null,
             'Either household or householdId must be provided');
 
@@ -49,6 +52,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
     'pantry',
     'camera',
     'book',
+    'vinyl',
     'electronics',
     'clothing',
     'kitchen',
@@ -78,6 +82,30 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
       // Download book cover if available
       if (widget.bookData!.thumbnailUrl != null) {
         _downloadBookCover(widget.bookData!.thumbnailUrl!);
+      }
+    }
+
+    // Pre-fill form if vinyl data is provided
+    if (widget.vinylData != null) {
+      _titleController.text = widget.vinylData!.title;
+      _selectedType = 'vinyl';
+
+      // Add vinyl-specific info to tags
+      final vinylTags = <String>[];
+      if (widget.vinylData!.artist.isNotEmpty) {
+        vinylTags.add('artist:${widget.vinylData!.artist}');
+      }
+      if (widget.vinylData!.label != null) {
+        vinylTags.add('label:${widget.vinylData!.label}');
+      }
+      if (widget.vinylData!.genre != null) {
+        vinylTags.add('genre:${widget.vinylData!.genre}');
+      }
+      _tagsController.text = vinylTags.join(', ');
+
+      // Download vinyl cover if available
+      if (widget.vinylData!.coverUrl != null) {
+        _downloadBookCover(widget.vinylData!.coverUrl!);
       }
     }
   }
@@ -207,6 +235,21 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
         itemData['pageCount'] = widget.bookData!.pageCount;
         itemData['description'] = widget.bookData!.description;
         itemData['barcode'] = widget.bookData!.isbn;
+      }
+
+      // Add vinyl-specific fields if available
+      if (widget.vinylData != null) {
+        itemData['artist'] = widget.vinylData!.artist;
+        itemData['label'] = widget.vinylData!.label;
+        itemData['releaseYear'] = widget.vinylData!.year;
+        itemData['genre'] = widget.vinylData!.genre;
+        itemData['styles'] = widget.vinylData!.styles;
+        itemData['catalogNumber'] = widget.vinylData!.catalogNumber;
+        itemData['coverUrl'] = widget.vinylData!.coverUrl;
+        itemData['format'] = widget.vinylData!.format;
+        itemData['country'] = widget.vinylData!.country;
+        itemData['discogsId'] = widget.vinylData!.discogsId;
+        itemData['barcode'] = '${widget.vinylData!.discogsId}'; // Use Discogs ID as barcode fallback
       }
 
       await itemRepo.addItem(

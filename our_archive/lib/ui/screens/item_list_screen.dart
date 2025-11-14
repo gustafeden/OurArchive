@@ -313,7 +313,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
   }
 
   void _showTypeFilter(WidgetRef ref) {
-    final types = ['general', 'tool', 'pantry', 'camera', 'book', 'electronics', 'clothing', 'kitchen', 'outdoor'];
+    final types = ['general', 'tool', 'pantry', 'camera', 'book', 'vinyl', 'electronics', 'clothing', 'kitchen', 'outdoor'];
 
     showDialog(
       context: context,

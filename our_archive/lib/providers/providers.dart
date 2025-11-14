@@ -4,6 +4,7 @@ import '../data/services/auth_service.dart';
 import '../data/services/household_service.dart';
 import '../data/services/container_service.dart';
 import '../data/services/book_lookup_service.dart';
+import '../services/vinyl_lookup_service.dart';
 import '../data/repositories/item_repository.dart';
 import '../core/sync/sync_queue.dart';
 import '../data/models/household.dart';
@@ -15,6 +16,7 @@ final authServiceProvider = Provider((ref) => AuthService());
 final householdServiceProvider = Provider((ref) => HouseholdService());
 final containerServiceProvider = Provider((ref) => ContainerService());
 final bookLookupServiceProvider = Provider((ref) => BookLookupService());
+final vinylLookupServiceProvider = Provider((ref) => VinylLookupService());
 final syncQueueProvider = Provider((ref) => SyncQueue());
 
 final itemRepositoryProvider = Provider((ref) {
@@ -115,10 +117,13 @@ final householdContainersProvider = StreamProvider<List<model.Container>>((ref) 
 
 // Child containers for a specific parent container
 final childContainersProvider = StreamProvider.family<List<model.Container>, String>((ref, parentId) {
+  final householdId = ref.watch(currentHouseholdIdProvider);
+
   if (parentId.isEmpty) return Stream.value(<model.Container>[]);
+  if (householdId.isEmpty) return Stream.value(<model.Container>[]);
 
   final containerService = ref.watch(containerServiceProvider);
-  return containerService.getChildContainers(parentId);
+  return containerService.getChildContainers(parentId, householdId);
 });
 
 // All containers in current household (flat list)

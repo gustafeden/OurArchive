@@ -224,6 +224,11 @@ class ItemRepository {
     return null;
   }
 
+  // Find item by barcode in a household (alias for findItemByIsbn since both use barcode field)
+  Future<Item?> findItemByBarcode(String householdId, String barcode) async {
+    return findItemByIsbn(householdId, barcode);
+  }
+
   // Update item with conflict resolution
   Future<void> updateItem({
     required String householdId,

@@ -32,6 +32,17 @@ class Item {
   final int? pageCount;
   final String? description;
 
+  // Vinyl-specific fields
+  final String? artist;
+  final String? label;
+  final String? releaseYear;
+  final String? genre;
+  final List<String>? styles;
+  final String? catalogNumber;
+  final List<String>? format;
+  final String? country;
+  final String? discogsId;
+
   Item({
     required this.id,
     required this.title,
@@ -59,6 +70,15 @@ class Item {
     this.coverUrl,
     this.pageCount,
     this.description,
+    this.artist,
+    this.label,
+    this.releaseYear,
+    this.genre,
+    this.styles,
+    this.catalogNumber,
+    this.format,
+    this.country,
+    this.discogsId,
   });
 
   factory Item.fromFirestore(DocumentSnapshot doc) {
@@ -94,6 +114,19 @@ class Item {
       coverUrl: data['coverUrl'],
       pageCount: data['pageCount'],
       description: data['description'],
+      artist: data['artist'],
+      label: data['label'],
+      releaseYear: data['releaseYear'],
+      genre: data['genre'],
+      styles: data['styles'] != null
+        ? List<String>.from(data['styles'])
+        : null,
+      catalogNumber: data['catalogNumber'],
+      format: data['format'] != null
+        ? List<String>.from(data['format'])
+        : null,
+      country: data['country'],
+      discogsId: data['discogsId'],
     );
   }
 
@@ -123,6 +156,15 @@ class Item {
     'coverUrl': coverUrl,
     'pageCount': pageCount,
     'description': description,
+    'artist': artist,
+    'label': label,
+    'releaseYear': releaseYear,
+    'genre': genre,
+    'styles': styles,
+    'catalogNumber': catalogNumber,
+    'format': format,
+    'country': country,
+    'discogsId': discogsId,
   };
 
   static SyncStatus _parseSyncStatus(String? status) {
@@ -166,6 +208,15 @@ class Item {
     String? coverUrl,
     int? pageCount,
     String? description,
+    String? artist,
+    String? label,
+    String? releaseYear,
+    String? genre,
+    List<String>? styles,
+    String? catalogNumber,
+    List<String>? format,
+    String? country,
+    String? discogsId,
   }) {
     return Item(
       id: id ?? this.id,
@@ -194,6 +245,15 @@ class Item {
       coverUrl: coverUrl ?? this.coverUrl,
       pageCount: pageCount ?? this.pageCount,
       description: description ?? this.description,
+      artist: artist ?? this.artist,
+      label: label ?? this.label,
+      releaseYear: releaseYear ?? this.releaseYear,
+      genre: genre ?? this.genre,
+      styles: styles ?? this.styles,
+      catalogNumber: catalogNumber ?? this.catalogNumber,
+      format: format ?? this.format,
+      country: country ?? this.country,
+      discogsId: discogsId ?? this.discogsId,
     );
   }
 }

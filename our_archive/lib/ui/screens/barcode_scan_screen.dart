@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../data/models/book_metadata.dart';
+import '../../data/models/vinyl_metadata.dart';
 import '../../data/models/household.dart';
 import '../../data/models/item.dart';
 import '../../data/models/container.dart' as model;
 import '../../providers/providers.dart';
+import '../../services/vinyl_lookup_service.dart';
 import 'add_item_screen.dart';
 
 class BarcodeScanScreen extends ConsumerStatefulWidget {
@@ -46,14 +48,15 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
       _lastScannedCode = code;
     });
 
-    await _lookupBook(code);
+    // Try vinyl lookup first, then fall back to book lookup
+    await _lookupItem(code);
   }
 
   Future<void> _handleManualEntry() async {
     final isbn = _manualIsbnController.text.trim();
     if (isbn.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter an ISBN')),
+        const SnackBar(content: Text('Please enter an ISBN or barcode')),
       );
       return;
     }
@@ -62,7 +65,128 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
       _isProcessing = true;
     });
 
-    await _lookupBook(isbn);
+    await _lookupItem(isbn);
+  }
+
+  Future<void> _lookupItem(String code) async {
+    // Try vinyl lookup first (since vinyl barcodes are more specific)
+    try {
+      final vinylMetadata = await VinylLookupService.lookupByBarcode(code);
+
+      if (!mounted) return;
+
+      if (vinylMetadata != null) {
+        await _handleVinylFound(code, vinylMetadata);
+        return;
+      }
+    } catch (e) {
+      // Vinyl lookup failed, continue to book lookup
+    }
+
+    // Fall back to book lookup
+    await _lookupBook(code);
+  }
+
+  Future<void> _handleVinylFound(String barcode, VinylMetadata vinylMetadata) async {
+    try {
+      // Check if vinyl already exists in household
+      final itemRepository = ref.read(itemRepositoryProvider);
+      final existingItem = await itemRepository.findItemByBarcode(
+        widget.household.id,
+        barcode,
+      );
+
+      if (!mounted) return;
+
+      String? action;
+
+      if (existingItem != null) {
+        action = await _showDuplicateFoundDialog(existingItem, null, vinylMetadata: vinylMetadata);
+
+        if (!mounted) return;
+
+        if (action == 'addCopy') {
+          action = await _showVinylPreview(vinylMetadata);
+        } else if (action == 'scanNext') {
+          setState(() {
+            _isProcessing = false;
+            _lastScannedCode = null;
+          });
+          return;
+        } else {
+          setState(() {
+            _isProcessing = false;
+            _lastScannedCode = null;
+          });
+          return;
+        }
+      } else {
+        action = await _showVinylPreview(vinylMetadata);
+      }
+
+      if (!mounted) return;
+
+      if (action == 'addVinyl') {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AddItemScreen(
+              household: widget.household,
+              vinylData: vinylMetadata,
+              preSelectedContainerId: widget.preSelectedContainerId,
+            ),
+          ),
+        );
+
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      } else if (action == 'scanNext') {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AddItemScreen(
+              household: widget.household,
+              vinylData: vinylMetadata,
+              preSelectedContainerId: widget.preSelectedContainerId,
+            ),
+          ),
+        );
+
+        if (mounted) {
+          setState(() {
+            _booksScanned++;
+            _isProcessing = false;
+            _lastScannedCode = null;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Vinyl added! Scan next item ($_booksScanned scanned)'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        setState(() {
+          _isProcessing = false;
+          _lastScannedCode = null;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error processing vinyl: $e'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      setState(() {
+        _isProcessing = false;
+        _lastScannedCode = null;
+      });
+    }
   }
 
   Future<void> _lookupBook(String isbn) async {
@@ -259,6 +383,66 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
     );
   }
 
+  Future<String?> _showVinylPreview(VinylMetadata vinyl) async {
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Vinyl Record Found'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (vinyl.coverUrl != null)
+                Center(
+                  child: Image.network(
+                    vinyl.coverUrl!,
+                    height: 200,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(Icons.album, size: 100),
+                  ),
+                ),
+              const SizedBox(height: 16),
+              Text(
+                vinyl.title,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              if (vinyl.artist.isNotEmpty)
+                Text(
+                  'By ${vinyl.artist}',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              const SizedBox(height: 8),
+              if (vinyl.label != null)
+                Text('Label: ${vinyl.label}'),
+              if (vinyl.year != null)
+                Text('Year: ${vinyl.year}'),
+              if (vinyl.catalogNumber != null)
+                Text('Catalog #: ${vinyl.catalogNumber}'),
+              if (vinyl.genre != null)
+                Text('Genre: ${vinyl.genre}'),
+              if (vinyl.format != null && vinyl.format!.isNotEmpty)
+                Text('Format: ${vinyl.format!.join(', ')}'),
+              if (vinyl.country != null)
+                Text('Country: ${vinyl.country}'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'scanNext'),
+            child: const Text('Scan Next'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, 'addVinyl'),
+            child: const Text('Add Vinyl'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<String> _getContainerName(String? containerId) async {
     if (containerId == null) {
       return 'Not assigned to a container';
@@ -289,7 +473,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
     }
   }
 
-  Future<String?> _showDuplicateFoundDialog(Item item, BookMetadata bookMetadata) async {
+  Future<String?> _showDuplicateFoundDialog(Item item, BookMetadata? bookMetadata, {VinylMetadata? vinylMetadata}) async {
     final locationText = await _getContainerName(item.containerId);
 
     if (!mounted) return null;
@@ -317,16 +501,25 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                     item.coverUrl!,
                     height: 200,
                     errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.book, size: 100),
+                        Icon(item.type == 'vinyl' ? Icons.album : Icons.book, size: 100),
                   ),
                 )
-              else if (bookMetadata.thumbnailUrl != null)
+              else if (bookMetadata?.thumbnailUrl != null)
                 Center(
                   child: Image.network(
-                    bookMetadata.thumbnailUrl!,
+                    bookMetadata!.thumbnailUrl!,
                     height: 200,
                     errorBuilder: (context, error, stackTrace) =>
                         const Icon(Icons.book, size: 100),
+                  ),
+                )
+              else if (vinylMetadata?.coverUrl != null)
+                Center(
+                  child: Image.network(
+                    vinylMetadata!.coverUrl!,
+                    height: 200,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(Icons.album, size: 100),
                   ),
                 ),
               const SizedBox(height: 16),
