@@ -107,6 +107,43 @@ class HouseholdService {
     });
   }
 
+  // Remove member (including pending members)
+  Future<void> removeMember({
+    required String householdId,
+    required String memberUid,
+    required String removerUid,
+  }) async {
+    final doc = await _firestore.collection('households').doc(householdId).get();
+    final data = doc.data()!;
+
+    // Check remover is owner
+    if (data['members'][removerUid] != 'owner') {
+      throw Exception('Only owners can remove members');
+    }
+
+    // Don't allow removing the owner
+    if (data['members'][memberUid] == 'owner') {
+      throw Exception('Cannot remove the household owner');
+    }
+
+    // Check member exists
+    if (!data['members'].containsKey(memberUid)) {
+      throw Exception('User is not a member of this household');
+    }
+
+    // Remove from members map
+    await _firestore.collection('households').doc(householdId).update({
+      'members.$memberUid': FieldValue.delete(),
+    });
+
+    // If they were an approved member (not pending), remove from user's household list
+    if (data['members'][memberUid] != 'pending') {
+      await _firestore.collection('users').doc(memberUid).update({
+        'households': FieldValue.arrayRemove([householdId]),
+      });
+    }
+  }
+
   // Get user's households
   Stream<List<Household>> getUserHouseholds(String userId) {
     return _firestore

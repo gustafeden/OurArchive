@@ -5,7 +5,10 @@ service cloud.firestore {
     // Users
     match /users/{uid} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == uid;
+      // Users can write to their own document
+      // OR household owners can update the households array when approving/removing members
+      allow write: if request.auth != null &&
+        (request.auth.uid == uid || canModifyUserHouseholds(uid));
     }
 
     // Households
@@ -15,11 +18,15 @@ service cloud.firestore {
       allow create: if request.auth != null;
 
       // Members (including pending) can read - check the map value directly
-      allow read: if request.auth != null
-        && resource.data.members[request.auth.uid] is string;
+      // Anyone can read to query by code (needed for joining)
+      allow read: if request.auth != null;
 
-      // Only owners can update/delete the household itself
-      allow update: if isOwner(hid);
+      // Allow users to add themselves as pending members
+      // Allow owners to update the household (approve members, remove members, etc.)
+      allow update: if isOwner(hid)
+        || canAddSelfAsPending(hid)
+        || canRemoveMemberAsOwner(hid);
+
       allow delete: if isOwner(hid);
 
       // Items under household
@@ -63,6 +70,37 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/households/$(hid))
         // direct map lookup - returns the role (string) or null
         && get(/databases/$(database)/documents/households/$(hid)).data.members[request.auth.uid] in ['owner','member','viewer'];
+    }
+
+    function canAddSelfAsPending(hid) {
+      let isNotMember = !(request.auth.uid in resource.data.members.keys());
+      let isPendingInUpdate = request.resource.data.members[request.auth.uid] == 'pending';
+      let onlyOneAdded = request.resource.data.members.size() == resource.data.members.size() + 1;
+      let membersOnlyChanged = request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']);
+
+      return request.auth != null
+        && isNotMember
+        && isPendingInUpdate
+        && onlyOneAdded
+        && membersOnlyChanged;
+    }
+
+    function canRemoveMemberAsOwner(hid) {
+      return request.auth != null
+        // User is an owner
+        && resource.data.members[request.auth.uid] == 'owner'
+        // Members map is being modified (one member removed or updated)
+        && request.resource.data.members.size() <= resource.data.members.size()
+        // All other fields remain unchanged
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']);
+    }
+
+    function canModifyUserHouseholds(uid) {
+      // Only allow modifying the households array, nothing else
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['households'])
+        // The households field must exist in both old and new data
+        && 'households' in resource.data
+        && 'households' in request.resource.data;
     }
   }
 }

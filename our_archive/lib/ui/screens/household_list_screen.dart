@@ -262,6 +262,31 @@ class _PendingMembersSection extends ConsumerWidget {
     WidgetRef ref,
     String memberUid,
   ) async {
+    // Capture the navigator before async operations
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Approving member...'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
     try {
       final householdService = ref.read(householdServiceProvider);
       final authService = ref.read(authServiceProvider);
@@ -273,17 +298,39 @@ class _PendingMembersSection extends ConsumerWidget {
         approverUid: currentUserId,
       );
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Member approved!')),
-        );
-      }
+      // Close loading dialog
+      navigator.pop();
+
+      // Show success snackbar
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Text('Member approved successfully!'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+          action: SnackBarAction(
+            label: 'OK',
+            textColor: Colors.white,
+            onPressed: () {},
+          ),
+        ),
+      );
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
-      }
+      // Close loading dialog
+      navigator.pop();
+
+      // Show error snackbar
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Failed to approve member: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'OK',
+            textColor: Colors.white,
+            onPressed: () {},
+          ),
+        ),
+      );
     }
   }
 
@@ -313,28 +360,77 @@ class _PendingMembersSection extends ConsumerWidget {
 
     if (confirm != true) return;
 
-    try {
-      // Remove the pending member
-      final householdService = ref.read(householdServiceProvider);
-      await ref.read(householdServiceProvider).approveMember(
-            householdId: household.id,
-            memberUid: memberUid,
-            approverUid: ref.read(authServiceProvider).currentUserId!,
-          );
-      // For now, we approve then immediately remove
-      // TODO: Add a proper deny/remove method to HouseholdService
+    if (!context.mounted) return;
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Request denied')),
-        );
-      }
+    // Capture the navigator before async operations
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Denying request...'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final householdService = ref.read(householdServiceProvider);
+      final authService = ref.read(authServiceProvider);
+      final currentUserId = authService.currentUserId!;
+
+      await householdService.removeMember(
+        householdId: household.id,
+        memberUid: memberUid,
+        removerUid: currentUserId,
+      );
+
+      // Close loading dialog
+      navigator.pop();
+
+      // Show success snackbar
+      messenger.showSnackBar(
+        SnackBar(
+          content: const Text('Request denied successfully'),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 3),
+          action: SnackBarAction(
+            label: 'OK',
+            textColor: Colors.white,
+            onPressed: () {},
+          ),
+        ),
+      );
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
-      }
+      // Close loading dialog
+      navigator.pop();
+
+      // Show error snackbar
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Failed to deny request: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(
+            label: 'OK',
+            textColor: Colors.white,
+            onPressed: () {},
+          ),
+        ),
+      );
     }
   }
 }
@@ -358,11 +454,23 @@ class _PendingMemberRow extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: userProfileAsync.when(
         loading: () => const LinearProgressIndicator(),
-        error: (_, __) => _buildRow(context, 'User ${userId.substring(0, 8)}...', null),
+        error: (error, stack) {
+          // Show email from Firebase Auth as fallback
+          final authService = ref.read(authServiceProvider);
+          final email = authService.currentUser?.email ?? 'User ${userId.substring(0, 8)}...';
+          return _buildRow(context, email, null);
+        },
         data: (profile) {
-          final displayName = profile?['displayName'] as String? ??
-                             profile?['email'] as String? ??
-                             'User ${userId.substring(0, 8)}...';
+          String displayName;
+          if (profile == null) {
+            // Profile doesn't exist, show truncated ID
+            displayName = 'User ${userId.substring(0, 8)}...';
+          } else {
+            // Try displayName, then email, then truncated ID
+            displayName = profile['displayName'] as String? ??
+                         profile['email'] as String? ??
+                         'User ${userId.substring(0, 8)}...';
+          }
           return _buildRow(context, displayName, profile);
         },
       ),
