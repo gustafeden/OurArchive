@@ -248,7 +248,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
                 ),
               const SizedBox(height: 16),
               Text(vinyl.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              if (vinyl.artist != null && vinyl.artist!.isNotEmpty) ...[
+              if (vinyl.artist.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text('by ${vinyl.artist}'),
               ],
@@ -469,7 +469,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
                       ? Image.network(vinyl.coverUrl!, width: 40, fit: BoxFit.cover)
                       : const Icon(Icons.album),
                   title: Text(vinyl.title),
-                  subtitle: vinyl.artist != null ? Text(vinyl.artist!) : null,
+                  subtitle: vinyl.artist.isNotEmpty ? Text(vinyl.artist) : null,
                   onTap: () => _handleSearchResultTap(vinyl),
                 );
               },

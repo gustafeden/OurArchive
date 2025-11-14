@@ -9,7 +9,6 @@ class DebugScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final syncQueue = ref.read(syncQueueProvider);
-    final itemRepo = ref.read(itemRepositoryProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -130,11 +129,11 @@ class DebugScreen extends ConsumerWidget {
 
       for (int i = 0; i < count; i++) {
         final itemData = {
-          'title': faker.commerce.productName(),
+          'title': faker.lorem.words(3).join(' '),
           'type': types[i % types.length],
           'location': locations[i % locations.length],
           'tags': [
-            faker.commerce.department(),
+            faker.lorem.word(),
             faker.color.color(),
           ],
           'quantity': faker.randomGenerator.integer(10, min: 1),

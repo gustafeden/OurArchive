@@ -5,7 +5,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../providers/providers.dart';
 import '../../data/models/household.dart';
 import '../../data/models/item.dart';
-import 'add_item_screen.dart';
 import 'item_type_selection_screen.dart';
 import 'book_scan_screen.dart';
 import 'vinyl_scan_screen.dart';

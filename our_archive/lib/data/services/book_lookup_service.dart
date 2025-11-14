@@ -34,7 +34,7 @@ class BookLookupService {
         final openLibraryResults = await _searchOpenLibrary(query);
         // Avoid duplicates by checking ISBN
         for (final book in openLibraryResults) {
-          if (book.isbn != null && !results.any((b) => b.isbn == book.isbn)) {
+          if (!results.any((b) => b.isbn == book.isbn)) {
             results.add(book);
           }
         }
