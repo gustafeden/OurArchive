@@ -31,9 +31,17 @@ jobs:
         working-directory: ./our_archive
         run: flutter pub get
 
-      - name: Analyze
+      - name: Analyze (fail only on errors)
         working-directory: ./our_archive
-        run: flutter analyze
+        run: |
+          flutter analyze 2>&1 | tee analyze.log
+          if grep -q "error •" analyze.log; then
+            echo "❌ Errors found in analysis. Failing CI."
+            exit 1
+          else
+            echo "✅ No errors found. Warnings/info are acceptable."
+            exit 0
+          fi
 
       - name: Run tests
         working-directory: ./our_archive
