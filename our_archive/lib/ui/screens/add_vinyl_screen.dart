@@ -9,16 +9,19 @@ import '../../data/models/household.dart';
 import '../../data/models/vinyl_metadata.dart';
 
 class AddVinylScreen extends ConsumerStatefulWidget {
-  final Household household;
+  final Household? household;
+  final String? householdId; // Alternative to household object
   final String? preSelectedContainerId;
   final VinylMetadata? vinylData;
 
   const AddVinylScreen({
     super.key,
-    required this.household,
+    this.household,
+    this.householdId,
     this.preSelectedContainerId,
     this.vinylData,
-  });
+  }) : assert(household != null || householdId != null,
+            'Either household or householdId must be provided');
 
   @override
   ConsumerState<AddVinylScreen> createState() => _AddVinylScreenState();
@@ -37,6 +40,9 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
   File? _photo;
   String? _selectedContainerId;
   bool _isLoading = false;
+
+  // Helper to get household ID from either household object or direct ID
+  String get _householdId => widget.householdId ?? widget.household!.id;
 
   @override
   void initState() {
@@ -126,7 +132,7 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
       }
 
       await itemRepo.addItem(
-        householdId: widget.household.id,
+        householdId: _householdId,
         userId: authService.currentUserId!,
         itemData: itemData,
         photo: _photo,

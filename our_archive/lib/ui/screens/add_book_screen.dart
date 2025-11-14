@@ -9,16 +9,19 @@ import '../../data/models/household.dart';
 import '../../data/models/book_metadata.dart';
 
 class AddBookScreen extends ConsumerStatefulWidget {
-  final Household household;
+  final Household? household;
+  final String? householdId; // Alternative to household object
   final String? preSelectedContainerId;
   final BookMetadata? bookData;
 
   const AddBookScreen({
     super.key,
-    required this.household,
+    this.household,
+    this.householdId,
     this.preSelectedContainerId,
     this.bookData,
-  });
+  }) : assert(household != null || householdId != null,
+            'Either household or householdId must be provided');
 
   @override
   ConsumerState<AddBookScreen> createState() => _AddBookScreenState();
@@ -37,6 +40,9 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
   File? _photo;
   String? _selectedContainerId;
   bool _isLoading = false;
+
+  // Helper to get household ID from either household object or direct ID
+  String get _householdId => widget.householdId ?? widget.household!.id;
 
   @override
   void initState() {
@@ -184,7 +190,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
       }
 
       await itemRepo.addItem(
-        householdId: widget.household.id,
+        householdId: _householdId,
         userId: userId,
         itemData: itemData,
         photo: _photo,

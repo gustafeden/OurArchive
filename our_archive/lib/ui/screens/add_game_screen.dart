@@ -6,14 +6,17 @@ import '../../providers/providers.dart';
 import '../../data/models/household.dart';
 
 class AddGameScreen extends ConsumerStatefulWidget {
-  final Household household;
+  final Household? household;
+  final String? householdId; // Alternative to household object
   final String? preSelectedContainerId;
 
   const AddGameScreen({
     super.key,
-    required this.household,
+    this.household,
+    this.householdId,
     this.preSelectedContainerId,
-  });
+  }) : assert(household != null || householdId != null,
+            'Either household or householdId must be provided');
 
   @override
   ConsumerState<AddGameScreen> createState() => _AddGameScreenState();
@@ -32,6 +35,9 @@ class _AddGameScreenState extends ConsumerState<AddGameScreen> {
   String? _selectedContainerId;
   String? _selectedPlatform;
   bool _isLoading = false;
+
+  // Helper to get household ID from either household object or direct ID
+  String get _householdId => widget.householdId ?? widget.household!.id;
 
   final List<String> _platforms = [
     'PlayStation',
@@ -114,7 +120,7 @@ class _AddGameScreenState extends ConsumerState<AddGameScreen> {
       };
 
       await itemRepo.addItem(
-        householdId: widget.household.id,
+        householdId: _householdId,
         userId: authService.currentUserId!,
         itemData: itemData,
         photo: _photo,

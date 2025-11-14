@@ -6,6 +6,9 @@ import '../../providers/providers.dart';
 import '../../data/models/household.dart';
 import '../../data/models/item.dart';
 import 'add_item_screen.dart';
+import 'item_type_selection_screen.dart';
+import 'book_scan_screen.dart';
+import 'vinyl_scan_screen.dart';
 import 'container_screen.dart';
 import 'item_detail_screen.dart';
 
@@ -234,17 +237,102 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AddItemScreen(household: widget.household),
-            ),
-          );
+      floatingActionButton: GestureDetector(
+        onLongPress: () {
+          _showQuickAddMenu(context);
         },
-        icon: const Icon(Icons.add),
-        label: const Text('Add Item'),
+        child: FloatingActionButton.extended(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ItemTypeSelectionScreen(
+                  householdId: widget.household.id,
+                ),
+              ),
+            );
+          },
+          icon: const Icon(Icons.add),
+          label: const Text('Add Item'),
+        ),
+      ),
+    );
+  }
+
+  void _showQuickAddMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.qr_code_scanner, color: Colors.blue),
+              ),
+              title: const Text('Scan Book'),
+              subtitle: const Text('Quick scan ISBN barcode'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => BookScanScreen(
+                      householdId: widget.household.id,
+                      initialMode: BookScanMode.camera,
+                    ),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.purple.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.album, color: Colors.purple),
+              ),
+              title: const Text('Scan Vinyl'),
+              subtitle: const Text('Quick scan vinyl barcode'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => VinylScanScreen(
+                      householdId: widget.household.id,
+                      initialMode: VinylScanMode.camera,
+                    ),
+                  ),
+                );
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.add_circle_outline),
+              title: const Text('Show All Options'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ItemTypeSelectionScreen(
+                      householdId: widget.household.id,
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
