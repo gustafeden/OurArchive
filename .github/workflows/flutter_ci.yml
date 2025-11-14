@@ -16,6 +16,8 @@ jobs:
 
       - name: Set up FVM
         uses: kuhnroyal/flutter-fvm-config-action@v2
+        with:
+          path: 'our_archive/.fvm/fvm_config.json'
 
       - name: Install Flutter dependencies
         working-directory: ./our_archive
