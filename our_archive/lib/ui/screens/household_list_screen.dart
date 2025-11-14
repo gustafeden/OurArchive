@@ -4,7 +4,7 @@ import '../../providers/providers.dart';
 import '../../data/models/household.dart';
 import 'create_household_screen.dart';
 import 'join_household_screen.dart';
-import 'item_list_screen.dart';
+import 'container_screen.dart';
 import 'profile_screen.dart';
 
 class HouseholdListScreen extends ConsumerWidget {
@@ -125,12 +125,15 @@ class HouseholdListScreen extends ConsumerWidget {
                         ],
                       ),
                       onTap: () {
-                        // Set current household and navigate to items
+                        // Set current household and navigate to rooms
                         ref.read(currentHouseholdIdProvider.notifier).state = household.id;
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => ItemListScreen(household: household),
+                            builder: (context) => ContainerScreen(
+                              householdId: household.id,
+                              householdName: household.name,
+                            ),
                           ),
                         );
                       },

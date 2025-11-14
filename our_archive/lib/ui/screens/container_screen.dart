@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/providers.dart';
 import '../../data/models/container.dart' as model;
+import '../../data/models/item.dart';
+import 'add_item_screen.dart';
 
 class ContainerScreen extends ConsumerWidget {
   final String householdId;
@@ -23,6 +25,9 @@ class ContainerScreen extends ConsumerWidget {
     final containersAsync = parentContainerId == null
         ? ref.watch(householdContainersProvider)
         : ref.watch(childContainersProvider(parentContainerId!));
+
+    // Get items in this container (null = items without container)
+    final itemsAsync = ref.watch(containerItemsProvider(parentContainerId));
 
     final title = breadcrumb.isEmpty
         ? householdName
@@ -48,94 +53,82 @@ class ContainerScreen extends ConsumerWidget {
           child: Text('Error: $error'),
         ),
         data: (containers) {
-          if (containers.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.inventory_2_outlined,
-                    size: 80,
-                    color: Colors.grey[400],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    breadcrumb.isEmpty ? 'No rooms yet' : 'No containers yet',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    breadcrumb.isEmpty
-                        ? 'Create your first room to get organized'
-                        : 'Add shelves, boxes, or other containers',
-                  ),
-                ],
-              ),
-            );
-          }
+          return itemsAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, stack) => Center(child: Text('Error: $error')),
+            data: (items) {
+              final hasContent = containers.isNotEmpty || items.isNotEmpty;
 
-          return ListView.builder(
-            itemCount: containers.length,
-            itemBuilder: (context, index) {
-              final container = containers[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    child: Icon(_getContainerIcon(container)),
-                  ),
-                  title: Text(container.name),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              if (!hasContent) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(model.Container.getTypeDisplayName(container.containerType)),
-                      if (container.description != null)
-                        Text(
-                          container.description!,
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                        ),
+                      Icon(
+                        Icons.inventory_2_outlined,
+                        size: 80,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        breadcrumb.isEmpty ? 'No rooms yet' : 'Empty',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        breadcrumb.isEmpty
+                            ? 'Create your first room to get organized'
+                            : 'Add containers or items here',
+                      ),
                     ],
                   ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () =>
-                            _showEditContainerDialog(context, ref, container),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () =>
-                            _showDeleteConfirmation(context, ref, container),
-                      ),
-                      const Icon(Icons.arrow_forward_ios),
-                    ],
-                  ),
-                  onTap: () {
-                    // Navigate into this container
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ContainerScreen(
-                          householdId: householdId,
-                          householdName: householdName,
-                          parentContainerId: container.id,
-                          breadcrumb: [...breadcrumb, container],
-                        ),
-                      ),
+                );
+              }
+
+              return ListView.builder(
+                itemCount: containers.length + (items.isNotEmpty ? 1 : 0),
+                itemBuilder: (context, index) {
+                  // Show items section first if we have unorganized items at top level
+                  if (breadcrumb.isEmpty && items.isNotEmpty && index == 0) {
+                    return _buildUnorganizedItemsCard(context, ref, items);
+                  }
+
+                  // Adjust index if we showed items card first
+                  final containerIndex = (breadcrumb.isEmpty && items.isNotEmpty)
+                      ? index - 1
+                      : index;
+
+                  // Show items at the end for non-top-level
+                  if (containerIndex >= containers.length) {
+                    return Column(
+                      children: items.map((item) => _buildItemCard(context, ref, item)).toList(),
                     );
-                  },
-                ),
+                  }
+
+                  final container = containers[containerIndex];
+                  return _buildContainerCard(context, ref, container);
+                },
               );
             },
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddContainerDialog(context, ref),
-        icon: const Icon(Icons.add),
-        label: Text(breadcrumb.isEmpty ? 'Add Room' : 'Add Container'),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            heroTag: 'add_item',
+            onPressed: () => _navigateToAddItem(context, ref),
+            child: const Icon(Icons.inventory_2),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton.extended(
+            heroTag: 'add_container',
+            onPressed: () => _showAddContainerDialog(context, ref),
+            icon: const Icon(Icons.add),
+            label: Text(breadcrumb.isEmpty ? 'Add Room' : 'Add Container'),
+          ),
+        ],
       ),
     );
   }
@@ -145,6 +138,103 @@ class ContainerScreen extends ConsumerWidget {
       return householdName;
     }
     return '$householdName → ${breadcrumb.take(breadcrumb.length - 1).map((c) => c.name).join(' → ')}';
+  }
+
+  Widget _buildUnorganizedItemsCard(BuildContext context, WidgetRef ref, List<Item> items) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: Colors.orange.shade50,
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: Colors.orange,
+          child: Icon(Icons.inventory_2, color: Colors.white),
+        ),
+        title: Text('Unorganized Items (${items.length})'),
+        subtitle: const Text('Items not in any room yet'),
+        trailing: const Icon(Icons.arrow_forward_ios),
+        onTap: () {
+          // TODO: Navigate to list of unorganized items
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Show unorganized items - coming soon!')),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildContainerCard(BuildContext context, WidgetRef ref, model.Container container) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: ListTile(
+        leading: CircleAvatar(
+          child: Icon(_getContainerIcon(container)),
+        ),
+        title: Text(container.name),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(model.Container.getTypeDisplayName(container.containerType)),
+            if (container.description != null)
+              Text(
+                container.description!,
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () => _showEditContainerDialog(context, ref, container),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () => _showDeleteConfirmation(context, ref, container),
+            ),
+            const Icon(Icons.arrow_forward_ios),
+          ],
+        ),
+        onTap: () {
+          // Navigate into this container
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ContainerScreen(
+                householdId: householdId,
+                householdName: householdName,
+                parentContainerId: container.id,
+                breadcrumb: [...breadcrumb, container],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildItemCard(BuildContext context, WidgetRef ref, Item item) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: ListTile(
+        leading: item.photoThumbPath != null
+            ? CircleAvatar(
+                backgroundImage: NetworkImage(item.photoThumbPath!),
+              )
+            : CircleAvatar(
+                child: Icon(Icons.inventory_2),
+              ),
+        title: Text(item.title),
+        subtitle: Text('${item.type} • Qty: ${item.quantity}'),
+        trailing: const Icon(Icons.arrow_forward_ios),
+        onTap: () {
+          // TODO: Navigate to item details
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('View "${item.title}" - coming soon!')),
+          );
+        },
+      ),
+    );
   }
 
   IconData _getContainerIcon(model.Container container) {
@@ -491,6 +581,27 @@ class ContainerScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  void _navigateToAddItem(BuildContext context, WidgetRef ref) async {
+    // Get household info from providers
+    final householdsAsync = await ref.read(userHouseholdsProvider.future);
+    final household = householdsAsync.firstWhere(
+      (h) => h.id == householdId,
+      orElse: () => throw Exception('Household not found'),
+    );
+
+    if (context.mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AddItemScreen(
+            household: household,
+            preSelectedContainerId: parentContainerId,
+          ),
+        ),
+      );
+    }
   }
 }
 

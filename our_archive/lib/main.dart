@@ -6,17 +6,17 @@ import 'dart:async';
 import 'firebase_options.dart';
 import 'ui/screens/auth_gate.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+void main() {
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
-  // Error handling
-  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    // Error handling
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
 
-  runZonedGuarded(() {
     runApp(const ProviderScope(child: OurArchiveApp()));
   }, (error, stack) {
     FirebaseCrashlytics.instance.recordError(error, stack);

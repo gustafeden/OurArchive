@@ -7,8 +7,13 @@ import '../../data/models/household.dart';
 
 class AddItemScreen extends ConsumerStatefulWidget {
   final Household household;
+  final String? preSelectedContainerId;
 
-  const AddItemScreen({super.key, required this.household});
+  const AddItemScreen({
+    super.key,
+    required this.household,
+    this.preSelectedContainerId,
+  });
 
   @override
   ConsumerState<AddItemScreen> createState() => _AddItemScreenState();
@@ -22,6 +27,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
   final _tagsController = TextEditingController();
 
   String _selectedType = 'general';
+  String? _selectedContainerId;
   File? _photo;
   bool _isLoading = false;
 
@@ -36,6 +42,12 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
     'kitchen',
     'outdoor',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedContainerId = widget.preSelectedContainerId;
+  }
 
   @override
   void dispose() {
@@ -103,6 +115,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
         'tags': tags,
         'archived': false,
         'sortOrder': 0,
+        'containerId': _selectedContainerId,
       };
 
       await itemRepo.addItem(
@@ -230,11 +243,16 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
 
             const SizedBox(height: 16),
 
+            // Container dropdown
+            _buildContainerDropdown(),
+
+            const SizedBox(height: 16),
+
             // Location
             TextFormField(
               controller: _locationController,
               decoration: const InputDecoration(
-                labelText: 'Location',
+                labelText: 'Location (optional)',
                 hintText: 'e.g., Garage, Kitchen, Basement',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.location_on),
@@ -295,5 +313,150 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildContainerDropdown() {
+    final allContainersAsync = ref.watch(allContainersProvider);
+
+    return allContainersAsync.when(
+      loading: () => const LinearProgressIndicator(),
+      error: (error, stack) => Text('Error loading containers: $error'),
+      data: (containers) {
+        if (containers.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.grey[600]),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'No containers yet. Create rooms and containers to organize your items.',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Build hierarchical list of containers
+        final containerItems = _buildContainerMenuItems(containers);
+
+        return DropdownButtonFormField<String?>(
+          value: _selectedContainerId,
+          decoration: const InputDecoration(
+            labelText: 'Container (optional)',
+            hintText: 'Select a room or container',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.inventory_2),
+          ),
+          items: [
+            const DropdownMenuItem<String?>(
+              value: null,
+              child: Text('None (unorganized)'),
+            ),
+            ...containerItems,
+          ],
+          onChanged: _isLoading
+              ? null
+              : (value) {
+                  setState(() => _selectedContainerId = value);
+                },
+        );
+      },
+    );
+  }
+
+  List<DropdownMenuItem<String?>> _buildContainerMenuItems(List containers) {
+    // Create a map for quick parent lookup
+    final containerMap = {for (var c in containers) c.id: c};
+
+    // Get top-level containers (rooms)
+    final topLevel = containers.where((c) => c.parentId == null).toList();
+    topLevel.sort((a, b) => a.name.compareTo(b.name));
+
+    final items = <DropdownMenuItem<String?>>[];
+
+    for (final container in topLevel) {
+      // Add the top-level container
+      items.add(
+        DropdownMenuItem<String?>(
+          value: container.id,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(_getContainerIconForType(container.containerType), size: 20),
+              const SizedBox(width: 8),
+              Text(container.name),
+            ],
+          ),
+        ),
+      );
+
+      // Add children recursively
+      _addChildContainers(items, containers, container.id, containerMap, 1);
+    }
+
+    return items;
+  }
+
+  void _addChildContainers(
+    List<DropdownMenuItem<String?>> items,
+    List containers,
+    String parentId,
+    Map containerMap,
+    int depth,
+  ) {
+    final children = containers.where((c) => c.parentId == parentId).toList();
+    children.sort((a, b) => a.name.compareTo(b.name));
+
+    for (final child in children) {
+      final indent = '  ' * depth;
+      items.add(
+        DropdownMenuItem<String?>(
+          value: child.id,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(indent),
+              Icon(_getContainerIconForType(child.containerType), size: 20),
+              const SizedBox(width: 8),
+              Text(child.name),
+            ],
+          ),
+        ),
+      );
+
+      // Recursively add children
+      _addChildContainers(items, containers, child.id, containerMap, depth + 1);
+    }
+  }
+
+  IconData _getContainerIconForType(String type) {
+    switch (type) {
+      case 'room':
+        return Icons.meeting_room;
+      case 'shelf':
+        return Icons.shelves;
+      case 'box':
+        return Icons.inventory_2;
+      case 'fridge':
+        return Icons.kitchen;
+      case 'drawer':
+        return Icons.kitchen_outlined;
+      case 'cabinet':
+        return Icons.door_sliding;
+      case 'closet':
+        return Icons.checkroom;
+      case 'bin':
+        return Icons.delete_outline;
+      default:
+        return Icons.inventory_2;
+    }
   }
 }

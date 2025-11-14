@@ -105,3 +105,27 @@ final allContainersProvider = StreamProvider<List<model.Container>>((ref) {
   final containerService = ref.watch(containerServiceProvider);
   return containerService.getAllContainers(householdId);
 });
+
+// Items in a specific container
+final containerItemsProvider = StreamProvider.family<List<Item>, String?>((ref, containerId) {
+  final householdId = ref.watch(currentHouseholdIdProvider);
+  if (householdId.isEmpty) return Stream.value(<Item>[]);
+
+  // Get all items in household
+  final itemsAsync = ref.watch(householdItemsProvider);
+
+  // Return stream that filters items by containerId
+  return itemsAsync.when(
+    data: (items) {
+      if (containerId == null) {
+        // Return items without any container
+        return Stream.value(items.where((item) => item.containerId == null).toList());
+      } else {
+        // Return items in this specific container
+        return Stream.value(items.where((item) => item.containerId == containerId).toList());
+      }
+    },
+    loading: () => Stream.value(<Item>[]),
+    error: (_, __) => Stream.value(<Item>[]),
+  );
+});
