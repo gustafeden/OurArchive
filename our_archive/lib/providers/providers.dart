@@ -97,6 +97,13 @@ final selectedTypeProvider = StateProvider<String?>((ref) => null);
 final selectedContainerFilterProvider = StateProvider<String?>((ref) => null);
 final selectedTagFilterProvider = StateProvider<String?>((ref) => null);
 
+// View mode for ItemListScreen (list vs browse)
+enum ViewMode { list, browse }
+final viewModeProvider = StateProvider<ViewMode>((ref) => ViewMode.list);
+
+// Expanded category sections in browse mode
+final expandedCategoriesProvider = StateProvider<Set<String>>((ref) => {});
+
 // Pending members for current household (for owners)
 final pendingMembersProvider = StreamProvider<List<Map<String, String>>>((ref) {
   final householdId = ref.watch(currentHouseholdIdProvider);
@@ -169,3 +176,63 @@ final containerItemsProvider = StreamProvider.family<List<Item>, String?>((ref, 
     error: (_, __) => Stream.value(<Item>[]),
   );
 });
+
+// All items in a container and all its nested child containers (recursive)
+final nestedContainerItemsProvider = StreamProvider.family<List<Item>, String?>((ref, containerId) async* {
+  final householdId = ref.watch(currentHouseholdIdProvider);
+  if (householdId.isEmpty) {
+    yield <Item>[];
+    return;
+  }
+
+  // Get all items and containers in the household
+  final itemsAsync = ref.watch(householdItemsProvider);
+  final allContainersAsync = ref.watch(allContainersProvider);
+
+  await for (final items in itemsAsync.when(
+    data: (items) async* {
+      final containers = await allContainersAsync.when(
+        data: (containers) async => containers,
+        loading: () async => <model.Container>[],
+        error: (_, __) async => <model.Container>[],
+      );
+
+      if (containerId == null) {
+        // Return items without any container
+        yield items.where((item) => item.containerId == null).toList();
+      } else {
+        // Get all container IDs that are descendants of this container
+        final descendantIds = _getDescendantContainerIds(containerId, containers);
+
+        // Include the parent container itself and all descendants
+        final allRelevantIds = {containerId, ...descendantIds};
+
+        // Return items in any of these containers
+        yield items.where((item) =>
+          item.containerId != null && allRelevantIds.contains(item.containerId)
+        ).toList();
+      }
+    },
+    loading: () => Stream.value(<Item>[]),
+    error: (_, __) => Stream.value(<Item>[]),
+  )) {
+    yield items;
+  }
+});
+
+// Helper function to recursively get all descendant container IDs
+Set<String> _getDescendantContainerIds(String parentId, List<model.Container> allContainers) {
+  final descendants = <String>{};
+  final children = allContainers.where((c) => c.parentId == parentId).toList();
+
+  for (final child in children) {
+    descendants.add(child.id);
+    // Recursively add descendants of this child
+    descendants.addAll(_getDescendantContainerIds(child.id, allContainers));
+  }
+
+  return descendants;
+}
+
+// Toggle state for showing nested items in ContainerScreen
+final showNestedItemsProvider = StateProvider<bool>((ref) => false);

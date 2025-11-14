@@ -122,6 +122,33 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
         ),
       };
 
+      // Handle photo upload BEFORE updating Firestore
+      if (_newPhoto != null) {
+        final authService = ref.read(authServiceProvider);
+        final userId = authService.currentUserId;
+
+        if (userId != null) {
+          // Upload photo to storage and get the paths
+          final photoPaths = await itemRepo.uploadPhotoToStorage(
+            householdId: widget.household.id,
+            itemId: widget.item.id,
+            userId: userId,
+            photo: _newPhoto!,
+          );
+
+          // Add photo paths to the updates
+          updates['photoPath'] = photoPaths['photoPath'];
+          updates['photoThumbPath'] = photoPaths['photoThumbPath'];
+
+          // Delete old photos in background (don't wait for it)
+          itemRepo.deleteOldPhotos(
+            oldPhotoPath: widget.item.photoPath,
+            oldPhotoThumbPath: widget.item.photoThumbPath,
+          );
+        }
+      }
+
+      // Single update with all changes including photo paths
       await itemRepo.updateItem(
         householdId: widget.household.id,
         itemId: widget.item.id,
@@ -129,12 +156,8 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
         currentVersion: widget.item.version,
       );
 
-      // Handle photo update if new photo was selected
-      if (_newPhoto != null) {
-        // Note: Photo update would require extending ItemRepository
-        // For now, we'll skip this and handle it in a future update
-        // TODO: Implement photo update functionality
-      }
+      // Invalidate the items provider to refresh the UI
+      ref.invalidate(householdItemsProvider);
 
       if (mounted) {
         setState(() {

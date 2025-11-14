@@ -37,11 +37,19 @@ service cloud.firestore {
 
         allow read: if isMemberOfHousehold(hid);
 
-        allow update: if isMemberOfHousehold(hid)
-          && (resource.data.createdBy == request.auth.uid || isOwner(hid));
+        // Members and owners can update any item, viewers can only update their own
+        allow update: if request.auth != null
+          && exists(/databases/$(database)/documents/households/$(hid))
+          && (get(/databases/$(database)/documents/households/$(hid)).data.members[request.auth.uid] in ['owner', 'member']
+              || (get(/databases/$(database)/documents/households/$(hid)).data.members[request.auth.uid] == 'viewer'
+                  && resource.data.createdBy == request.auth.uid));
 
-        allow delete: if isMemberOfHousehold(hid)
-          && (resource.data.createdBy == request.auth.uid || isOwner(hid));
+        // Members and owners can delete any item, viewers can only delete their own
+        allow delete: if request.auth != null
+          && exists(/databases/$(database)/documents/households/$(hid))
+          && (get(/databases/$(database)/documents/households/$(hid)).data.members[request.auth.uid] in ['owner', 'member']
+              || (get(/databases/$(database)/documents/households/$(hid)).data.members[request.auth.uid] == 'viewer'
+                  && resource.data.createdBy == request.auth.uid));
       }
     }
 

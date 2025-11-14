@@ -170,6 +170,57 @@ class ItemRepository {
     return File(result!.path);
   }
 
+  // Upload photo to storage and return paths (doesn't update Firestore)
+  Future<Map<String, String>> uploadPhotoToStorage({
+    required String householdId,
+    required String itemId,
+    required String userId,
+    required File photo,
+  }) async {
+    // Generate thumbnail
+    final thumbFile = await _generateThumbnail(photo);
+
+    // Upload full image
+    final imagePath = 'households/$householdId/$itemId/image.jpg';
+    final imageRef = _storage.ref().child(imagePath);
+    final imageMetadata = SettableMetadata(
+      customMetadata: {'owner': userId},
+      contentType: 'image/jpeg',
+    );
+    await imageRef.putFile(photo, imageMetadata);
+
+    // Upload thumbnail
+    final thumbPath = 'households/$householdId/$itemId/thumb.jpg';
+    final thumbRef = _storage.ref().child(thumbPath);
+    await thumbRef.putFile(thumbFile, imageMetadata);
+
+    return {
+      'photoPath': imagePath,
+      'photoThumbPath': thumbPath,
+    };
+  }
+
+  // Delete old photos from storage
+  Future<void> deleteOldPhotos({
+    String? oldPhotoPath,
+    String? oldPhotoThumbPath,
+  }) async {
+    if (oldPhotoPath != null) {
+      try {
+        await _storage.ref().child(oldPhotoPath).delete();
+      } catch (e) {
+        // Ignore errors when deleting old photos (they might not exist)
+      }
+    }
+    if (oldPhotoThumbPath != null) {
+      try {
+        await _storage.ref().child(oldPhotoThumbPath).delete();
+      } catch (e) {
+        // Ignore errors when deleting old thumbnails
+      }
+    }
+  }
+
   // Get items stream with offline support
   Stream<List<Item>> getItems(String householdId) {
     return _firestore

@@ -43,6 +43,8 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
     final itemsAsync = ref.watch(householdItemsProvider);
     final filteredItems = ref.watch(filteredItemsProvider);
     final searchQuery = ref.watch(searchQueryProvider);
+    final selectedType = ref.watch(selectedTypeProvider);
+    final viewMode = ref.watch(viewModeProvider);
     final authService = ref.read(authServiceProvider);
     final currentUser = authService.currentUser!;
     final isOwner = widget.household.isOwner(currentUser.uid);
@@ -51,6 +53,22 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
       appBar: AppBar(
         title: Text(widget.household.name),
         actions: [
+          // View mode toggle
+          IconButton(
+            icon: Icon(
+              viewMode == ViewMode.list
+                ? Icons.dashboard_outlined
+                : Icons.list,
+              color: viewMode == ViewMode.browse
+                ? Theme.of(context).colorScheme.primary
+                : null,
+            ),
+            tooltip: viewMode == ViewMode.list ? 'Browse all categories' : 'List view',
+            onPressed: () {
+              ref.read(viewModeProvider.notifier).state =
+                viewMode == ViewMode.list ? ViewMode.browse : ViewMode.list;
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.inventory_2),
             tooltip: 'Organize',
@@ -155,6 +173,10 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
           // Filter chips
           _buildFilterChips(ref),
 
+          // Category tabs (hide in browse mode)
+          if (viewMode == ViewMode.list)
+            _buildCategoryTabs(ref, filteredItems),
+
           // Items list
           Expanded(
             child: itemsAsync.when(
@@ -190,13 +212,23 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                   );
                 }
 
-                return ListView.builder(
-                  itemCount: filteredItems.length,
-                  itemBuilder: (context, index) {
-                    final item = filteredItems[index];
-                    return _ItemCard(item: item, household: widget.household);
-                  },
-                );
+                // Browse mode: show collapsible category sections
+                if (viewMode == ViewMode.browse) {
+                  return _buildBrowseView(filteredItems);
+                }
+
+                // List mode: show grouped when "All" selected, flat list otherwise
+                if (selectedType == null) {
+                  return _buildGroupedItemList(filteredItems);
+                } else {
+                  return ListView.builder(
+                    itemCount: filteredItems.length,
+                    itemBuilder: (context, index) {
+                      final item = filteredItems[index];
+                      return _ItemCard(item: item, household: widget.household);
+                    },
+                  );
+                }
               },
             ),
           ),
@@ -213,6 +245,229 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
         },
         icon: const Icon(Icons.add),
         label: const Text('Add Item'),
+      ),
+    );
+  }
+
+  Widget _buildGroupedItemList(List<Item> items) {
+    // Group items by type
+    final groupedItems = <String, List<Item>>{};
+    final categoryOrder = ['book', 'vinyl', 'game', 'tool', 'pantry', 'camera', 'electronics', 'clothing', 'kitchen', 'outdoor', 'general'];
+
+    for (final item in items) {
+      groupedItems.putIfAbsent(item.type, () => []).add(item);
+    }
+
+    // Sort categories by predefined order, then alphabetically for others
+    final sortedTypes = groupedItems.keys.toList()..sort((a, b) {
+      final aIndex = categoryOrder.indexOf(a);
+      final bIndex = categoryOrder.indexOf(b);
+      if (aIndex != -1 && bIndex != -1) return aIndex.compareTo(bIndex);
+      if (aIndex != -1) return -1;
+      if (bIndex != -1) return 1;
+      return a.compareTo(b);
+    });
+
+    return ListView.builder(
+      itemCount: sortedTypes.length,
+      itemBuilder: (context, sectionIndex) {
+        final type = sortedTypes[sectionIndex];
+        final typeItems = groupedItems[type]!;
+        final typeLabel = type[0].toUpperCase() + type.substring(1);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: [
+                  Icon(_getIconForType(type), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    '$typeLabel (${typeItems.length})',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ...typeItems.map((item) => _ItemCard(item: item, household: widget.household)),
+            if (sectionIndex < sortedTypes.length - 1)
+              const Divider(height: 1, thickness: 1),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildBrowseView(List<Item> items) {
+    // Group items by type
+    final groupedItems = <String, List<Item>>{};
+    final categoryOrder = ['book', 'vinyl', 'game', 'tool', 'pantry', 'camera', 'electronics', 'clothing', 'kitchen', 'outdoor', 'general'];
+
+    for (final item in items) {
+      groupedItems.putIfAbsent(item.type, () => []).add(item);
+    }
+
+    // Sort categories by predefined order
+    final sortedTypes = groupedItems.keys.toList()..sort((a, b) {
+      final aIndex = categoryOrder.indexOf(a);
+      final bIndex = categoryOrder.indexOf(b);
+      if (aIndex != -1 && bIndex != -1) return aIndex.compareTo(bIndex);
+      if (aIndex != -1) return -1;
+      if (bIndex != -1) return 1;
+      return a.compareTo(b);
+    });
+
+    final expandedCategories = ref.watch(expandedCategoriesProvider);
+
+    return ListView.builder(
+      itemCount: sortedTypes.length,
+      itemBuilder: (context, index) {
+        final type = sortedTypes[index];
+        final typeItems = groupedItems[type]!;
+        final typeLabel = type[0].toUpperCase() + type.substring(1);
+        final isExpanded = expandedCategories.contains(type);
+
+        return _CollapsibleCategorySection(
+          type: type,
+          typeLabel: typeLabel,
+          icon: _getIconForType(type),
+          itemCount: typeItems.length,
+          isExpanded: isExpanded,
+          items: typeItems,
+          household: widget.household,
+          onToggle: () {
+            final newExpanded = Set<String>.from(expandedCategories);
+            if (isExpanded) {
+              newExpanded.remove(type);
+            } else {
+              newExpanded.add(type);
+            }
+            ref.read(expandedCategoriesProvider.notifier).state = newExpanded;
+          },
+        );
+      },
+    );
+  }
+
+  IconData _getIconForType(String type) {
+    switch (type) {
+      case 'book':
+        return Icons.book;
+      case 'vinyl':
+        return Icons.album;
+      case 'game':
+        return Icons.sports_esports;
+      case 'tool':
+        return Icons.build;
+      case 'pantry':
+        return Icons.restaurant;
+      case 'camera':
+        return Icons.camera_alt;
+      case 'electronics':
+        return Icons.devices;
+      case 'clothing':
+        return Icons.checkroom;
+      case 'kitchen':
+        return Icons.kitchen;
+      case 'outdoor':
+        return Icons.park;
+      default:
+        return Icons.inventory_2;
+    }
+  }
+
+  Widget _buildCategoryTabs(WidgetRef ref, List<Item> allItems) {
+    final selectedType = ref.watch(selectedTypeProvider);
+
+    // Count items by type
+    final bookCount = allItems.where((i) => i.type == 'book').length;
+    final vinylCount = allItems.where((i) => i.type == 'vinyl').length;
+    final gameCount = allItems.where((i) => i.type == 'game').length;
+    final toolCount = allItems.where((i) => i.type == 'tool').length;
+    final otherCount = allItems.where((i) => !['book', 'vinyl', 'game', 'tool'].contains(i.type)).length;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          _CategoryTab(
+            label: 'All',
+            count: allItems.length,
+            isSelected: selectedType == null,
+            onTap: () => ref.read(selectedTypeProvider.notifier).state = null,
+          ),
+          const SizedBox(width: 8),
+          _CategoryTab(
+            label: 'Books',
+            count: bookCount,
+            isSelected: selectedType == 'book',
+            onTap: () => ref.read(selectedTypeProvider.notifier).state = 'book',
+          ),
+          const SizedBox(width: 8),
+          _CategoryTab(
+            label: 'Vinyl',
+            count: vinylCount,
+            isSelected: selectedType == 'vinyl',
+            onTap: () => ref.read(selectedTypeProvider.notifier).state = 'vinyl',
+          ),
+          const SizedBox(width: 8),
+          _CategoryTab(
+            label: 'Games',
+            count: gameCount,
+            isSelected: selectedType == 'game',
+            onTap: () => ref.read(selectedTypeProvider.notifier).state = 'game',
+          ),
+          const SizedBox(width: 8),
+          _CategoryTab(
+            label: 'Tools',
+            count: toolCount,
+            isSelected: selectedType == 'tool',
+            onTap: () => ref.read(selectedTypeProvider.notifier).state = 'tool',
+          ),
+          const SizedBox(width: 8),
+          _CategoryTab(
+            label: 'Other',
+            count: otherCount,
+            isSelected: selectedType != null && !['book', 'vinyl', 'game', 'tool'].contains(selectedType),
+            onTap: () => _showOtherTypesDialog(ref),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showOtherTypesDialog(WidgetRef ref) {
+    final otherTypes = ['general', 'pantry', 'camera', 'electronics', 'clothing', 'kitchen', 'outdoor'];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Other Types'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: otherTypes.map((type) {
+              return ListTile(
+                title: Text(type[0].toUpperCase() + type.substring(1)),
+                onTap: () {
+                  ref.read(selectedTypeProvider.notifier).state = type;
+                  Navigator.pop(context);
+                },
+              );
+            }).toList(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
       ),
     );
   }
@@ -313,7 +568,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
   }
 
   void _showTypeFilter(WidgetRef ref) {
-    final types = ['general', 'tool', 'pantry', 'camera', 'book', 'vinyl', 'electronics', 'clothing', 'kitchen', 'outdoor'];
+    final types = ['general', 'tool', 'pantry', 'camera', 'book', 'vinyl', 'game', 'electronics', 'clothing', 'kitchen', 'outdoor'];
 
     showDialog(
       context: context,
@@ -460,14 +715,7 @@ class _ItemCard extends ConsumerWidget {
       child: ListTile(
         leading: _buildThumbnail(ref),
         title: Text(item.title),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(item.type),
-            if (item.location.isNotEmpty) Text('📍 ${item.location}'),
-            if (item.quantity > 1) Text('Qty: ${item.quantity}'),
-          ],
-        ),
+        subtitle: _buildSubtitle(),
         trailing: item.syncStatus != SyncStatus.synced
             ? const Icon(Icons.sync, size: 16)
             : null,
@@ -484,6 +732,40 @@ class _ItemCard extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  Widget _buildSubtitle() {
+    // Type-aware subtitle display
+    switch (item.type) {
+      case 'book':
+        if (item.authors != null && item.authors!.isNotEmpty) {
+          return Text(item.authors!.join(', '));
+        }
+        return const Text('Unknown Author');
+
+      case 'vinyl':
+        if (item.artist != null && item.artist!.isNotEmpty) {
+          return Text(item.artist!);
+        }
+        return const Text('Unknown Artist');
+
+      case 'game':
+        if (item.platform != null) {
+          return Text(item.platform!);
+        }
+        return const Text('Game');
+
+      default:
+        // Generic items show type and quantity
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(item.type),
+            if (item.location.isNotEmpty) Text('📍 ${item.location}'),
+            if (item.quantity > 1) Text('Qty: ${item.quantity}'),
+          ],
+        );
+    }
   }
 
   Widget _buildThumbnail(WidgetRef ref) {
@@ -514,6 +796,10 @@ class _ItemCard extends ConsumerWidget {
     switch (item.type) {
       case 'book':
         return Icons.book;
+      case 'vinyl':
+        return Icons.album;
+      case 'game':
+        return Icons.sports_esports;
       case 'tool':
         return Icons.build;
       case 'pantry':
@@ -531,5 +817,132 @@ class _ItemCard extends ConsumerWidget {
       default:
         return Icons.inventory_2;
     }
+  }
+}
+
+class _CategoryTab extends StatelessWidget {
+  final String label;
+  final int count;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _CategoryTab({
+    required this.label,
+    required this.count,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Theme.of(context).colorScheme.primaryContainer : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Colors.grey[300]!,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected
+                  ? Theme.of(context).colorScheme.onPrimaryContainer
+                  : Theme.of(context).textTheme.bodyLarge?.color,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: isSelected
+                  ? Theme.of(context).colorScheme.primary
+                  : Colors.grey[300],
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : Colors.grey[700],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CollapsibleCategorySection extends StatelessWidget {
+  final String type;
+  final String typeLabel;
+  final IconData icon;
+  final int itemCount;
+  final bool isExpanded;
+  final List<Item> items;
+  final Household household;
+  final VoidCallback onToggle;
+
+  const _CollapsibleCategorySection({
+    required this.type,
+    required this.typeLabel,
+    required this.icon,
+    required this.itemCount,
+    required this.isExpanded,
+    required this.items,
+    required this.household,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Material(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: InkWell(
+            onTap: onToggle,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Icon(icon, size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '$typeLabel ($itemCount)',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    isExpanded ? Icons.expand_less : Icons.expand_more,
+                    size: 24,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (isExpanded)
+          ...items.map((item) => _ItemCard(item: item, household: household)),
+        const Divider(height: 1, thickness: 1),
+      ],
+    );
   }
 }

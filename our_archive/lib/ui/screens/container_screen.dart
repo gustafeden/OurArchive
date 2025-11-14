@@ -38,12 +38,14 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
         ? ref.watch(householdContainersProvider)
         : ref.watch(childContainersProvider(widget.parentContainerId!));
 
-    // Get items in this container (null = items without container)
-    final itemsAsync = ref.watch(containerItemsProvider(widget.parentContainerId));
+    // Get items based on toggle state (nested vs direct only)
+    final showNested = ref.watch(showNestedItemsProvider);
+    final selectedType = ref.watch(selectedTypeProvider);
+    final itemsAsync = showNested
+        ? ref.watch(nestedContainerItemsProvider(widget.parentContainerId))
+        : ref.watch(containerItemsProvider(widget.parentContainerId));
 
-    final title = widget.breadcrumb.isEmpty
-        ? widget.householdName
-        : widget.breadcrumb.last.name;
+    final title = widget.breadcrumb.isEmpty ? widget.householdName : widget.breadcrumb.last.name;
 
     return Scaffold(
       appBar: AppBar(
@@ -59,6 +61,37 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
           ],
         ),
         actions: [
+          // Toggle for nested items
+          if (widget.breadcrumb.isNotEmpty)
+            PopupMenuButton<bool>(
+              icon: Icon(showNested ? Icons.unfold_more : Icons.unfold_less),
+              tooltip: showNested ? 'Show nested items' : 'Show direct items only',
+              onSelected: (value) {
+                ref.read(showNestedItemsProvider.notifier).state = value;
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: false,
+                  child: Row(
+                    children: [
+                      Icon(Icons.unfold_less, size: 20, color: !showNested ? Theme.of(context).colorScheme.primary : null),
+                      const SizedBox(width: 8),
+                      Text('Direct items only', style: TextStyle(fontWeight: !showNested ? FontWeight.bold : FontWeight.normal)),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: true,
+                  child: Row(
+                    children: [
+                      Icon(Icons.unfold_more, size: 20, color: showNested ? Theme.of(context).colorScheme.primary : null),
+                      const SizedBox(width: 8),
+                      Text('All nested items', style: TextStyle(fontWeight: showNested ? FontWeight.bold : FontWeight.normal)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           TextButton(
             onPressed: () {
               setState(() {
@@ -110,29 +143,43 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                 );
               }
 
-              return ListView.builder(
-                itemCount: containers.length + (items.isNotEmpty ? 1 : 0),
-                itemBuilder: (context, index) {
-                  // Show items section first if we have unorganized items at top level
-                  if (widget.breadcrumb.isEmpty && items.isNotEmpty && index == 0) {
-                    return _buildUnorganizedItemsCard(context, ref, items);
-                  }
+              // Filter items by selected type
+              final filteredItems = selectedType == null
+                  ? items
+                  : items.where((item) => item.type == selectedType).toList();
 
-                  // Adjust index if we showed items card first
-                  final containerIndex = (widget.breadcrumb.isEmpty && items.isNotEmpty)
-                      ? index - 1
-                      : index;
+              return Column(
+                children: [
+                  // Category tabs (only show if there are items)
+                  if (items.isNotEmpty)
+                    _buildCategoryTabs(ref, items),
 
-                  // Show items at the end for non-top-level
-                  if (containerIndex >= containers.length) {
-                    return Column(
-                      children: items.map((item) => _buildItemCard(context, ref, item)).toList(),
-                    );
-                  }
+                  // Content list
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: containers.length + (filteredItems.isNotEmpty ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        // Show items section first if we have unorganized items at top level
+                        if (widget.breadcrumb.isEmpty && filteredItems.isNotEmpty && index == 0) {
+                          return _buildUnorganizedItemsCard(context, ref, filteredItems);
+                        }
 
-                  final container = containers[containerIndex];
-                  return _buildContainerCard(context, ref, container);
-                },
+                        // Adjust index if we showed items card first
+                        final containerIndex = (widget.breadcrumb.isEmpty && filteredItems.isNotEmpty) ? index - 1 : index;
+
+                        // Show items at the end for non-top-level
+                        if (containerIndex >= containers.length) {
+                          return Column(
+                            children: filteredItems.map((item) => _buildItemCard(context, ref, item)).toList(),
+                          );
+                        }
+
+                        final container = containers[containerIndex];
+                        return _buildContainerCard(context, ref, container);
+                      },
+                    ),
+                  ),
+                ],
               );
             },
           );
@@ -145,7 +192,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
             heroTag: 'scan_book',
             onPressed: () => _navigateToScanBook(context, ref),
             icon: const Icon(Icons.qr_code_scanner),
-            label: const Text('Scan Book'),
+            label: const Text('Scan Barcode'),
           ),
           const SizedBox(height: 12),
           FloatingActionButton.extended(
@@ -170,7 +217,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
     if (widget.breadcrumb.length == 1) {
       return widget.householdName;
     }
-    return '$widget.householdName → ${widget.breadcrumb.take(widget.breadcrumb.length - 1).map((c) => c.name).join(' → ')}';
+    return '${widget.householdName} → ${widget.breadcrumb.take(widget.breadcrumb.length - 1).map((c) => c.name).join(' → ')}';
   }
 
   Widget _buildUnorganizedItemsCard(BuildContext context, WidgetRef ref, List<Item> items) {
@@ -269,7 +316,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
       child: ListTile(
         leading: _buildItemThumbnail(ref, item),
         title: Text(item.title),
-        subtitle: Text('${item.type} • Qty: ${item.quantity}'),
+        subtitle: _buildItemSubtitle(item),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -316,6 +363,125 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
     );
   }
 
+  Widget _buildItemSubtitle(Item item) {
+    // Type-aware subtitle display
+    switch (item.type) {
+      case 'book':
+        if (item.authors != null && item.authors!.isNotEmpty) {
+          return Text(item.authors!.join(', '));
+        }
+        return const Text('Unknown Author');
+
+      case 'vinyl':
+        if (item.artist != null && item.artist!.isNotEmpty) {
+          return Text(item.artist!);
+        }
+        return const Text('Unknown Artist');
+
+      case 'game':
+        if (item.platform != null) {
+          return Text(item.platform!);
+        }
+        return const Text('Game');
+
+      default:
+        // Generic items show type and quantity
+        return Text('${item.type} • Qty: ${item.quantity}');
+    }
+  }
+
+  Widget _buildCategoryTabs(WidgetRef ref, List<Item> allItems) {
+    final selectedType = ref.watch(selectedTypeProvider);
+
+    // Count items by type
+    final bookCount = allItems.where((i) => i.type == 'book').length;
+    final vinylCount = allItems.where((i) => i.type == 'vinyl').length;
+    final gameCount = allItems.where((i) => i.type == 'game').length;
+    final toolCount = allItems.where((i) => i.type == 'tool').length;
+    final otherCount = allItems.where((i) => !['book', 'vinyl', 'game', 'tool'].contains(i.type)).length;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          _CategoryTab(
+            label: 'All',
+            count: allItems.length,
+            isSelected: selectedType == null,
+            onTap: () => ref.read(selectedTypeProvider.notifier).state = null,
+          ),
+          const SizedBox(width: 8),
+          _CategoryTab(
+            label: 'Books',
+            count: bookCount,
+            isSelected: selectedType == 'book',
+            onTap: () => ref.read(selectedTypeProvider.notifier).state = 'book',
+          ),
+          const SizedBox(width: 8),
+          _CategoryTab(
+            label: 'Vinyl',
+            count: vinylCount,
+            isSelected: selectedType == 'vinyl',
+            onTap: () => ref.read(selectedTypeProvider.notifier).state = 'vinyl',
+          ),
+          const SizedBox(width: 8),
+          _CategoryTab(
+            label: 'Games',
+            count: gameCount,
+            isSelected: selectedType == 'game',
+            onTap: () => ref.read(selectedTypeProvider.notifier).state = 'game',
+          ),
+          const SizedBox(width: 8),
+          _CategoryTab(
+            label: 'Tools',
+            count: toolCount,
+            isSelected: selectedType == 'tool',
+            onTap: () => ref.read(selectedTypeProvider.notifier).state = 'tool',
+          ),
+          const SizedBox(width: 8),
+          _CategoryTab(
+            label: 'Other',
+            count: otherCount,
+            isSelected: selectedType != null && !['book', 'vinyl', 'game', 'tool'].contains(selectedType),
+            onTap: () => _showOtherTypesDialog(ref),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showOtherTypesDialog(WidgetRef ref) {
+    final otherTypes = ['general', 'pantry', 'camera', 'electronics', 'clothing', 'kitchen', 'outdoor'];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Other Types'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: otherTypes.map((type) {
+              return ListTile(
+                title: Text(type[0].toUpperCase() + type.substring(1)),
+                onTap: () {
+                  ref.read(selectedTypeProvider.notifier).state = type;
+                  Navigator.pop(context);
+                },
+              );
+            }).toList(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildItemThumbnail(WidgetRef ref, Item item) {
     if (item.photoThumbPath == null) {
       return CircleAvatar(
@@ -346,6 +512,8 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
         return Icons.book;
       case 'vinyl':
         return Icons.album;
+      case 'game':
+        return Icons.sports_esports;
       case 'tool':
         return Icons.build;
       case 'pantry':
@@ -542,9 +710,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                     containerType: selectedType,
                     creatorUid: authService.currentUserId!,
                     parentId: widget.parentContainerId,
-                    description: descriptionController.text.trim().isEmpty
-                        ? null
-                        : descriptionController.text.trim(),
+                    description: descriptionController.text.trim().isEmpty ? null : descriptionController.text.trim(),
                     icon: selectedIcon,
                   );
 
@@ -552,8 +718,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(
-                            '${model.Container.getTypeDisplayName(selectedType)} created!'),
+                        content: Text('${model.Container.getTypeDisplayName(selectedType)} created!'),
                       ),
                     );
                   }
@@ -580,11 +745,9 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
     return ['shelf', 'box', 'fridge', 'drawer', 'cabinet', 'closet', 'bin'];
   }
 
-  void _showEditContainerDialog(
-      BuildContext context, WidgetRef ref, model.Container container) {
+  void _showEditContainerDialog(BuildContext context, WidgetRef ref, model.Container container) {
     final nameController = TextEditingController(text: container.name);
-    final descriptionController =
-        TextEditingController(text: container.description);
+    final descriptionController = TextEditingController(text: container.description);
     String selectedType = container.containerType;
     String? selectedIcon = container.icon;
 
@@ -643,9 +806,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                     containerId: container.id,
                     name: nameController.text.trim(),
                     containerType: selectedType,
-                    description: descriptionController.text.trim().isEmpty
-                        ? null
-                        : descriptionController.text.trim(),
+                    description: descriptionController.text.trim().isEmpty ? null : descriptionController.text.trim(),
                     icon: selectedIcon,
                   );
 
@@ -671,8 +832,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
     );
   }
 
-  void _showDeleteConfirmation(
-      BuildContext context, WidgetRef ref, model.Container container) async {
+  void _showDeleteConfirmation(BuildContext context, WidgetRef ref, model.Container container) async {
     // Check for items and child containers
     final itemsAsync = await ref.read(containerItemsProvider(container.id).future);
     final childrenAsync = await ref.read(childContainersProvider(container.id).future);
@@ -874,9 +1034,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              newContainerId == null
-                  ? 'Item moved to unorganized'
-                  : 'Item moved successfully',
+              newContainerId == null ? 'Item moved to unorganized' : 'Item moved successfully',
             ),
           ),
         );
@@ -957,15 +1115,11 @@ class _IconOption extends StatelessWidget {
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           border: Border.all(
-            color: selected
-                ? Theme.of(context).colorScheme.primary
-                : Colors.grey.shade300,
+            color: selected ? Theme.of(context).colorScheme.primary : Colors.grey.shade300,
             width: selected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(8),
-          color: selected
-              ? Theme.of(context).colorScheme.primaryContainer
-              : null,
+          color: selected ? Theme.of(context).colorScheme.primaryContainer : null,
         ),
         child: Column(
           children: [
@@ -976,6 +1130,73 @@ class _IconOption extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryTab extends StatelessWidget {
+  final String label;
+  final int count;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _CategoryTab({
+    required this.label,
+    required this.count,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Theme.of(context).colorScheme.primaryContainer : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Colors.grey[300]!,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected
+                  ? Theme.of(context).colorScheme.onPrimaryContainer
+                  : Theme.of(context).textTheme.bodyLarge?.color,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: isSelected
+                  ? Theme.of(context).colorScheme.primary
+                  : Colors.grey[300],
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : Colors.grey[700],
+                ),
               ),
             ),
           ],

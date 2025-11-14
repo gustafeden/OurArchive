@@ -5,6 +5,7 @@ import '../../data/models/household.dart';
 import 'create_household_screen.dart';
 import 'join_household_screen.dart';
 import 'container_screen.dart';
+import 'item_list_screen.dart';
 import 'profile_screen.dart';
 import 'scan_to_check_screen.dart';
 
@@ -99,52 +100,79 @@ class HouseholdListScreen extends ConsumerWidget {
                           if (isOwner) Text('Code: ${household.code}'),
                         ],
                       ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (isOwner && pendingCount > 0)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.orange,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                '$pendingCount pending',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                      trailing: isOwner && pendingCount > 0
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.orange,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '$pendingCount pending',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.arrow_forward_ios),
-                        ],
-                      ),
-                      onTap: () {
-                        // Set current household and navigate to rooms
-                        ref.read(currentHouseholdIdProvider.notifier).state = household.id;
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ContainerScreen(
-                              householdId: household.id,
-                              householdName: household.name,
-                            ),
-                          ),
-                        );
-                      },
+                          )
+                        : null,
                     ),
                     // Show pending members if owner
                     if (isOwner && pendingCount > 0)
                       _PendingMembersSection(household: household),
+
+                    // Navigation buttons
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: () {
+                                ref.read(currentHouseholdIdProvider.notifier).state = household.id;
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ItemListScreen(
+                                      household: household,
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.list),
+                              label: const Text('View Items'),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: FilledButton.tonalIcon(
+                              onPressed: () {
+                                ref.read(currentHouseholdIdProvider.notifier).state = household.id;
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ContainerScreen(
+                                      householdId: household.id,
+                                      householdName: household.name,
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.inventory_2),
+                              label: const Text('Organize'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
                     // Scan to Check button
                     Padding(
-                      padding: const EdgeInsets.all(8.0),
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                       child: FilledButton.tonalIcon(
                         onPressed: () {
                           Navigator.push(
@@ -159,6 +187,9 @@ class HouseholdListScreen extends ConsumerWidget {
                         },
                         icon: const Icon(Icons.qr_code_scanner),
                         label: const Text('Scan to Check Books'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 40),
+                        ),
                       ),
                     ),
                   ],

@@ -8,7 +8,8 @@ import '../../data/models/item.dart';
 import '../../data/models/container.dart' as model;
 import '../../providers/providers.dart';
 import '../../services/vinyl_lookup_service.dart';
-import 'add_item_screen.dart';
+import 'add_book_screen.dart';
+import 'add_vinyl_screen.dart';
 
 class BarcodeScanScreen extends ConsumerStatefulWidget {
   final Household household;
@@ -130,7 +131,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
         await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => AddItemScreen(
+            builder: (context) => AddVinylScreen(
               household: widget.household,
               vinylData: vinylMetadata,
               preSelectedContainerId: widget.preSelectedContainerId,
@@ -145,7 +146,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
         await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => AddItemScreen(
+            builder: (context) => AddVinylScreen(
               household: widget.household,
               vinylData: vinylMetadata,
               preSelectedContainerId: widget.preSelectedContainerId,
@@ -253,11 +254,11 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
       if (!mounted) return;
 
       if (action == 'addBook') {
-        // Navigate to AddItemScreen to add this book, then close scanner
+        // Navigate to AddBookScreen to add this book, then close scanner
         await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => AddItemScreen(
+            builder: (context) => AddBookScreen(
               household: widget.household,
               bookData: bookMetadata,
               preSelectedContainerId: widget.preSelectedContainerId,
@@ -270,11 +271,11 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
           Navigator.pop(context);
         }
       } else if (action == 'scanNext') {
-        // Navigate to AddItemScreen but return to scanner
+        // Navigate to AddBookScreen but return to scanner
         await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => AddItemScreen(
+            builder: (context) => AddBookScreen(
               household: widget.household,
               bookData: bookMetadata,
               preSelectedContainerId: widget.preSelectedContainerId,
@@ -335,8 +336,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                   child: Image.network(
                     book.thumbnailUrl!,
                     height: 200,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.book, size: 100),
+                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.book, size: 100),
                   ),
                 ),
               const SizedBox(height: 16),
@@ -351,12 +351,9 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
               const SizedBox(height: 8),
-              if (book.publisher != null)
-                Text('Publisher: ${book.publisher}'),
-              if (book.publishedDate != null)
-                Text('Published: ${book.publishedDate}'),
-              if (book.pageCount != null)
-                Text('Pages: ${book.pageCount}'),
+              if (book.publisher != null) Text('Publisher: ${book.publisher}'),
+              if (book.publishedDate != null) Text('Published: ${book.publishedDate}'),
+              if (book.pageCount != null) Text('Pages: ${book.pageCount}'),
               if (book.description != null) ...[
                 const SizedBox(height: 8),
                 Text(
@@ -398,8 +395,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                   child: Image.network(
                     vinyl.coverUrl!,
                     height: 200,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.album, size: 100),
+                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.album, size: 100),
                   ),
                 ),
               const SizedBox(height: 16),
@@ -414,18 +410,12 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
               const SizedBox(height: 8),
-              if (vinyl.label != null)
-                Text('Label: ${vinyl.label}'),
-              if (vinyl.year != null)
-                Text('Year: ${vinyl.year}'),
-              if (vinyl.catalogNumber != null)
-                Text('Catalog #: ${vinyl.catalogNumber}'),
-              if (vinyl.genre != null)
-                Text('Genre: ${vinyl.genre}'),
-              if (vinyl.format != null && vinyl.format!.isNotEmpty)
-                Text('Format: ${vinyl.format!.join(', ')}'),
-              if (vinyl.country != null)
-                Text('Country: ${vinyl.country}'),
+              if (vinyl.label != null) Text('Label: ${vinyl.label}'),
+              if (vinyl.year != null) Text('Year: ${vinyl.year}'),
+              if (vinyl.catalogNumber != null) Text('Catalog #: ${vinyl.catalogNumber}'),
+              if (vinyl.genre != null) Text('Genre: ${vinyl.genre}'),
+              if (vinyl.format != null && vinyl.format!.isNotEmpty) Text('Format: ${vinyl.format!.join(', ')}'),
+              if (vinyl.country != null) Text('Country: ${vinyl.country}'),
             ],
           ),
         ),
@@ -450,9 +440,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
 
     try {
       final containerService = ref.read(containerServiceProvider);
-      final containers = await containerService
-          .getAllContainers(widget.household.id)
-          .first;
+      final containers = await containerService.getAllContainers(widget.household.id).first;
 
       final container = containers.firstWhere(
         (c) => c.id == containerId,
@@ -473,7 +461,8 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
     }
   }
 
-  Future<String?> _showDuplicateFoundDialog(Item item, BookMetadata? bookMetadata, {VinylMetadata? vinylMetadata}) async {
+  Future<String?> _showDuplicateFoundDialog(Item item, BookMetadata? bookMetadata,
+      {VinylMetadata? vinylMetadata}) async {
     final locationText = await _getContainerName(item.containerId);
 
     if (!mounted) return null;
@@ -509,8 +498,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                   child: Image.network(
                     bookMetadata!.thumbnailUrl!,
                     height: 200,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.book, size: 100),
+                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.book, size: 100),
                   ),
                 )
               else if (vinylMetadata?.coverUrl != null)
@@ -518,8 +506,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                   child: Image.network(
                     vinylMetadata!.coverUrl!,
                     height: 200,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.album, size: 100),
+                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.album, size: 100),
                   ),
                 ),
               const SizedBox(height: 16),
@@ -595,12 +582,10 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Scan Book Barcode'),
+        title: const Text('Scan Barcode'),
         actions: [
           IconButton(
-            icon: Icon(_scannerController.torchEnabled
-                ? Icons.flash_on
-                : Icons.flash_off),
+            icon: Icon(_scannerController.torchEnabled ? Icons.flash_on : Icons.flash_off),
             onPressed: () => _scannerController.toggleTorch(),
           ),
           IconButton(

@@ -43,6 +43,11 @@ class Item {
   final String? country;
   final String? discogsId;
 
+  // Game-specific fields
+  final String? platform;
+  final String? gamePublisher;
+  final String? players;
+
   Item({
     required this.id,
     required this.title,
@@ -79,6 +84,9 @@ class Item {
     this.format,
     this.country,
     this.discogsId,
+    this.platform,
+    this.gamePublisher,
+    this.players,
   });
 
   factory Item.fromFirestore(DocumentSnapshot doc) {
@@ -127,6 +135,9 @@ class Item {
         : null,
       country: data['country'],
       discogsId: data['discogsId'],
+      platform: data['platform'],
+      gamePublisher: data['gamePublisher'],
+      players: data['players'],
     );
   }
 
@@ -165,6 +176,9 @@ class Item {
     'format': format,
     'country': country,
     'discogsId': discogsId,
+    'platform': platform,
+    'gamePublisher': gamePublisher,
+    'players': players,
   };
 
   static SyncStatus _parseSyncStatus(String? status) {
@@ -217,6 +231,9 @@ class Item {
     List<String>? format,
     String? country,
     String? discogsId,
+    String? platform,
+    String? gamePublisher,
+    String? players,
   }) {
     return Item(
       id: id ?? this.id,
@@ -254,6 +271,9 @@ class Item {
       format: format ?? this.format,
       country: country ?? this.country,
       discogsId: discogsId ?? this.discogsId,
+      platform: platform ?? this.platform,
+      gamePublisher: gamePublisher ?? this.gamePublisher,
+      players: players ?? this.players,
     );
   }
 }

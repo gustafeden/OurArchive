@@ -53,6 +53,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
     'camera',
     'book',
     'vinyl',
+    'game',
     'electronics',
     'clothing',
     'kitchen',

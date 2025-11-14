@@ -342,6 +342,9 @@ class _DisplayNameTileState extends ConsumerState<_DisplayNameTile> {
         displayName: name,
       );
 
+      // Invalidate the provider to force a refresh
+      ref.invalidate(userProfileProvider(widget.userId));
+
       setState(() {
         _isEditing = false;
         _controller.clear();
