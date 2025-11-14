@@ -9,6 +9,7 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  print("firebase init ok");
   await FirebaseAuth.instance.signInAnonymously(); // no login UI
   runApp(const OurArchiveApp());
 }
