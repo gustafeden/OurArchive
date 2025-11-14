@@ -7,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:async';
 import 'firebase_options.dart';
 import 'ui/screens/auth_gate.dart';
+import 'ui/theme/app_theme.dart';
 import 'data/services/logger_service.dart';
 
 void main() {
@@ -54,10 +55,7 @@ class OurArchiveApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'OurArchive',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-      ),
+      theme: AppTheme.light,
       home: const AuthGate(),
       debugShowCheckedModeBanner: false,
     );

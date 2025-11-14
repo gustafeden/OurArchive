@@ -1,12 +1,16 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import '../../providers/providers.dart';
 import '../../data/models/household.dart';
 import '../../data/models/book_metadata.dart';
+import '../theme/extensions/context_ext.dart';
+import '../widgets/forms/app_text_field.dart';
+import '../widgets/forms/app_photo_picker_field.dart';
+import '../widgets/forms/app_container_dropdown.dart';
+import '../widgets/shared/app_snackbar.dart';
 
 class AddBookScreen extends ConsumerStatefulWidget {
   final Household? household;
@@ -128,28 +132,6 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
     }
   }
 
-  Future<void> _takephoto() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.camera);
-
-    if (pickedFile != null) {
-      setState(() {
-        _photo = File(pickedFile.path);
-      });
-    }
-  }
-
-  Future<void> _pickPhotoFromGallery() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
-    if (pickedFile != null) {
-      setState(() {
-        _photo = File(pickedFile.path);
-      });
-    }
-  }
-
   Future<void> _saveBook() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -198,15 +180,11 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
 
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Book added successfully!')),
-        );
+        AppSnackbar.showSuccess(context, 'Book added successfully!');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error adding book: $e')),
-        );
+        AppSnackbar.showError(context, 'Error adding book: $e');
         setState(() => _isLoading = false);
       }
     }
@@ -214,17 +192,15 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final containersAsync = ref.watch(allContainersProvider);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Book'),
         actions: [
           if (_isLoading)
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: SizedBox(
+                padding: context.spacing.allMd,
+                child: const SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
@@ -241,116 +217,51 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16.0),
+          padding: context.spacing.allMd,
           children: [
-            // Photo Section
-            GestureDetector(
-              onTap: () {
-                showModalBottomSheet(
-                  context: context,
-                  builder: (context) => SafeArea(
-                    child: Wrap(
-                      children: [
-                        ListTile(
-                          leading: const Icon(Icons.camera_alt),
-                          title: const Text('Take Photo'),
-                          onTap: () {
-                            Navigator.pop(context);
-                            _takephoto();
-                          },
-                        ),
-                        ListTile(
-                          leading: const Icon(Icons.photo_library),
-                          title: const Text('Choose from Gallery'),
-                          onTap: () {
-                            Navigator.pop(context);
-                            _pickPhotoFromGallery();
-                          },
-                        ),
-                        if (_photo != null)
-                          ListTile(
-                            leading: const Icon(Icons.delete),
-                            title: const Text('Remove Photo'),
-                            onTap: () {
-                              Navigator.pop(context);
-                              setState(() => _photo = null);
-                            },
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-              child: Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey[400]!),
-                ),
-                child: _photo != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.file(_photo!, fit: BoxFit.cover),
-                      )
-                    : const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.book, size: 64, color: Colors.grey),
-                          SizedBox(height: 8),
-                          Text('Tap to add cover photo',
-                              style: TextStyle(color: Colors.grey)),
-                        ],
-                      ),
-              ),
+            // Photo picker - clean and reusable
+            AppPhotoPickerField(
+              photo: _photo,
+              onPhotoSelected: (photo) => setState(() => _photo = photo),
             ),
-            const SizedBox(height: 24),
+            context.spacing.gapLg,
 
             // Title (Required)
-            TextFormField(
+            AppTextField(
               controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Title',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.title),
-              ),
+              label: 'Title',
+              prefixIcon: Icons.title,
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'Title is required';
                 }
                 return null;
               },
-              textCapitalization: TextCapitalization.words,
             ),
-            const SizedBox(height: 16),
+            context.spacing.gapMd,
 
             // Authors (Multi-entry)
-            const Text('Authors', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-            const SizedBox(height: 8),
+            Text('Authors', style: context.textTheme.titleMedium),
+            context.spacing.gapSm,
             ..._authorControllers.asMap().entries.map((entry) {
               final index = entry.key;
               final controller = entry.value;
               return Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
+                padding: context.spacing.verticalSm / 2,
                 child: Row(
                   children: [
                     Expanded(
-                      child: TextFormField(
+                      child: AppTextField(
                         controller: controller,
-                        decoration: InputDecoration(
-                          hintText: 'Author name',
-                          border: const OutlineInputBorder(),
-                          prefixIcon: const Icon(Icons.person),
-                          suffixIcon: _authorControllers.length > 1
-                              ? IconButton(
-                                  icon: const Icon(Icons.remove_circle_outline),
-                                  onPressed: () => _removeAuthorField(index),
-                                )
-                              : null,
-                        ),
-                        textCapitalization: TextCapitalization.words,
+                        label: 'Author name',
+                        prefixIcon: Icons.person,
                       ),
                     ),
+                    if (_authorControllers.length > 1)
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline),
+                        onPressed: () => _removeAuthorField(index),
+                      ),
                   ],
                 ),
               );
@@ -360,33 +271,26 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
               icon: const Icon(Icons.add),
               label: const Text('Add Another Author'),
             ),
-            const SizedBox(height: 16),
+            context.spacing.gapMd,
 
             // ISBN (Optional)
-            TextFormField(
+            AppTextField(
               controller: _isbnController,
-              decoration: const InputDecoration(
-                labelText: 'ISBN (optional)',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.numbers),
-              ),
+              label: 'ISBN (optional)',
+              prefixIcon: Icons.numbers,
               keyboardType: TextInputType.number,
             ),
-            const SizedBox(height: 16),
+            context.spacing.gapMd,
 
             // Publisher & Year (Row)
             Row(
               children: [
                 Expanded(
                   flex: 2,
-                  child: TextFormField(
+                  child: AppTextField(
                     controller: _publisherController,
-                    decoration: const InputDecoration(
-                      labelText: 'Publisher',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.business),
-                    ),
-                    textCapitalization: TextCapitalization.words,
+                    label: 'Publisher',
+                    prefixIcon: Icons.business,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -404,55 +308,23 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            context.spacing.gapMd,
 
-            // Container/Location
-            containersAsync.when(
-              data: (containers) {
-                return DropdownButtonFormField<String>(
-                  value: _selectedContainerId,
-                  decoration: const InputDecoration(
-                    labelText: 'Container (optional)',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.place),
-                  ),
-                  items: [
-                    const DropdownMenuItem<String>(
-                      value: null,
-                      child: Text('No container'),
-                    ),
-                    ...containers.map((container) {
-                      return DropdownMenuItem<String>(
-                        value: container.id,
-                        child: Text(container.name),
-                      );
-                    }),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedContainerId = value;
-                    });
-                  },
-                );
-              },
-              loading: () => const LinearProgressIndicator(),
-              error: (_, __) => const Text('Failed to load containers'),
+            // Container/Location - now clean and simple
+            AppContainerDropdown(
+              value: _selectedContainerId,
+              onChanged: (value) => setState(() => _selectedContainerId = value),
             ),
-            const SizedBox(height: 16),
+            context.spacing.gapMd,
 
             // Notes/Description
-            TextFormField(
+            AppTextField(
               controller: _notesController,
-              decoration: const InputDecoration(
-                labelText: 'Notes / Description (optional)',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.note),
-                alignLabelWithHint: true,
-              ),
+              label: 'Notes / Description (optional)',
+              prefixIcon: Icons.note,
               maxLines: 4,
-              textCapitalization: TextCapitalization.sentences,
             ),
-            const SizedBox(height: 24),
+            context.spacing.gapLg,
           ],
         ),
       ),
