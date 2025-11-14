@@ -48,11 +48,11 @@ jobs:
           ls -la .fvm || true
           cat .fvm/fvm_config.json || cat .fvmrc || true
 
-          # Install whatever FVM config says (force to avoid interactivity)
-          fvm install --force
+          # Install whatever FVM config says
+          fvm install
 
           # Make the project's flutter available as "fvm flutter"
-          fvm use --force
+          fvm use
 
           # Debug versions
           fvm flutter --version
