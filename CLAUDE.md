@@ -1,5 +1,5 @@
 # Project Guidelines
-
+always use fvm for flutter use
 ## Claude Behavior Guidelines
 
 ### Prevent Reflexive Agreement
@@ -15,11 +15,11 @@
 ## Task Completion Requirements
 
 * **Code MUST compile before marking a task as complete**
-* Run `flutter analyze` to verify there are no compilation errors
+* Run `fvm flutter analyze` to verify there are no compilation errors
 * A task is NOT complete if the code doesn't compile
 * Always verify compilation before reporting completion to the user
 
 ## Testing
 
-* Always use `flutter test` to run tests in this package, NOT `dart test`
+* Always use `fvm flutter test` to run tests in this package, NOT `dart test`
 * This is required because the tests depend on Flutter-specific features and plugins

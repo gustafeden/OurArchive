@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection
+    match /users/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Households collection
+    match /households/{hid} {
+      allow create: if request.auth != null && request.resource.data.members[request.auth.uid] == 'owner';
+      allow read: if request.auth != null && request.auth.uid in resource.data.members.keys();
+      allow update: if isOwner(hid);
+      allow delete: if isOwner(hid);
+
+      // Items subcollection
+      match /items/{itemId} {
+        allow create: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/households/$(hid)).data.members.keys() && request.resource.data.createdBy == request.auth.uid;
+        allow read: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/households/$(hid)).data.members.keys();
+        allow update: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/households/$(hid)).data.members.keys() && (resource.data.createdBy == request.auth.uid || isOwner(hid));
+        allow delete: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/households/$(hid)).data.members.keys() && (resource.data.createdBy == request.auth.uid || isOwner(hid));
+      }
+    }
+
+    // Containers collection (rooms, shelves, boxes, fridges, etc.)
+    match /containers/{containerId} {
+      allow create: if request.auth != null && request.resource.data.createdBy == request.auth.uid;
+      allow read: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
+
+    // Helper functions
+    function isMember(hid) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/households/$(hid))
+        && get(/databases/$(database)/documents/households/$(hid)).data.members[request.auth.uid] in ['owner', 'member', 'viewer'];
+    }
+
+    function isOwner(hid) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/households/$(hid))
+        && get(/databases/$(database)/documents/households/$(hid)).data.members[request.auth.uid] == 'owner';
+    }
+
+    function isPending(hid) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/households/$(hid))
+        && get(/databases/$(database)/documents/households/$(hid)).data.members[request.auth.uid] == 'pending';
+    }
+
+    function isMemberOfHousehold(hid) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/households/$(hid))
+        && request.auth.uid in get(/databases/$(database)/documents/households/$(hid)).data.members.keys();
+    }
+  }
+}
