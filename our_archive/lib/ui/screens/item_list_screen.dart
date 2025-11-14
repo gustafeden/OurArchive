@@ -299,8 +299,8 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                 ),
                 child: const Icon(Icons.album, color: Colors.purple),
               ),
-              title: const Text('Scan Vinyl'),
-              subtitle: const Text('Quick scan vinyl barcode'),
+              title: const Text('Scan Music'),
+              subtitle: const Text('Quick scan music barcode'),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(

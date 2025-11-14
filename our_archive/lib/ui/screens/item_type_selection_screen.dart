@@ -81,7 +81,7 @@ class ItemTypeSelectionScreen extends StatelessWidget {
                         );
                       },
                       icon: const Icon(Icons.qr_code_scanner, size: 20),
-                      label: const Text('Scan Vinyl'),
+                      label: const Text('Scan Music'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.purple,
                         side: BorderSide(color: Colors.purple.withOpacity(0.5)),
@@ -116,9 +116,9 @@ class ItemTypeSelectionScreen extends StatelessWidget {
                       },
                     ),
                     _ItemTypeCard(
-                      icon: Icons.album_rounded,
-                      title: 'Vinyl Record',
-                      subtitle: 'Scan barcodes or search Discogs',
+                      icon: Icons.library_music_rounded,
+                      title: 'Music',
+                      subtitle: 'Vinyl, CD, cassette, or other formats',
                       color: Colors.purple,
                       onTap: () {
                         Navigator.push(

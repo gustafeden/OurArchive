@@ -131,7 +131,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
 
       if (vinylMetadata == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Vinyl record not found for barcode: $barcode')),
+          SnackBar(content: Text('Music not found for barcode: $barcode')),
         );
         setState(() {
           _isProcessing = false;
@@ -232,7 +232,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
     return showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Vinyl Found'),
+        title: const Text('Music Found'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -274,7 +274,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, 'addVinyl'),
-            child: const Text('Add Vinyl'),
+            child: const Text('Add Music'),
           ),
         ],
       ),
@@ -303,13 +303,13 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
     return showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Vinyl Already Exists'),
+        title: const Text('Music Already Exists'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'This vinyl record is already in your collection:',
+              'This music is already in your collection:',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -338,7 +338,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Scan Vinyl'),
+        title: const Text('Scan Music'),
         actions: [
           PopupMenuButton<VinylScanMode>(
             icon: const Icon(Icons.more_vert),

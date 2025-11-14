@@ -14,7 +14,7 @@ class AddVinylFlowScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Vinyl Record'),
+        title: const Text('Add Music'),
       ),
       body: SafeArea(
         child: Padding(
@@ -23,7 +23,7 @@ class AddVinylFlowScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text(
-                'How would you like to add your vinyl?',
+                'How would you like to add your music?',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -31,7 +31,7 @@ class AddVinylFlowScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Choose the method that works best for you',
+                'Vinyl, CD, cassette, or any format',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey,

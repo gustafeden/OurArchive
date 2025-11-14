@@ -39,7 +39,10 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
 
   File? _photo;
   String? _selectedContainerId;
+  String _selectedFormat = 'vinyl';
   bool _isLoading = false;
+
+  final List<String> _formats = ['vinyl', 'cd', 'cassette', 'digital', 'other'];
 
   // Helper to get household ID from either household object or direct ID
   String get _householdId => widget.householdId ?? widget.household!.id;
@@ -125,6 +128,9 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
         'barcode': widget.vinylData?.discogsId,
       };
 
+      // Save the selected format
+      itemData['musicFormat'] = _selectedFormat;
+
       if (widget.vinylData != null) {
         itemData['styles'] = widget.vinylData!.styles;
         itemData['format'] = widget.vinylData!.format;
@@ -160,7 +166,7 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Vinyl Record'),
+        title: const Text('Add Music'),
         actions: [
           if (_isLoading)
             const Center(child: Padding(padding: EdgeInsets.all(16), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))))
@@ -196,6 +202,26 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
             TextFormField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder(), prefixIcon: Icon(Icons.title)), validator: (v) => v?.trim().isEmpty ?? true ? 'Title is required' : null, textCapitalization: TextCapitalization.words),
             const SizedBox(height: 16),
             TextFormField(controller: _artistController, decoration: const InputDecoration(labelText: 'Artist', border: OutlineInputBorder(), prefixIcon: Icon(Icons.person)), textCapitalization: TextCapitalization.words),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _selectedFormat,
+              decoration: const InputDecoration(
+                labelText: 'Format',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.album),
+              ),
+              items: _formats.map((format) {
+                return DropdownMenuItem(
+                  value: format,
+                  child: Text(format.substring(0, 1).toUpperCase() + format.substring(1)),
+                );
+              }).toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _selectedFormat = value);
+                }
+              },
+            ),
             const SizedBox(height: 16),
             Row(children: [
               Expanded(flex: 2, child: TextFormField(controller: _labelController, decoration: const InputDecoration(labelText: 'Label', border: OutlineInputBorder(), prefixIcon: Icon(Icons.business)), textCapitalization: TextCapitalization.words)),
