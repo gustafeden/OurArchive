@@ -9,83 +9,27 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      # Install a system Flutter so we have dart/pub to install fvm.
-      # We will then use fvm to install the project-specific flutter SDK.
-      - name: Install temporary Flutter (tooling only)
+      - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
-          # don't set cache here because we'll rely on FVM-managed sdk later
+          flutter-version: "3.38.0"
+          channel: "stable"
+          cache: true
 
-      - name: Ensure pub cache bin is on PATH
-        run: echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
-
-      - name: Install FVM
-        run: dart pub global activate fvm
-
-      - name: Show FVM version
-        run: |
-          source $HOME/.bashrc || true
-          source $GITHUB_ENV || true
-          fvm --version
-
-      # Use FVM to install the project's pinned SDK. This expects a local .fvm config (either .fvm/fvm_config.json or .fvmrc)
-      - name: Install project Flutter SDK via FVM
+      - name: Install dependencies
         working-directory: ./our_archive
-        run: |
-          # Ensure fvm is resolvable in this runner session
-          export PATH="$HOME/.pub-cache/bin:$PATH"
-          # Print the fvm files for debugging
-          echo "---- FVM config listing ----"
-          ls -la .fvm || true
-          cat .fvm/fvm_config.json || cat .fvmrc || true
+        run: flutter pub get
 
-          # Install whatever FVM config says
-          fvm install
-
-          # Make the project's flutter available as "fvm flutter"
-          fvm use
-
-          # Debug versions
-          fvm flutter --version
-          which fvm
-          which fvm/flutter || true
-
-      # Cache pub packages by hash of pubspec.lock
-      - name: Cache Pub packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.pub-cache
-            ./our_archive/.dart_tool
-            ./our_archive/build
-          # use pubspec.lock so cache invalidates when deps change
-          key: flutter-pub-${{ runner.os }}-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: |
-            flutter-pub-${{ runner.os }}-
-
-      - name: Install Flutter dependencies
+      - name: Analyze
         working-directory: ./our_archive
-        run: |
-          export PATH="$HOME/.pub-cache/bin:$PATH"
-          fvm flutter pub get
-
-      - name: Run Flutter analyze
-        working-directory: ./our_archive
-        run: |
-          export PATH="$HOME/.pub-cache/bin:$PATH"
-          fvm flutter analyze --no-fatal-infos
+        run: flutter analyze
 
       - name: Run tests
         working-directory: ./our_archive
-        run: |
-          export PATH="$HOME/.pub-cache/bin:$PATH"
-          fvm flutter test --no-sound-null-safety
+        run: flutter test
