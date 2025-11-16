@@ -8,6 +8,8 @@ import '../../providers/providers.dart';
 import '../../data/models/household.dart';
 import '../../data/models/book_metadata.dart';
 import '../../data/models/vinyl_metadata.dart';
+import '../../data/models/item_type.dart';
+import '../../utils/icon_helper.dart';
 import 'barcode_scan_screen.dart';
 
 class AddItemScreen extends ConsumerStatefulWidget {
@@ -45,17 +47,6 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
 
   // Helper to get household ID from either household object or direct ID
   String get _householdId => widget.householdId ?? widget.household!.id;
-
-  final List<String> _itemTypes = [
-    'general',
-    'tool',
-    'pantry',
-    'camera',
-    'electronics',
-    'clothing',
-    'kitchen',
-    'outdoor',
-  ];
 
   @override
   void initState() {
@@ -258,7 +249,8 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
       );
 
       if (mounted) {
-        Navigator.popUntil(context, (route) => route.isFirst);
+        Navigator.pop(context); // Pop AddItemScreen
+        Navigator.pop(context); // Pop ItemTypeSelectionScreen
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Item added successfully!')),
         );
@@ -363,23 +355,53 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
             const SizedBox(height: 16),
 
             // Type dropdown
-            DropdownButtonFormField<String>(
-              value: _selectedType,
-              decoration: const InputDecoration(
-                labelText: 'Type',
-                border: OutlineInputBorder(),
-              ),
-              items: _itemTypes.map((type) {
-                return DropdownMenuItem(
-                  value: type,
-                  child: Text(type[0].toUpperCase() + type.substring(1)),
+            Consumer(
+              builder: (context, ref, child) {
+                final itemTypesAsync = ref.watch(itemTypesProvider(_householdId));
+
+                return itemTypesAsync.when(
+                  loading: () => const LinearProgressIndicator(),
+                  error: (error, stack) => Text('Error loading types: $error'),
+                  data: (itemTypes) {
+                    // Show all item types
+                    final availableTypes = itemTypes;
+
+                    // Ensure _selectedType exists in available types
+                    if (!availableTypes.any((t) => t.name == _selectedType)) {
+                      if (availableTypes.isNotEmpty) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          setState(() => _selectedType = availableTypes.first.name);
+                        });
+                      }
+                    }
+
+                    return DropdownButtonFormField<String>(
+                      value: _selectedType,
+                      decoration: const InputDecoration(
+                        labelText: 'Type',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: availableTypes.map((type) {
+                        return DropdownMenuItem(
+                          value: type.name,
+                          child: Row(
+                            children: [
+                              Icon(IconHelper.getIconData(type.icon), size: 20),
+                              const SizedBox(width: 8),
+                              Text(type.displayName),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: _isLoading
+                          ? null
+                          : (value) {
+                              setState(() => _selectedType = value!);
+                            },
+                    );
+                  },
                 );
-              }).toList(),
-              onChanged: _isLoading
-                  ? null
-                  : (value) {
-                      setState(() => _selectedType = value!);
-                    },
+              },
             ),
 
             const SizedBox(height: 16),

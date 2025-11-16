@@ -107,10 +107,11 @@ class ContainerService {
   }
 
   // Delete container
-  Future<void> deleteContainer(String containerId) async {
-    // Check if container has child containers
+  Future<void> deleteContainer(String containerId, String householdId) async {
+    // Check if container has child containers - filter by household too
     final childrenSnapshot = await _firestore
         .collection('containers')
+        .where('householdId', isEqualTo: householdId)
         .where('parentId', isEqualTo: containerId)
         .limit(1)
         .get();
@@ -120,9 +121,11 @@ class ContainerService {
           'Cannot delete container with nested containers. Delete or move children first.');
     }
 
-    // Check if container has items
+    // Check if container has items - query the household's items collection
     final itemsSnapshot = await _firestore
-        .collectionGroup('items')
+        .collection('households')
+        .doc(householdId)
+        .collection('items')
         .where('containerId', isEqualTo: containerId)
         .limit(1)
         .get();

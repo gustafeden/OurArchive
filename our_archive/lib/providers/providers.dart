@@ -5,6 +5,8 @@ import '../data/services/household_service.dart';
 import '../data/services/container_service.dart';
 import '../data/services/book_lookup_service.dart';
 import '../data/services/logger_service.dart';
+import '../data/services/type_service.dart';
+import '../data/services/thumbnail_preload_service.dart';
 import '../services/vinyl_lookup_service.dart';
 import '../data/repositories/item_repository.dart';
 import '../data/repositories/container_repository.dart';
@@ -12,6 +14,8 @@ import '../core/sync/sync_queue.dart';
 import '../data/models/household.dart';
 import '../data/models/item.dart';
 import '../data/models/container.dart' as model;
+import '../data/models/container_type.dart';
+import '../data/models/item_type.dart';
 
 // Core services
 final authServiceProvider = Provider((ref) => AuthService());
@@ -21,6 +25,7 @@ final bookLookupServiceProvider = Provider((ref) => BookLookupService());
 final vinylLookupServiceProvider = Provider((ref) => VinylLookupService());
 final syncQueueProvider = Provider((ref) => SyncQueue());
 final loggerServiceProvider = Provider((ref) => LoggerService());
+final typeServiceProvider = Provider((ref) => TypeService());
 
 final itemRepositoryProvider = Provider((ref) {
   final syncQueue = ref.watch(syncQueueProvider);
@@ -28,6 +33,8 @@ final itemRepositoryProvider = Provider((ref) {
 });
 
 final containerRepositoryProvider = Provider((ref) => ContainerRepository());
+
+final thumbnailPreloadServiceProvider = Provider((ref) => ThumbnailPreloadService());
 
 // Current user
 final currentUserProvider = StreamProvider<User?>((ref) {
@@ -182,6 +189,22 @@ final allTagsProvider = Provider<List<String>>((ref) {
   return tags;
 });
 
+// Container types for a household
+final containerTypesProvider = StreamProvider.family<List<ContainerType>, String>((ref, householdId) {
+  if (householdId.isEmpty) return Stream.value(<ContainerType>[]);
+
+  final typeService = ref.watch(typeServiceProvider);
+  return typeService.getContainerTypes(householdId);
+});
+
+// Item types for a household
+final itemTypesProvider = StreamProvider.family<List<ItemType>, String>((ref, householdId) {
+  if (householdId.isEmpty) return Stream.value(<ItemType>[]);
+
+  final typeService = ref.watch(typeServiceProvider);
+  return typeService.getItemTypes(householdId);
+});
+
 // Items in a specific container
 final containerItemsProvider = StreamProvider.family<List<Item>, String?>((ref, containerId) {
   final householdId = ref.watch(currentHouseholdIdProvider);
@@ -262,6 +285,3 @@ Set<String> _getDescendantContainerIds(String parentId, List<model.Container> al
 
   return descendants;
 }
-
-// Toggle state for showing nested items in ContainerScreen
-final showNestedItemsProvider = StateProvider<bool>((ref) => false);

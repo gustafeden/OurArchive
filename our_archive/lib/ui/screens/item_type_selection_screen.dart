@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:our_archive/ui/screens/add_book_flow_screen.dart';
 import 'package:our_archive/ui/screens/add_vinyl_flow_screen.dart';
 import 'package:our_archive/ui/screens/add_game_screen.dart';
 import 'package:our_archive/ui/screens/add_item_screen.dart';
 import 'package:our_archive/ui/screens/book_scan_screen.dart';
 import 'package:our_archive/ui/screens/vinyl_scan_screen.dart';
+import '../../providers/providers.dart';
+import '../../data/models/item_type.dart';
+import '../../utils/icon_helper.dart';
 
-class ItemTypeSelectionScreen extends StatelessWidget {
+class ItemTypeSelectionScreen extends ConsumerWidget {
   final String householdId;
   final String? preSelectedContainerId;
 
@@ -17,17 +21,22 @@ class ItemTypeSelectionScreen extends StatelessWidget {
   }) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final itemTypesAsync = ref.watch(itemTypesProvider(householdId));
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Item'),
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+      body: itemTypesAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(child: Text('Error loading types: $error')),
+        data: (itemTypes) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               const Text(
                 'What would you like to add?',
                 style: TextStyle(
@@ -96,89 +105,131 @@ class ItemTypeSelectionScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 20),
-              Expanded(
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 1.0,
-                  children: [
-                    _ItemTypeCard(
-                      icon: Icons.menu_book_rounded,
-                      title: 'Book',
-                      subtitle: 'Scan, search, or add manually',
-                      color: Colors.blue,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AddBookFlowScreen(
-                              householdId: householdId,
-                              preSelectedContainerId: preSelectedContainerId,
-                            ),
-                          ),
-                        );
-                      },
+                Expanded(
+                  child: GridView.builder(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 1.0,
                     ),
-                    _ItemTypeCard(
-                      icon: Icons.library_music_rounded,
-                      title: 'Music',
-                      subtitle: 'Vinyl, CD, cassette, or other formats',
-                      color: Colors.purple,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AddVinylFlowScreen(
-                              householdId: householdId,
-                              preSelectedContainerId: preSelectedContainerId,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    _ItemTypeCard(
-                      icon: Icons.videogame_asset_rounded,
-                      title: 'Game',
-                      subtitle: 'Add your video game collection',
-                      color: Colors.green,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AddGameScreen(
-                              householdId: householdId,
-                              preSelectedContainerId: preSelectedContainerId,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    _ItemTypeCard(
-                      icon: Icons.inventory_2_rounded,
-                      title: 'General Item',
-                      subtitle: 'Tools, electronics, pantry items',
-                      color: Colors.orange,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AddItemScreen(
-                              householdId: householdId,
-                              preSelectedContainerId: preSelectedContainerId,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                    itemCount: itemTypes.where((type) => type.hasSpecializedForm || type.name == 'general').length,
+                    itemBuilder: (context, index) {
+                      final filteredTypes = itemTypes.where((type) => type.hasSpecializedForm || type.name == 'general').toList();
+                      final type = filteredTypes[index];
+                      return _buildItemTypeCard(context, type);
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildItemTypeCard(BuildContext context, ItemType type) {
+    // Define colors for different types
+    final color = _getColorForType(type);
+    final subtitle = _getSubtitleForType(type);
+
+    return _ItemTypeCard(
+      icon: IconHelper.getIconData(type.icon),
+      title: type.displayName,
+      subtitle: subtitle,
+      color: color,
+      onTap: () {
+        // Route based on whether type has specialized form
+        if (type.hasSpecializedForm) {
+          switch (type.name) {
+            case 'book':
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AddBookFlowScreen(
+                    householdId: householdId,
+                    preSelectedContainerId: preSelectedContainerId,
+                  ),
+                ),
+              );
+              break;
+            case 'vinyl':
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AddVinylFlowScreen(
+                    householdId: householdId,
+                    preSelectedContainerId: preSelectedContainerId,
+                  ),
+                ),
+              );
+              break;
+            case 'game':
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AddGameScreen(
+                    householdId: householdId,
+                    preSelectedContainerId: preSelectedContainerId,
+                  ),
+                ),
+              );
+              break;
+          }
+        } else {
+          // Generic item form
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddItemScreen(
+                householdId: householdId,
+                preSelectedContainerId: preSelectedContainerId,
+              ),
+            ),
+          );
+        }
+      },
+    );
+  }
+
+  Color _getColorForType(ItemType type) {
+    // Use predefined colors for default types, or generate based on name hash for custom
+    if (type.isDefault) {
+      switch (type.name) {
+        case 'book':
+          return Colors.blue;
+        case 'vinyl':
+          return Colors.purple;
+        case 'game':
+          return Colors.green;
+        case 'general':
+          return Colors.orange;
+        default:
+          return Colors.teal;
+      }
+    }
+    // For custom types, generate a color based on hash
+    final hash = type.name.hashCode;
+    return Color((hash & 0xFFFFFF) | 0xFF000000).withOpacity(0.8);
+  }
+
+  String _getSubtitleForType(ItemType type) {
+    if (type.isDefault) {
+      switch (type.name) {
+        case 'book':
+          return 'Scan, search, or add manually';
+        case 'vinyl':
+          return 'Vinyl, CD, cassette, or other formats';
+        case 'game':
+          return 'Add your video game collection';
+        case 'general':
+          return 'Tools, electronics, pantry items';
+        default:
+          return 'Add to your collection';
+      }
+    }
+    return 'Add to your collection';
   }
 }
 

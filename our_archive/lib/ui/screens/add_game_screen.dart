@@ -127,7 +127,8 @@ class _AddGameScreenState extends ConsumerState<AddGameScreen> {
       );
 
       if (mounted) {
-        Navigator.popUntil(context, (route) => route.isFirst);
+        Navigator.pop(context); // Pop AddGameScreen
+        Navigator.pop(context); // Pop ItemTypeSelectionScreen
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Game added successfully!')),
         );

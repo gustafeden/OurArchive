@@ -51,6 +51,52 @@ service cloud.firestore {
               || (get(/databases/$(database)/documents/households/$(hid)).data.members[request.auth.uid] == 'viewer'
                   && resource.data.createdBy == request.auth.uid));
       }
+
+      // Container types under household
+      match /containerTypes/{typeId} {
+        // All members can read types
+        allow read: if isMemberOfHousehold(hid);
+
+        // Only owners and members can create custom types
+        allow create: if request.auth != null
+          && isMemberOrOwner(hid)
+          && request.resource.data.createdBy == request.auth.uid;
+
+        // Only owners and members can update types
+        // Default types cannot be updated (isDefault == true)
+        allow update: if request.auth != null
+          && isMemberOrOwner(hid)
+          && resource.data.isDefault == false;
+
+        // Only owners and members can delete custom types
+        // Default types cannot be deleted (isDefault == true)
+        allow delete: if request.auth != null
+          && isMemberOrOwner(hid)
+          && resource.data.isDefault == false;
+      }
+
+      // Item types under household
+      match /itemTypes/{typeId} {
+        // All members can read types
+        allow read: if isMemberOfHousehold(hid);
+
+        // Only owners and members can create custom types
+        allow create: if request.auth != null
+          && isMemberOrOwner(hid)
+          && request.resource.data.createdBy == request.auth.uid;
+
+        // Only owners and members can update types
+        // Default types cannot be updated (isDefault == true)
+        allow update: if request.auth != null
+          && isMemberOrOwner(hid)
+          && resource.data.isDefault == false;
+
+        // Only owners and members can delete custom types
+        // Default types cannot be deleted (isDefault == true)
+        allow delete: if request.auth != null
+          && isMemberOrOwner(hid)
+          && resource.data.isDefault == false;
+      }
     }
 
     // Global containers
@@ -60,9 +106,20 @@ service cloud.firestore {
         && request.resource.data.householdId is string
         && isMemberOfHousehold(request.resource.data.householdId);
 
-      allow read: if isMemberOfHousehold(resource.data.householdId);
-      allow update: if isMemberOfHousehold(resource.data.householdId);
-      allow delete: if isMemberOfHousehold(resource.data.householdId);
+      allow read: if request.auth != null
+        && 'householdId' in resource.data
+        && resource.data.householdId is string
+        && isMemberOfHousehold(resource.data.householdId);
+
+      allow update: if request.auth != null
+        && 'householdId' in resource.data
+        && resource.data.householdId is string
+        && isMemberOfHousehold(resource.data.householdId);
+
+      allow delete: if request.auth != null
+        && 'householdId' in resource.data
+        && resource.data.householdId is string
+        && isMemberOrOwner(resource.data.householdId);
     }
 
 
@@ -78,6 +135,12 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/households/$(hid))
         // direct map lookup - returns the role (string) or null
         && get(/databases/$(database)/documents/households/$(hid)).data.members[request.auth.uid] in ['owner','member','viewer'];
+    }
+
+    function isMemberOrOwner(hid) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/households/$(hid))
+        && get(/databases/$(database)/documents/households/$(hid)).data.members[request.auth.uid] in ['owner','member'];
     }
 
     function canAddSelfAsPending(hid) {

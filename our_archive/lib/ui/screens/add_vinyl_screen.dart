@@ -177,9 +177,11 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
       );
 
       if (mounted) {
-        Navigator.popUntil(context, (route) => route.isFirst);
+        Navigator.pop(context); // Pop AddVinylScreen
+        Navigator.pop(context); // Pop AddVinylFlowScreen
+        Navigator.pop(context); // Pop ItemTypeSelectionScreen
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Vinyl added successfully!')),
+          const SnackBar(content: Text('Music added successfully!')),
         );
       }
     } catch (e) {

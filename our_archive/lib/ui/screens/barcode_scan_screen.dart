@@ -12,6 +12,7 @@ import '../../providers/providers.dart';
 import '../../services/vinyl_lookup_service.dart';
 import 'add_book_screen.dart';
 import 'add_vinyl_screen.dart';
+import '../../utils/icon_helper.dart';
 
 class BarcodeScanScreen extends ConsumerStatefulWidget {
   final Household household;
@@ -361,7 +362,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Vinyl added! Scan next item ($_booksScanned scanned)'),
+              content: Text('Music added! Scan next item ($_booksScanned scanned)'),
               duration: const Duration(seconds: 2),
             ),
           );
@@ -688,7 +689,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                     item.coverUrl!,
                     height: 200,
                     errorBuilder: (context, error, stackTrace) =>
-                        Icon(item.type == 'vinyl' ? Icons.album : Icons.book, size: 100),
+                        Icon(IconHelper.getItemIcon(item.type), size: 100),
                   ),
                 )
               else if (bookMetadata?.thumbnailUrl != null)

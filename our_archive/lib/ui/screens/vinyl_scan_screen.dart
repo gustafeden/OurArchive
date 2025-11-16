@@ -180,9 +180,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
           ),
         );
 
-        if (mounted) {
-          Navigator.pop(context);
-        }
+        // Navigation is handled by AddVinylScreen's popUntil
       } else if (action == 'scanNext') {
         await Navigator.push(
           context,
@@ -204,7 +202,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Vinyl added! Scan next record ($_vinylsScanned scanned)'),
+              content: Text('Music added! Scan next record ($_vinylsScanned scanned)'),
               duration: const Duration(seconds: 2),
             ),
           );

@@ -8,11 +8,14 @@ import '../../data/models/container.dart' as model;
 import '../../data/models/item.dart';
 import '../../data/models/household.dart';
 import 'item_type_selection_screen.dart';
-import 'barcode_scan_screen.dart';
 import 'item_detail_screen.dart';
 import 'item_list_screen.dart';
 import 'book_scan_screen.dart';
 import 'vinyl_scan_screen.dart';
+import 'manage_types_screen.dart';
+import '../../utils/icon_helper.dart';
+import '../../../data/models/container_type.dart';
+import '../../data/models/item_type.dart';
 
 class ContainerScreen extends ConsumerStatefulWidget {
   final String householdId;
@@ -51,12 +54,9 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
         ? ref.watch(householdContainersProvider)
         : ref.watch(childContainersProvider(widget.parentContainerId!));
 
-    // Get items based on toggle state (nested vs direct only)
-    final showNested = ref.watch(showNestedItemsProvider);
+    // Get items directly in this container
     final selectedType = ref.watch(selectedTypeProvider);
-    final itemsAsync = showNested
-        ? ref.watch(nestedContainerItemsProvider(widget.parentContainerId))
-        : ref.watch(containerItemsProvider(widget.parentContainerId));
+    final itemsAsync = ref.watch(containerItemsProvider(widget.parentContainerId));
 
     final title = widget.breadcrumb.isEmpty ? widget.householdName : widget.breadcrumb.last.name;
 
@@ -108,10 +108,15 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                 setState(() {
                   _isEditMode = !_isEditMode;
                 });
-              } else if (value == 'direct_items') {
-                ref.read(showNestedItemsProvider.notifier).state = false;
-              } else if (value == 'nested_items') {
-                ref.read(showNestedItemsProvider.notifier).state = true;
+              } else if (value == 'manage_types') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ManageTypesScreen(
+                      householdId: widget.householdId,
+                    ),
+                  ),
+                );
               }
             },
             itemBuilder: (context) => [
@@ -125,33 +130,17 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                   ],
                 ),
               ),
-              if (widget.breadcrumb.isNotEmpty) ...[
-                const PopupMenuDivider(),
-                PopupMenuItem(
-                  value: 'direct_items',
-                  child: Row(
-                    children: [
-                      Icon(Icons.unfold_less,
-                          size: 20, color: !showNested ? Theme.of(context).colorScheme.primary : null),
-                      const SizedBox(width: 8),
-                      Text('Direct items only',
-                          style: TextStyle(fontWeight: !showNested ? FontWeight.bold : FontWeight.normal)),
-                    ],
-                  ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'manage_types',
+                child: Row(
+                  children: [
+                    Icon(Icons.category, size: 20),
+                    SizedBox(width: 8),
+                    Text('Manage Types'),
+                  ],
                 ),
-                PopupMenuItem(
-                  value: 'nested_items',
-                  child: Row(
-                    children: [
-                      Icon(Icons.unfold_more,
-                          size: 20, color: showNested ? Theme.of(context).colorScheme.primary : null),
-                      const SizedBox(width: 8),
-                      Text('All nested items',
-                          style: TextStyle(fontWeight: showNested ? FontWeight.bold : FontWeight.normal)),
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ],
           ),
         ],
@@ -226,28 +215,46 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
 
                   // Content list
                   Expanded(
-                    child: ListView.builder(
-                      itemCount: filteredContainers.length + (filteredItems.isNotEmpty ? 1 : 0),
-                      itemBuilder: (context, index) {
-                        // Show items section first if we have unorganized items at top level
-                        if (widget.breadcrumb.isEmpty && filteredItems.isNotEmpty && index == 0) {
-                          return _buildUnorganizedItemsCard(context, ref, filteredItems);
-                        }
+                    child: CustomScrollView(
+                      slivers: [
+                        // Unorganized items card at top level
+                        if (widget.breadcrumb.isEmpty && filteredItems.isNotEmpty)
+                          SliverToBoxAdapter(
+                            child: _buildUnorganizedItemsCard(context, ref, filteredItems),
+                          ),
 
-                        // Adjust index if we showed items card first
-                        final containerIndex =
-                            (widget.breadcrumb.isEmpty && filteredItems.isNotEmpty) ? index - 1 : index;
+                        // Containers in a grid
+                        if (filteredContainers.isNotEmpty)
+                          SliverPadding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            sliver: SliverGrid(
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                childAspectRatio: 1.2,
+                                crossAxisSpacing: 8,
+                                mainAxisSpacing: 8,
+                              ),
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                                  final container = filteredContainers[index];
+                                  return _buildContainerCard(context, ref, container);
+                                },
+                                childCount: filteredContainers.length,
+                              ),
+                            ),
+                          ),
 
-                        // Show items at the end for non-top-level
-                        if (containerIndex >= filteredContainers.length) {
-                          return Column(
-                            children: filteredItems.map((item) => _buildItemCard(context, ref, item)).toList(),
-                          );
-                        }
-
-                        final container = filteredContainers[containerIndex];
-                        return _buildContainerCard(context, ref, container);
-                      },
+                        // Items list at the end
+                        if (filteredItems.isNotEmpty && widget.breadcrumb.isNotEmpty)
+                          SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                                return _buildItemCard(context, ref, filteredItems[index]);
+                              },
+                              childCount: filteredItems.length,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ],
@@ -325,38 +332,12 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
   }
 
   Widget _buildContainerCard(BuildContext context, WidgetRef ref, model.Container container) {
+    final containerRepo = ref.read(containerRepositoryProvider);
+
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ListTile(
-        leading: _buildContainerThumbnail(ref, container),
-        title: Text(container.name),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(model.Container.getTypeDisplayName(container.containerType)),
-            if (container.description != null)
-              Text(
-                container.description!,
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-              ),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (_isEditMode) ...[
-              IconButton(
-                icon: const Icon(Icons.edit),
-                onPressed: () => _showEditContainerDialog(context, ref, container),
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _showDeleteConfirmation(context, ref, container),
-              ),
-            ],
-            const Icon(Icons.arrow_forward_ios),
-          ],
-        ),
+      margin: const EdgeInsets.all(8),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
         onTap: () {
           // Navigate into this container
           Navigator.push(
@@ -374,6 +355,170 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
         onLongPress: () {
           _showEditContainerDialog(context, ref, container);
         },
+        child: Container(
+          height: 150,
+          decoration: container.photoThumbPath != null
+              ? null
+              : BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Theme.of(context).colorScheme.primaryContainer,
+                      Theme.of(context).colorScheme.secondaryContainer,
+                    ],
+                  ),
+                ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Background image if available
+              if (container.photoThumbPath != null)
+                FutureBuilder<String?>(
+                  future: containerRepo.getPhotoUrl(container.photoThumbPath!),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData && snapshot.data != null) {
+                      return CachedNetworkImage(
+                        imageUrl: snapshot.data!,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          color: Colors.grey[200],
+                          child: const Center(child: CircularProgressIndicator()),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Theme.of(context).colorScheme.primaryContainer,
+                                Theme.of(context).colorScheme.secondaryContainer,
+                              ],
+                            ),
+                          ),
+                          child: Icon(
+                            _getContainerIcon(container),
+                            size: 48,
+                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      );
+                    }
+                    return Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Theme.of(context).colorScheme.primaryContainer,
+                            Theme.of(context).colorScheme.secondaryContainer,
+                          ],
+                        ),
+                      ),
+                      child: Icon(
+                        _getContainerIcon(container),
+                        size: 48,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      ),
+                    );
+                  },
+                ),
+
+              // Icon for containers without photos
+              if (container.photoThumbPath == null)
+                Center(
+                  child: Icon(
+                    _getContainerIcon(container),
+                    size: 48,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
+                ),
+
+              // Gradient overlay for text readability
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.7),
+                      ],
+                    ),
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        container.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        model.Container.getTypeDisplayName(container.containerType),
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 12,
+                        ),
+                      ),
+                      if (container.description != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          container.description!,
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.8),
+                            fontSize: 11,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+
+              // Edit buttons in edit mode
+              if (_isEditMode)
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.white),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black.withOpacity(0.5),
+                        ),
+                        onPressed: () => _showEditContainerDialog(context, ref, container),
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.white),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.red.withOpacity(0.7),
+                        ),
+                        onPressed: () => _showDeleteConfirmation(context, ref, container),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -482,86 +627,108 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
 
   Widget _buildCategoryTabs(WidgetRef ref, List<Item> allItems) {
     final selectedType = ref.watch(selectedTypeProvider);
+    final itemTypesAsync = ref.watch(itemTypesProvider(widget.householdId));
 
-    // Count items by type
-    final bookCount = allItems.where((i) => i.type == 'book').length;
-    final vinylCount = allItems.where((i) => i.type == 'vinyl').length;
-    final gameCount = allItems.where((i) => i.type == 'game').length;
-    final toolCount = allItems.where((i) => i.type == 'tool').length;
-    final otherCount = allItems.where((i) => !['book', 'vinyl', 'game', 'tool'].contains(i.type)).length;
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          _CategoryTab(
-            label: 'All',
-            count: allItems.length,
-            isSelected: selectedType == null,
-            onTap: () => ref.read(selectedTypeProvider.notifier).state = null,
-          ),
-          const SizedBox(width: 8),
-          _CategoryTab(
-            label: 'Books',
-            count: bookCount,
-            isSelected: selectedType == 'book',
-            onTap: () => ref.read(selectedTypeProvider.notifier).state = 'book',
-          ),
-          const SizedBox(width: 8),
-          _CategoryTab(
-            label: 'Music',
-            count: vinylCount,
-            isSelected: selectedType == 'vinyl',
-            onTap: () => ref.read(selectedTypeProvider.notifier).state = 'vinyl',
-          ),
-          const SizedBox(width: 8),
-          _CategoryTab(
-            label: 'Games',
-            count: gameCount,
-            isSelected: selectedType == 'game',
-            onTap: () => ref.read(selectedTypeProvider.notifier).state = 'game',
-          ),
-          const SizedBox(width: 8),
-          _CategoryTab(
-            label: 'Tools',
-            count: toolCount,
-            isSelected: selectedType == 'tool',
-            onTap: () => ref.read(selectedTypeProvider.notifier).state = 'tool',
-          ),
-          const SizedBox(width: 8),
-          _CategoryTab(
-            label: 'Other',
-            count: otherCount,
-            isSelected: selectedType != null && !['book', 'vinyl', 'game', 'tool'].contains(selectedType),
-            onTap: () => _showOtherTypesDialog(ref),
-          ),
-        ],
+    return itemTypesAsync.when(
+      loading: () => const SizedBox(
+        height: 50,
+        child: Center(child: CircularProgressIndicator()),
       ),
+      error: (error, stack) => const SizedBox.shrink(),
+      data: (itemTypes) {
+        // Get primary types to show as main tabs (specialized + a few common ones)
+        final primaryTypes = ['book', 'vinyl', 'game', 'tool', 'general'];
+
+        // Count items for each primary type
+        final typeCounts = <String, int>{};
+        for (var type in primaryTypes) {
+          typeCounts[type] = allItems.where((i) => i.type == type).length;
+        }
+
+        // Count items for "other" types (not in primary list)
+        final otherCount = allItems.where((i) => !primaryTypes.contains(i.type)).length;
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              _CategoryTab(
+                label: 'All',
+                count: allItems.length,
+                isSelected: selectedType == null,
+                onTap: () => ref.read(selectedTypeProvider.notifier).state = null,
+              ),
+              const SizedBox(width: 8),
+              // Build tabs for primary types that exist in itemTypes
+              ...primaryTypes.map((typeName) {
+                final itemType = itemTypes.firstWhere(
+                  (t) => t.name == typeName,
+                  orElse: () => ItemType(
+                    id: '',
+                    name: typeName,
+                    displayName: typeName,
+                    icon: 'category',
+                    isDefault: false,
+                    hasSpecializedForm: false,
+                    createdBy: '',
+                    createdAt: DateTime.now(),
+                  ),
+                );
+
+                return [
+                  _CategoryTab(
+                    label: itemType.displayName,
+                    count: typeCounts[typeName] ?? 0,
+                    isSelected: selectedType == typeName,
+                    onTap: () => ref.read(selectedTypeProvider.notifier).state = typeName,
+                  ),
+                  const SizedBox(width: 8),
+                ];
+              }).expand((widgets) => widgets),
+              // Show "Other" tab if there are other types or custom types
+              if (otherCount > 0 || itemTypes.any((t) => !primaryTypes.contains(t.name)))
+                _CategoryTab(
+                  label: 'Other',
+                  count: otherCount,
+                  isSelected: selectedType != null && !primaryTypes.contains(selectedType),
+                  onTap: () => _showOtherTypesDialog(ref, itemTypes, primaryTypes),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  void _showOtherTypesDialog(WidgetRef ref) {
-    final otherTypes = ['general', 'pantry', 'camera', 'electronics', 'clothing', 'kitchen', 'outdoor'];
+  void _showOtherTypesDialog(WidgetRef ref, List<ItemType> itemTypes, List<String> primaryTypes) {
+    // Get all types that are not in the primary list
+    final otherTypes = itemTypes.where((t) => !primaryTypes.contains(t.name)).toList();
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Other Types'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: otherTypes.map((type) {
-              return ListTile(
-                title: Text(type[0].toUpperCase() + type.substring(1)),
-                onTap: () {
-                  ref.read(selectedTypeProvider.notifier).state = type;
-                  Navigator.pop(context);
-                },
-              );
-            }).toList(),
-          ),
-        ),
+        content: otherTypes.isEmpty
+            ? const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text('No other types available'),
+              )
+            : SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: otherTypes.map((type) {
+                    return ListTile(
+                      leading: Icon(IconHelper.getIconData(type.icon), size: 20),
+                      title: Text(type.displayName),
+                      onTap: () {
+                        ref.read(selectedTypeProvider.notifier).state = type.name;
+                        Navigator.pop(context);
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -569,30 +736,6 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildContainerThumbnail(WidgetRef ref, model.Container container) {
-    if (container.photoThumbPath == null) {
-      return CircleAvatar(
-        child: Icon(_getContainerIcon(container)),
-      );
-    }
-
-    final containerRepo = ref.read(containerRepositoryProvider);
-
-    return FutureBuilder<String?>(
-      future: containerRepo.getPhotoUrl(container.photoThumbPath!),
-      builder: (context, snapshot) {
-        if (snapshot.hasData && snapshot.data != null) {
-          return CircleAvatar(
-            backgroundImage: CachedNetworkImageProvider(snapshot.data!),
-          );
-        }
-        return CircleAvatar(
-          child: Icon(_getContainerIcon(container)),
-        );
-      },
     );
   }
 
@@ -621,57 +764,16 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
   }
 
   IconData _getIconForItemType(String type) {
-    switch (type) {
-      case 'book':
-        return Icons.book;
-      case 'vinyl':
-        return Icons.album;
-      case 'game':
-        return Icons.sports_esports;
-      case 'tool':
-        return Icons.build;
-      case 'pantry':
-        return Icons.restaurant;
-      case 'camera':
-        return Icons.camera_alt;
-      case 'electronics':
-        return Icons.devices;
-      case 'clothing':
-        return Icons.checkroom;
-      case 'kitchen':
-        return Icons.kitchen;
-      case 'outdoor':
-        return Icons.park;
-      default:
-        return Icons.inventory_2;
-    }
+    return IconHelper.getItemIcon(type);
   }
 
   IconData _getContainerIcon(model.Container container) {
+    // Try to get icon from container's icon field first
     if (container.icon != null) {
-      return _getIconFromName(container.icon!);
+      return IconHelper.getIconData(container.icon!);
     }
-    // Default icons based on type
-    switch (container.containerType) {
-      case 'room':
-        return Icons.meeting_room;
-      case 'shelf':
-        return Icons.shelves;
-      case 'box':
-        return Icons.inventory_2;
-      case 'fridge':
-        return Icons.kitchen;
-      case 'drawer':
-        return Icons.kitchen_outlined;
-      case 'cabinet':
-        return Icons.door_sliding;
-      case 'closet':
-        return Icons.checkroom;
-      case 'bin':
-        return Icons.delete_outline;
-      default:
-        return Icons.inventory_2;
-    }
+    // Fallback to type-based icon
+    return IconHelper.getContainerIcon(container.containerType);
   }
 
   IconData _getIconFromName(String iconName) {
@@ -698,6 +800,8 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
   void _showAddContainerDialog(BuildContext context, WidgetRef ref) {
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
+    final containerTypesAsync = ref.watch(containerTypesProvider(widget.householdId));
+
     String selectedType = widget.breadcrumb.isEmpty ? 'room' : 'shelf';
     String? selectedIcon;
     File? selectedPhoto;
@@ -708,230 +812,275 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           title: Text(widget.breadcrumb.isEmpty ? 'Add Room' : 'Add Container'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Name',
-                    hintText: 'e.g., Kitchen, Top Shelf',
-                  ),
-                  autofocus: true,
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: selectedType,
-                  decoration: const InputDecoration(labelText: 'Type'),
-                  items: _getContainerTypes(widget.breadcrumb.isEmpty)
-                      .map((type) => DropdownMenuItem(
-                            value: type,
-                            child: Text(model.Container.getTypeDisplayName(type)),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => selectedType = value);
-                    }
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Description (optional)',
-                    hintText: 'Brief description',
-                  ),
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final ImageSource? source = await showModalBottomSheet<ImageSource>(
-                      context: context,
-                      builder: (context) => SafeArea(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ListTile(
-                              leading: const Icon(Icons.camera_alt),
-                              title: const Text('Take Photo'),
-                              onTap: () => Navigator.pop(context, ImageSource.camera),
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.photo_library),
-                              title: const Text('Choose from Gallery'),
-                              onTap: () => Navigator.pop(context, ImageSource.gallery),
-                            ),
-                            const SizedBox(height: 8),
-                          ],
-                        ),
-                      ),
-                    );
+          content: containerTypesAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, stack) => Text('Error loading types: $error'),
+            data: (containerTypes) {
+              // Show all container types
+              final availableTypes = containerTypes;
 
-                    if (source != null) {
-                      final XFile? image = await picker.pickImage(
-                        source: source,
-                        maxWidth: 1920,
-                        maxHeight: 1080,
-                        imageQuality: 85,
-                      );
-                      if (image != null) {
-                        setState(() {
-                          selectedPhoto = File(image.path);
-                        });
-                      }
-                    }
-                  },
-                  icon: const Icon(Icons.add_a_photo),
-                  label: Text(selectedPhoto == null ? 'Add Photo (Optional)' : 'Photo Selected'),
-                ),
-                if (selectedPhoto != null) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    height: 150,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      image: DecorationImage(
-                        image: FileImage(selectedPhoto!),
-                        fit: BoxFit.cover,
+              // Ensure selectedType exists in available types
+              if (!availableTypes.any((t) => t.name == selectedType)) {
+                selectedType = availableTypes.isNotEmpty ? availableTypes.first.name : 'room';
+              }
+
+              return SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Name',
+                        hintText: 'e.g., Kitchen, Top Shelf',
+                      ),
+                      autofocus: true,
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: selectedType,
+                      decoration: const InputDecoration(labelText: 'Type'),
+                      items: availableTypes
+                          .map((type) => DropdownMenuItem(
+                                value: type.name,
+                                child: Row(
+                                  children: [
+                                    Icon(IconHelper.getIconData(type.icon), size: 20),
+                                    const SizedBox(width: 8),
+                                    Text(type.displayName),
+                                  ],
+                                ),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => selectedType = value);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: descriptionController,
+                      decoration: const InputDecoration(
+                        labelText: 'Description (optional)',
+                        hintText: 'Brief description',
                       ),
                     ),
-                  ),
-                  TextButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        selectedPhoto = null;
-                      });
-                    },
-                    icon: const Icon(Icons.delete, size: 18),
-                    label: const Text('Remove Photo'),
-                  ),
-                ],
-                if (widget.breadcrumb.isEmpty) ...[
-                  const SizedBox(height: 16),
-                  const Text('Select Room Icon:'),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _IconOption(
-                        icon: Icons.kitchen,
-                        label: 'Kitchen',
-                        value: 'kitchen',
-                        selected: selectedIcon == 'kitchen',
-                        onTap: () => setState(() => selectedIcon = 'kitchen'),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final ImageSource? source = await showModalBottomSheet<ImageSource>(
+                          context: context,
+                          builder: (context) => SafeArea(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ListTile(
+                                  leading: const Icon(Icons.camera_alt),
+                                  title: const Text('Take Photo'),
+                                  onTap: () => Navigator.pop(context, ImageSource.camera),
+                                ),
+                                ListTile(
+                                  leading: const Icon(Icons.photo_library),
+                                  title: const Text('Choose from Gallery'),
+                                  onTap: () => Navigator.pop(context, ImageSource.gallery),
+                                ),
+                                const SizedBox(height: 8),
+                              ],
+                            ),
+                          ),
+                        );
+
+                        if (source != null) {
+                          final XFile? image = await picker.pickImage(
+                            source: source,
+                            maxWidth: 1920,
+                            maxHeight: 1080,
+                            imageQuality: 85,
+                          );
+                          if (image != null) {
+                            setState(() {
+                              selectedPhoto = File(image.path);
+                            });
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.add_a_photo),
+                      label: Text(selectedPhoto == null ? 'Add Photo (Optional)' : 'Photo Selected'),
+                    ),
+                    if (selectedPhoto != null) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 150,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          image: DecorationImage(
+                            image: FileImage(selectedPhoto!),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
                       ),
-                      _IconOption(
-                        icon: Icons.bed,
-                        label: 'Bedroom',
-                        value: 'bedroom',
-                        selected: selectedIcon == 'bedroom',
-                        onTap: () => setState(() => selectedIcon = 'bedroom'),
-                      ),
-                      _IconOption(
-                        icon: Icons.weekend,
-                        label: 'Living Room',
-                        value: 'living_room',
-                        selected: selectedIcon == 'living_room',
-                        onTap: () => setState(() => selectedIcon = 'living_room'),
-                      ),
-                      _IconOption(
-                        icon: Icons.bathroom,
-                        label: 'Bathroom',
-                        value: 'bathroom',
-                        selected: selectedIcon == 'bathroom',
-                        onTap: () => setState(() => selectedIcon = 'bathroom'),
-                      ),
-                      _IconOption(
-                        icon: Icons.garage,
-                        label: 'Garage',
-                        value: 'garage',
-                        selected: selectedIcon == 'garage',
-                        onTap: () => setState(() => selectedIcon = 'garage'),
-                      ),
-                      _IconOption(
-                        icon: Icons.computer,
-                        label: 'Office',
-                        value: 'office',
-                        selected: selectedIcon == 'office',
-                        onTap: () => setState(() => selectedIcon = 'office'),
-                      ),
-                      _IconOption(
-                        icon: Icons.inventory_2,
-                        label: 'Storage',
-                        value: 'storage',
-                        selected: selectedIcon == 'storage',
-                        onTap: () => setState(() => selectedIcon = 'storage'),
+                      TextButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            selectedPhoto = null;
+                          });
+                        },
+                        icon: const Icon(Icons.delete, size: 18),
+                        label: const Text('Remove Photo'),
                       ),
                     ],
-                  ),
-                ],
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                if (nameController.text.trim().isEmpty) return;
-
-                try {
-                  final containerService = ref.read(containerServiceProvider);
-                  final containerRepo = ref.read(containerRepositoryProvider);
-                  final authService = ref.read(authServiceProvider);
-
-                  // Create container first to get the ID
-                  final containerId = await containerService.createContainer(
-                    householdId: widget.householdId,
-                    name: nameController.text.trim(),
-                    containerType: selectedType,
-                    creatorUid: authService.currentUserId!,
-                    parentId: widget.parentContainerId,
-                    description: descriptionController.text.trim().isEmpty ? null : descriptionController.text.trim(),
-                    icon: selectedIcon,
-                  );
-
-                  // Upload photo if selected
-                  if (selectedPhoto != null) {
-                    final photoPaths = await containerRepo.uploadPhoto(
-                      householdId: widget.householdId,
-                      containerId: containerId,
-                      userId: authService.currentUserId!,
-                      photo: selectedPhoto!,
-                    );
-
-                    // Update container with photo paths
-                    await containerService.updateContainer(
-                      containerId: containerId,
-                      photoPath: photoPaths['photoPath'],
-                      photoThumbPath: photoPaths['photoThumbPath'],
-                    );
-                  }
-
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('${model.Container.getTypeDisplayName(selectedType)} created!'),
+                    if (widget.breadcrumb.isEmpty) ...[
+                      const SizedBox(height: 16),
+                      const Text('Select Room Icon:'),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _IconOption(
+                            icon: Icons.kitchen,
+                            label: 'Kitchen',
+                            value: 'kitchen',
+                            selected: selectedIcon == 'kitchen',
+                            onTap: () => setState(() => selectedIcon = 'kitchen'),
+                          ),
+                          _IconOption(
+                            icon: Icons.bed,
+                            label: 'Bedroom',
+                            value: 'bedroom',
+                            selected: selectedIcon == 'bedroom',
+                            onTap: () => setState(() => selectedIcon = 'bedroom'),
+                          ),
+                          _IconOption(
+                            icon: Icons.weekend,
+                            label: 'Living Room',
+                            value: 'living_room',
+                            selected: selectedIcon == 'living_room',
+                            onTap: () => setState(() => selectedIcon = 'living_room'),
+                          ),
+                          _IconOption(
+                            icon: Icons.bathroom,
+                            label: 'Bathroom',
+                            value: 'bathroom',
+                            selected: selectedIcon == 'bathroom',
+                            onTap: () => setState(() => selectedIcon = 'bathroom'),
+                          ),
+                          _IconOption(
+                            icon: Icons.garage,
+                            label: 'Garage',
+                            value: 'garage',
+                            selected: selectedIcon == 'garage',
+                            onTap: () => setState(() => selectedIcon = 'garage'),
+                          ),
+                          _IconOption(
+                            icon: Icons.computer,
+                            label: 'Office',
+                            value: 'office',
+                            selected: selectedIcon == 'office',
+                            onTap: () => setState(() => selectedIcon = 'office'),
+                          ),
+                          _IconOption(
+                            icon: Icons.inventory_2,
+                            label: 'Storage',
+                            value: 'storage',
+                            selected: selectedIcon == 'storage',
+                            onTap: () => setState(() => selectedIcon = 'storage'),
+                          ),
+                        ],
                       ),
+                    ],
+                  ],
+                ),
+              );
+            },
+          ),
+          actions: containerTypesAsync.when(
+            loading: () => [],
+            error: (_, __) => [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+            data: (containerTypes) => [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  if (nameController.text.trim().isEmpty) return;
+
+                  try {
+                    final containerService = ref.read(containerServiceProvider);
+                    final containerRepo = ref.read(containerRepositoryProvider);
+                    final authService = ref.read(authServiceProvider);
+
+                    // Get icon from containerType if not manually selected
+                    final iconToUse = selectedIcon ?? containerTypes.firstWhere((t) => t.name == selectedType).icon;
+
+                    // Create container first to get the ID
+                    final containerId = await containerService.createContainer(
+                      householdId: widget.householdId,
+                      name: nameController.text.trim(),
+                      containerType: selectedType,
+                      creatorUid: authService.currentUserId!,
+                      parentId: widget.parentContainerId,
+                      description: descriptionController.text.trim().isEmpty ? null : descriptionController.text.trim(),
+                      icon: iconToUse,
                     );
+
+                    // Upload photo if selected
+                    if (selectedPhoto != null) {
+                      final photoPaths = await containerRepo.uploadPhoto(
+                        householdId: widget.householdId,
+                        containerId: containerId,
+                        userId: authService.currentUserId!,
+                        photo: selectedPhoto!,
+                      );
+
+                      // Update container with photo paths
+                      await containerService.updateContainer(
+                        containerId: containerId,
+                        photoPath: photoPaths['photoPath'],
+                        photoThumbPath: photoPaths['photoThumbPath'],
+                      );
+                    }
+
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      final typeDisplayName = containerTypes
+                          .firstWhere((t) => t.name == selectedType,
+                              orElse: () => ContainerType(
+                                id: '',
+                                name: selectedType,
+                                displayName: selectedType.substring(0, 1).toUpperCase() + selectedType.substring(1),
+                                icon: 'inventory_2',
+                                isDefault: false,
+                                allowNested: true,
+                                createdAt: DateTime.now(),
+                                createdBy: '',
+                              ))
+                          .displayName;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('$typeDisplayName created!'),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: ${e.toString()}')),
+                      );
+                    }
                   }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: ${e.toString()}')),
-                    );
-                  }
-                }
-              },
-              child: const Text('Create'),
-            ),
-          ],
+                },
+                child: const Text('Create'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -947,6 +1096,8 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
   void _showEditContainerDialog(BuildContext context, WidgetRef ref, model.Container container) {
     final nameController = TextEditingController(text: container.name);
     final descriptionController = TextEditingController(text: container.description);
+    final containerTypesAsync = ref.watch(containerTypesProvider(widget.householdId));
+
     String selectedType = container.containerType;
     String? selectedIcon = container.icon;
     File? selectedPhoto;
@@ -957,163 +1108,195 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           title: const Text('Edit Container'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Name'),
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: selectedType,
-                  decoration: const InputDecoration(labelText: 'Type'),
-                  items: _getContainerTypes(container.isTopLevel)
-                      .map((type) => DropdownMenuItem(
-                            value: type,
-                            child: Text(model.Container.getTypeDisplayName(type)),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => selectedType = value);
-                    }
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Description (optional)',
-                  ),
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final ImageSource? source = await showModalBottomSheet<ImageSource>(
-                      context: context,
-                      builder: (context) => SafeArea(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ListTile(
-                              leading: const Icon(Icons.camera_alt),
-                              title: const Text('Take Photo'),
-                              onTap: () => Navigator.pop(context, ImageSource.camera),
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.photo_library),
-                              title: const Text('Choose from Gallery'),
-                              onTap: () => Navigator.pop(context, ImageSource.gallery),
-                            ),
-                            const SizedBox(height: 8),
-                          ],
-                        ),
-                      ),
-                    );
+          content: containerTypesAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, stack) => Text('Error loading types: $error'),
+            data: (containerTypes) {
+              // Show all container types
+              final availableTypes = containerTypes;
 
-                    if (source != null) {
-                      final XFile? image = await picker.pickImage(
-                        source: source,
-                        maxWidth: 1920,
-                        maxHeight: 1080,
-                        imageQuality: 85,
-                      );
-                      if (image != null) {
-                        setState(() {
-                          selectedPhoto = File(image.path);
-                        });
-                      }
-                    }
-                  },
-                  icon: const Icon(Icons.add_a_photo),
-                  label: Text(
-                    selectedPhoto == null
-                      ? (container.photoPath == null ? 'Add Photo (Optional)' : 'Change Photo (Optional)')
-                      : 'New Photo Selected'
-                  ),
-                ),
-                if (selectedPhoto != null) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    height: 150,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      image: DecorationImage(
-                        image: FileImage(selectedPhoto!),
-                        fit: BoxFit.cover,
+              // Ensure selectedType exists in available types
+              if (!availableTypes.any((t) => t.name == selectedType)) {
+                selectedType = availableTypes.isNotEmpty ? availableTypes.first.name : 'room';
+              }
+
+              return SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(labelText: 'Name'),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: selectedType,
+                      decoration: const InputDecoration(labelText: 'Type'),
+                      items: availableTypes
+                          .map((type) => DropdownMenuItem(
+                                value: type.name,
+                                child: Row(
+                                  children: [
+                                    Icon(IconHelper.getIconData(type.icon), size: 20),
+                                    const SizedBox(width: 8),
+                                    Text(type.displayName),
+                                  ],
+                                ),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => selectedType = value);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: descriptionController,
+                      decoration: const InputDecoration(
+                        labelText: 'Description (optional)',
                       ),
                     ),
-                  ),
-                  TextButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        selectedPhoto = null;
-                      });
-                    },
-                    icon: const Icon(Icons.delete, size: 18),
-                    label: const Text('Remove New Photo'),
-                  ),
-                ],
-              ],
-            ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final ImageSource? source = await showModalBottomSheet<ImageSource>(
+                          context: context,
+                          builder: (context) => SafeArea(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ListTile(
+                                  leading: const Icon(Icons.camera_alt),
+                                  title: const Text('Take Photo'),
+                                  onTap: () => Navigator.pop(context, ImageSource.camera),
+                                ),
+                                ListTile(
+                                  leading: const Icon(Icons.photo_library),
+                                  title: const Text('Choose from Gallery'),
+                                  onTap: () => Navigator.pop(context, ImageSource.gallery),
+                                ),
+                                const SizedBox(height: 8),
+                              ],
+                            ),
+                          ),
+                        );
+
+                        if (source != null) {
+                          final XFile? image = await picker.pickImage(
+                            source: source,
+                            maxWidth: 1920,
+                            maxHeight: 1080,
+                            imageQuality: 85,
+                          );
+                          if (image != null) {
+                            setState(() {
+                              selectedPhoto = File(image.path);
+                            });
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.add_a_photo),
+                      label: Text(
+                        selectedPhoto == null
+                          ? (container.photoPath == null ? 'Add Photo (Optional)' : 'Change Photo (Optional)')
+                          : 'New Photo Selected'
+                      ),
+                    ),
+                    if (selectedPhoto != null) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 150,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          image: DecorationImage(
+                            image: FileImage(selectedPhoto!),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            selectedPhoto = null;
+                          });
+                        },
+                        icon: const Icon(Icons.delete, size: 18),
+                        label: const Text('Remove New Photo'),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                if (nameController.text.trim().isEmpty) return;
+          actions: containerTypesAsync.when(
+            loading: () => [],
+            error: (_, __) => [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+            data: (containerTypes) => [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  if (nameController.text.trim().isEmpty) return;
 
-                try {
-                  final containerService = ref.read(containerServiceProvider);
-                  final containerRepo = ref.read(containerRepositoryProvider);
-                  final authService = ref.read(authServiceProvider);
+                  try {
+                    final containerService = ref.read(containerServiceProvider);
+                    final containerRepo = ref.read(containerRepositoryProvider);
+                    final authService = ref.read(authServiceProvider);
 
-                  // Upload photo if selected
-                  String? photoPath;
-                  String? photoThumbPath;
-                  if (selectedPhoto != null) {
-                    final photoPaths = await containerRepo.uploadPhoto(
-                      householdId: widget.householdId,
+                    // Upload photo if selected
+                    String? photoPath;
+                    String? photoThumbPath;
+                    if (selectedPhoto != null) {
+                      final photoPaths = await containerRepo.uploadPhoto(
+                        householdId: widget.householdId,
+                        containerId: container.id,
+                        userId: authService.currentUserId!,
+                        photo: selectedPhoto!,
+                      );
+                      photoPath = photoPaths['photoPath'];
+                      photoThumbPath = photoPaths['photoThumbPath'];
+                    }
+
+                    // Get icon from containerType if not manually selected
+                    final iconToUse = selectedIcon ?? containerTypes.firstWhere((t) => t.name == selectedType).icon;
+
+                    await containerService.updateContainer(
                       containerId: container.id,
-                      userId: authService.currentUserId!,
-                      photo: selectedPhoto!,
+                      name: nameController.text.trim(),
+                      containerType: selectedType,
+                      description: descriptionController.text.trim().isEmpty ? null : descriptionController.text.trim(),
+                      icon: iconToUse,
+                      photoPath: photoPath,
+                      photoThumbPath: photoThumbPath,
                     );
-                    photoPath = photoPaths['photoPath'];
-                    photoThumbPath = photoPaths['photoThumbPath'];
-                  }
 
-                  await containerService.updateContainer(
-                    containerId: container.id,
-                    name: nameController.text.trim(),
-                    containerType: selectedType,
-                    description: descriptionController.text.trim().isEmpty ? null : descriptionController.text.trim(),
-                    icon: selectedIcon,
-                    photoPath: photoPath,
-                    photoThumbPath: photoThumbPath,
-                  );
-
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Container updated!')),
-                    );
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Container updated!')),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: ${e.toString()}')),
+                      );
+                    }
                   }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: ${e.toString()}')),
-                    );
-                  }
-                }
-              },
-              child: const Text('Save'),
-            ),
-          ],
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1180,7 +1363,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
               onPressed: () async {
                 try {
                   final containerService = ref.read(containerServiceProvider);
-                  await containerService.deleteContainer(container.id);
+                  await containerService.deleteContainer(container.id, widget.householdId);
 
                   if (context.mounted) {
                     Navigator.pop(context);

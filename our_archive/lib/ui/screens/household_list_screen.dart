@@ -10,11 +10,40 @@ import 'item_list_screen.dart';
 import 'profile_screen.dart';
 import 'scan_to_check_screen.dart';
 
-class HouseholdListScreen extends ConsumerWidget {
+class HouseholdListScreen extends ConsumerStatefulWidget {
   const HouseholdListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HouseholdListScreen> createState() => _HouseholdListScreenState();
+}
+
+class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
+  bool _hasPreloaded = false;
+
+  void _triggerThumbnailPreloading(List<Household> households) {
+    if (_hasPreloaded || households.isEmpty) return;
+    _hasPreloaded = true;
+
+    // Trigger preloading after the current frame completes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      final preloadService = ref.read(thumbnailPreloadServiceProvider);
+      final containerService = ref.read(containerServiceProvider);
+      final containerRepo = ref.read(containerRepositoryProvider);
+
+      // Fire and forget - don't await, run in background
+      preloadService.preloadAllHouseholdThumbnails(
+        households: households,
+        context: context,
+        containerService: containerService,
+        containerRepository: containerRepo,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final householdsAsync = ref.watch(userHouseholdsProvider);
     final authService = ref.read(authServiceProvider);
     final currentUser = authService.currentUser;
@@ -53,6 +82,9 @@ class HouseholdListScreen extends ConsumerWidget {
           child: Text('Error: $error'),
         ),
         data: (households) {
+          // Trigger thumbnail preloading when households are available
+          _triggerThumbnailPreloading(households);
+
           if (households.isEmpty) {
             return Center(
               child: Column(

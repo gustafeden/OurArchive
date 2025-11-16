@@ -1,9 +1,11 @@
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/household.dart';
+import 'type_service.dart';
 
 class HouseholdService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final TypeService _typeService = TypeService();
 
   // Generate unique 6-character code with checksum
   String generateHouseholdCode() {
@@ -43,6 +45,12 @@ class HouseholdService {
     await _firestore.collection('users').doc(creatorUid).update({
       'households': FieldValue.arrayUnion([docRef.id]),
     });
+
+    // Seed default types for the new household
+    await _typeService.seedDefaultTypes(
+      householdId: docRef.id,
+      creatorUid: creatorUid,
+    );
 
     return docRef.id;
   }

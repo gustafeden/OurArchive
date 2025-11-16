@@ -49,9 +49,9 @@ class ContainerRepository {
     final result = await FlutterImageCompress.compressAndGetFile(
       photo.absolute.path,
       thumbPath,
-      quality: 70,
-      minWidth: 200,
-      minHeight: 200,
+      quality: 75,
+      minWidth: 400,
+      minHeight: 400,
     );
 
     if (result == null) {

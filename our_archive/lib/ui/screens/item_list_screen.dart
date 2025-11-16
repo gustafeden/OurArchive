@@ -10,6 +10,8 @@ import 'book_scan_screen.dart';
 import 'vinyl_scan_screen.dart';
 import 'container_screen.dart';
 import 'item_detail_screen.dart';
+import 'manage_types_screen.dart';
+import '../../utils/icon_helper.dart';
 
 class ItemListScreen extends ConsumerStatefulWidget {
   final Household household;
@@ -112,6 +114,15 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                     ),
                   ),
                 );
+              } else if (value == 'manage_types') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ManageTypesScreen(
+                      householdId: widget.household.id,
+                    ),
+                  ),
+                );
               } else if (value == 'household_code') {
                 showDialog(
                   context: context,
@@ -189,7 +200,19 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                   ],
                 ),
               ),
-              if (isOwner)
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'manage_types',
+                child: Row(
+                  children: [
+                    Icon(Icons.category, size: 20),
+                    SizedBox(width: 8),
+                    Text('Manage Types'),
+                  ],
+                ),
+              ),
+              if (isOwner) ...[
+                const PopupMenuDivider(),
                 const PopupMenuItem(
                   value: 'household_code',
                   child: Row(
@@ -200,6 +223,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                     ],
                   ),
                 ),
+              ],
             ],
           ),
         ],
@@ -438,7 +462,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Row(
                 children: [
-                  Icon(_getIconForType(type), size: 20),
+                  Icon(IconHelper.getItemIcon(type), size: 20),
                   const SizedBox(width: 8),
                   Text(
                     '$typeLabel (${typeItems.length})',
@@ -522,7 +546,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
         return _CollapsibleCategorySection(
           type: type,
           typeLabel: typeLabel,
-          icon: _getIconForType(type),
+          icon: IconHelper.getItemIcon(type),
           itemCount: typeItems.length,
           isExpanded: isExpanded,
           items: typeItems,
@@ -551,37 +575,6 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
     return 'music-other';
   }
 
-  IconData _getIconForType(String type) {
-    switch (type) {
-      case 'book':
-        return Icons.book;
-      case 'vinyl':
-      case 'music-vinyl':
-      case 'music-cd':
-      case 'music-cassette':
-      case 'music-digital':
-      case 'music-other':
-        return Icons.album;
-      case 'game':
-        return Icons.sports_esports;
-      case 'tool':
-        return Icons.build;
-      case 'pantry':
-        return Icons.restaurant;
-      case 'camera':
-        return Icons.camera_alt;
-      case 'electronics':
-        return Icons.devices;
-      case 'clothing':
-        return Icons.checkroom;
-      case 'kitchen':
-        return Icons.kitchen;
-      case 'outdoor':
-        return Icons.park;
-      default:
-        return Icons.inventory_2;
-    }
-  }
 
   Widget _buildCategoryTabs(WidgetRef ref, List<Item> allItems) {
     final selectedType = ref.watch(selectedTypeProvider);
@@ -711,25 +704,43 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
   }
 
   void _showOtherTypesDialog(WidgetRef ref) {
-    final otherTypes = ['general', 'pantry', 'camera', 'electronics', 'clothing', 'kitchen', 'outdoor'];
+    final itemTypesAsync = ref.watch(itemTypesProvider(widget.household.id));
+    final primaryTypes = ['book', 'vinyl', 'game', 'tool'];
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Other Types'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: otherTypes.map((type) {
-              return ListTile(
-                title: Text(type[0].toUpperCase() + type.substring(1)),
-                onTap: () {
-                  ref.read(selectedTypeProvider.notifier).state = type;
-                  Navigator.pop(context);
-                },
+        content: itemTypesAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => Text('Error loading types: $error'),
+          data: (itemTypes) {
+            // Get all types that are not in the primary list
+            final otherTypes = itemTypes.where((t) => !primaryTypes.contains(t.name)).toList();
+
+            if (otherTypes.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text('No other types available'),
               );
-            }).toList(),
-          ),
+            }
+
+            return SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: otherTypes.map((type) {
+                  return ListTile(
+                    leading: Icon(IconHelper.getIconData(type.icon), size: 20),
+                    title: Text(type.displayName),
+                    onTap: () {
+                      ref.read(selectedTypeProvider.notifier).state = type.name;
+                      Navigator.pop(context);
+                    },
+                  );
+                }).toList(),
+              ),
+            );
+          },
         ),
         actions: [
           TextButton(
@@ -838,25 +849,35 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
   }
 
   void _showTypeFilter(WidgetRef ref) {
-    final types = ['general', 'tool', 'pantry', 'camera', 'book', 'vinyl', 'game', 'electronics', 'clothing', 'kitchen', 'outdoor'];
+    final itemTypesAsync = ref.watch(itemTypesProvider(widget.household.id));
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Filter by Type'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: types.map((type) {
-              return ListTile(
-                title: Text(type[0].toUpperCase() + type.substring(1)),
-                onTap: () {
-                  ref.read(selectedTypeProvider.notifier).state = type;
-                  Navigator.pop(context);
-                },
-              );
-            }).toList(),
+        content: itemTypesAsync.when(
+          loading: () => const SizedBox(
+            height: 100,
+            child: Center(child: CircularProgressIndicator()),
           ),
+          error: (error, stack) => Text('Error loading types: $error'),
+          data: (itemTypes) {
+            return SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: itemTypes.map((type) {
+                  return ListTile(
+                    leading: Icon(IconHelper.getIconData(type.icon), size: 20),
+                    title: Text(type.displayName),
+                    onTap: () {
+                      ref.read(selectedTypeProvider.notifier).state = type.name;
+                      Navigator.pop(context);
+                    },
+                  );
+                }).toList(),
+              ),
+            );
+          },
         ),
         actions: [
           TextButton(
@@ -871,41 +892,56 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
   void _showContainerFilter(WidgetRef ref, List containers) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Filter by Container'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.inbox),
-                title: const Text('Unorganized Items'),
-                onTap: () {
-                  ref.read(selectedContainerFilterProvider.notifier).state = 'unorganized';
-                  Navigator.pop(context);
-                },
+      builder: (context) => Consumer(
+        builder: (context, ref, child) {
+          final containerTypesAsync = ref.watch(containerTypesProvider(widget.household.id));
+
+          return AlertDialog(
+            title: const Text('Filter by Container'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.inbox),
+                    title: const Text('Unorganized Items'),
+                    onTap: () {
+                      ref.read(selectedContainerFilterProvider.notifier).state = 'unorganized';
+                      Navigator.pop(context);
+                    },
+                  ),
+                  const Divider(),
+                  ...containers.map((container) {
+                    // Get display name from containerTypesProvider
+                    String typeDisplayName = container.containerType;
+                    containerTypesAsync.whenData((types) {
+                      final matchingType = types.where((t) => t.name == container.containerType).firstOrNull;
+                      if (matchingType != null) {
+                        typeDisplayName = matchingType.displayName;
+                      }
+                    });
+
+                    return ListTile(
+                      leading: const Icon(Icons.inventory_2),
+                      title: Text(container.name),
+                      subtitle: Text(typeDisplayName),
+                      onTap: () {
+                        ref.read(selectedContainerFilterProvider.notifier).state = container.id;
+                        Navigator.pop(context);
+                      },
+                    );
+                  }),
+                ],
               ),
-              const Divider(),
-              ...containers.map((container) {
-                return ListTile(
-                  leading: const Icon(Icons.inventory_2),
-                  title: Text(container.name),
-                  subtitle: Text(container.containerType),
-                  onTap: () {
-                    ref.read(selectedContainerFilterProvider.notifier).state = container.id;
-                    Navigator.pop(context);
-                  },
-                );
-              }),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
             ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -1053,7 +1089,7 @@ class _ItemCard extends ConsumerWidget {
   Widget _buildThumbnail(WidgetRef ref) {
     if (item.photoThumbPath == null) {
       return CircleAvatar(
-        child: Icon(_getIconForType()),
+        child: Icon(IconHelper.getItemIcon(item.type)),
       );
     }
 
@@ -1068,38 +1104,12 @@ class _ItemCard extends ConsumerWidget {
           );
         }
         return CircleAvatar(
-          child: Icon(_getIconForType()),
+          child: Icon(IconHelper.getItemIcon(item.type)),
         );
       },
     );
   }
 
-  IconData _getIconForType() {
-    switch (item.type) {
-      case 'book':
-        return Icons.book;
-      case 'vinyl':
-        return Icons.album;
-      case 'game':
-        return Icons.sports_esports;
-      case 'tool':
-        return Icons.build;
-      case 'pantry':
-        return Icons.restaurant;
-      case 'camera':
-        return Icons.camera_alt;
-      case 'electronics':
-        return Icons.devices;
-      case 'clothing':
-        return Icons.checkroom;
-      case 'kitchen':
-        return Icons.kitchen;
-      case 'outdoor':
-        return Icons.park;
-      default:
-        return Icons.inventory_2;
-    }
-  }
 }
 
 class _CategoryTab extends StatelessWidget {
