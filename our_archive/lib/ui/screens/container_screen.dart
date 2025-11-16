@@ -1,14 +1,18 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../providers/providers.dart';
 import '../../data/models/container.dart' as model;
 import '../../data/models/item.dart';
 import '../../data/models/household.dart';
-import 'add_item_screen.dart';
+import 'item_type_selection_screen.dart';
 import 'barcode_scan_screen.dart';
 import 'item_detail_screen.dart';
 import 'item_list_screen.dart';
+import 'book_scan_screen.dart';
+import 'vinyl_scan_screen.dart';
 
 class ContainerScreen extends ConsumerStatefulWidget {
   final String householdId;
@@ -30,6 +34,15 @@ class ContainerScreen extends ConsumerStatefulWidget {
 
 class _ContainerScreenState extends ConsumerState<ContainerScreen> {
   bool _isEditMode = false;
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,59 +62,97 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title),
-            if (widget.breadcrumb.isNotEmpty)
-              Text(
-                _getBreadcrumbText(),
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Search...',
+                  border: InputBorder.none,
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value.toLowerCase();
+                  });
+                },
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title),
+                  if (widget.breadcrumb.isNotEmpty)
+                    Text(
+                      _getBreadcrumbText(),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+                    ),
+                ],
               ),
-          ],
-        ),
         actions: [
-          // Toggle for nested items
-          if (widget.breadcrumb.isNotEmpty)
-            PopupMenuButton<bool>(
-              icon: Icon(showNested ? Icons.unfold_more : Icons.unfold_less),
-              tooltip: showNested ? 'Show nested items' : 'Show direct items only',
-              onSelected: (value) {
-                ref.read(showNestedItemsProvider.notifier).state = value;
-              },
-              itemBuilder: (context) => [
+          // Search button
+          IconButton(
+            icon: Icon(_isSearching ? Icons.close : Icons.search),
+            onPressed: () {
+              setState(() {
+                _isSearching = !_isSearching;
+                if (!_isSearching) {
+                  _searchController.clear();
+                  _searchQuery = '';
+                }
+              });
+            },
+          ),
+          // Three-dot menu
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'edit') {
+                setState(() {
+                  _isEditMode = !_isEditMode;
+                });
+              } else if (value == 'direct_items') {
+                ref.read(showNestedItemsProvider.notifier).state = false;
+              } else if (value == 'nested_items') {
+                ref.read(showNestedItemsProvider.notifier).state = true;
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    Icon(_isEditMode ? Icons.done : Icons.edit, size: 20),
+                    const SizedBox(width: 8),
+                    Text(_isEditMode ? 'Done Editing' : 'Edit Mode'),
+                  ],
+                ),
+              ),
+              if (widget.breadcrumb.isNotEmpty) ...[
+                const PopupMenuDivider(),
                 PopupMenuItem(
-                  value: false,
+                  value: 'direct_items',
                   child: Row(
                     children: [
-                      Icon(Icons.unfold_less, size: 20, color: !showNested ? Theme.of(context).colorScheme.primary : null),
+                      Icon(Icons.unfold_less,
+                          size: 20, color: !showNested ? Theme.of(context).colorScheme.primary : null),
                       const SizedBox(width: 8),
-                      Text('Direct items only', style: TextStyle(fontWeight: !showNested ? FontWeight.bold : FontWeight.normal)),
+                      Text('Direct items only',
+                          style: TextStyle(fontWeight: !showNested ? FontWeight.bold : FontWeight.normal)),
                     ],
                   ),
                 ),
                 PopupMenuItem(
-                  value: true,
+                  value: 'nested_items',
                   child: Row(
                     children: [
-                      Icon(Icons.unfold_more, size: 20, color: showNested ? Theme.of(context).colorScheme.primary : null),
+                      Icon(Icons.unfold_more,
+                          size: 20, color: showNested ? Theme.of(context).colorScheme.primary : null),
                       const SizedBox(width: 8),
-                      Text('All nested items', style: TextStyle(fontWeight: showNested ? FontWeight.bold : FontWeight.normal)),
+                      Text('All nested items',
+                          style: TextStyle(fontWeight: showNested ? FontWeight.bold : FontWeight.normal)),
                     ],
                   ),
                 ),
               ],
-            ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _isEditMode = !_isEditMode;
-              });
-            },
-            child: Text(
-              _isEditMode ? 'Done' : 'Edit',
-              style: const TextStyle(fontSize: 16),
-            ),
+            ],
           ),
         ],
       ),
@@ -143,21 +194,40 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                 );
               }
 
-              // Filter items by selected type
-              final filteredItems = selectedType == null
-                  ? items
-                  : items.where((item) => item.type == selectedType).toList();
+              // Filter items by selected type and search query
+              var filteredItems =
+                  selectedType == null ? items : items.where((item) => item.type == selectedType).toList();
+
+              // Apply search filter
+              if (_searchQuery.isNotEmpty) {
+                filteredItems = filteredItems.where((item) {
+                  return item.title.toLowerCase().contains(_searchQuery) ||
+                      (item.authors?.any((author) => author.toLowerCase().contains(_searchQuery)) ?? false) ||
+                      (item.artist?.toLowerCase().contains(_searchQuery) ?? false) ||
+                      (item.platform?.toLowerCase().contains(_searchQuery) ?? false) ||
+                      item.type.toLowerCase().contains(_searchQuery);
+                }).toList();
+              }
+
+              // Filter containers by search query
+              var filteredContainers = containers;
+              if (_searchQuery.isNotEmpty) {
+                filteredContainers = containers.where((container) {
+                  return container.name.toLowerCase().contains(_searchQuery) ||
+                      container.containerType.toLowerCase().contains(_searchQuery) ||
+                      (container.description?.toLowerCase().contains(_searchQuery) ?? false);
+                }).toList();
+              }
 
               return Column(
                 children: [
                   // Category tabs (only show if there are items)
-                  if (items.isNotEmpty)
-                    _buildCategoryTabs(ref, items),
+                  if (items.isNotEmpty) _buildCategoryTabs(ref, items),
 
                   // Content list
                   Expanded(
                     child: ListView.builder(
-                      itemCount: containers.length + (filteredItems.isNotEmpty ? 1 : 0),
+                      itemCount: filteredContainers.length + (filteredItems.isNotEmpty ? 1 : 0),
                       itemBuilder: (context, index) {
                         // Show items section first if we have unorganized items at top level
                         if (widget.breadcrumb.isEmpty && filteredItems.isNotEmpty && index == 0) {
@@ -165,16 +235,17 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                         }
 
                         // Adjust index if we showed items card first
-                        final containerIndex = (widget.breadcrumb.isEmpty && filteredItems.isNotEmpty) ? index - 1 : index;
+                        final containerIndex =
+                            (widget.breadcrumb.isEmpty && filteredItems.isNotEmpty) ? index - 1 : index;
 
                         // Show items at the end for non-top-level
-                        if (containerIndex >= containers.length) {
+                        if (containerIndex >= filteredContainers.length) {
                           return Column(
                             children: filteredItems.map((item) => _buildItemCard(context, ref, item)).toList(),
                           );
                         }
 
-                        final container = containers[containerIndex];
+                        final container = filteredContainers[containerIndex];
                         return _buildContainerCard(context, ref, container);
                       },
                     ),
@@ -188,18 +259,14 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          FloatingActionButton.extended(
-            heroTag: 'scan_book',
-            onPressed: () => _navigateToScanBook(context, ref),
-            icon: const Icon(Icons.qr_code_scanner),
-            label: const Text('Scan Barcode'),
-          ),
-          const SizedBox(height: 12),
-          FloatingActionButton.extended(
-            heroTag: 'add_item',
-            onPressed: () => _navigateToAddItem(context, ref),
-            icon: const Icon(Icons.inventory_2),
-            label: const Text('Add Item'),
+          GestureDetector(
+            onLongPress: () => _showQuickAddMenu(context),
+            child: FloatingActionButton.extended(
+              heroTag: 'add_item',
+              onPressed: () => _navigateToAddItem(context, ref),
+              icon: const Icon(Icons.inventory_2),
+              label: const Text('Add Item'),
+            ),
           ),
           const SizedBox(height: 12),
           FloatingActionButton.extended(
@@ -261,9 +328,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ListTile(
-        leading: CircleAvatar(
-          child: Icon(_getContainerIcon(container)),
-        ),
+        leading: _buildContainerThumbnail(ref, container),
         title: Text(container.name),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -305,6 +370,9 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
               ),
             ),
           );
+        },
+        onLongPress: () {
+          _showEditContainerDialog(context, ref, container);
         },
       ),
     );
@@ -358,6 +426,28 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
               ),
             );
           }
+        },
+        onLongPress: () {
+          // Create a minimal household object for navigation
+          final household = Household(
+            id: widget.householdId,
+            name: widget.householdName,
+            createdBy: '',
+            members: {},
+            createdAt: DateTime.now(),
+            code: '',
+          );
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ItemDetailScreen(
+                item: item,
+                household: household,
+                openInEditMode: true,
+              ),
+            ),
+          );
         },
       ),
     );
@@ -420,7 +510,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
           ),
           const SizedBox(width: 8),
           _CategoryTab(
-            label: 'Vinyl',
+            label: 'Music',
             count: vinylCount,
             isSelected: selectedType == 'vinyl',
             onTap: () => ref.read(selectedTypeProvider.notifier).state = 'vinyl',
@@ -479,6 +569,30 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildContainerThumbnail(WidgetRef ref, model.Container container) {
+    if (container.photoThumbPath == null) {
+      return CircleAvatar(
+        child: Icon(_getContainerIcon(container)),
+      );
+    }
+
+    final containerRepo = ref.read(containerRepositoryProvider);
+
+    return FutureBuilder<String?>(
+      future: containerRepo.getPhotoUrl(container.photoThumbPath!),
+      builder: (context, snapshot) {
+        if (snapshot.hasData && snapshot.data != null) {
+          return CircleAvatar(
+            backgroundImage: CachedNetworkImageProvider(snapshot.data!),
+          );
+        }
+        return CircleAvatar(
+          child: Icon(_getContainerIcon(container)),
+        );
+      },
     );
   }
 
@@ -586,6 +700,8 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
     final descriptionController = TextEditingController();
     String selectedType = widget.breadcrumb.isEmpty ? 'room' : 'shelf';
     String? selectedIcon;
+    File? selectedPhoto;
+    final picker = ImagePicker();
 
     showDialog(
       context: context,
@@ -628,6 +744,70 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                     hintText: 'Brief description',
                   ),
                 ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final ImageSource? source = await showModalBottomSheet<ImageSource>(
+                      context: context,
+                      builder: (context) => SafeArea(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.camera_alt),
+                              title: const Text('Take Photo'),
+                              onTap: () => Navigator.pop(context, ImageSource.camera),
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.photo_library),
+                              title: const Text('Choose from Gallery'),
+                              onTap: () => Navigator.pop(context, ImageSource.gallery),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+                        ),
+                      ),
+                    );
+
+                    if (source != null) {
+                      final XFile? image = await picker.pickImage(
+                        source: source,
+                        maxWidth: 1920,
+                        maxHeight: 1080,
+                        imageQuality: 85,
+                      );
+                      if (image != null) {
+                        setState(() {
+                          selectedPhoto = File(image.path);
+                        });
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.add_a_photo),
+                  label: Text(selectedPhoto == null ? 'Add Photo (Optional)' : 'Photo Selected'),
+                ),
+                if (selectedPhoto != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    height: 150,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      image: DecorationImage(
+                        image: FileImage(selectedPhoto!),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        selectedPhoto = null;
+                      });
+                    },
+                    icon: const Icon(Icons.delete, size: 18),
+                    label: const Text('Remove Photo'),
+                  ),
+                ],
                 if (widget.breadcrumb.isEmpty) ...[
                   const SizedBox(height: 16),
                   const Text('Select Room Icon:'),
@@ -702,9 +882,11 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
 
                 try {
                   final containerService = ref.read(containerServiceProvider);
+                  final containerRepo = ref.read(containerRepositoryProvider);
                   final authService = ref.read(authServiceProvider);
 
-                  await containerService.createContainer(
+                  // Create container first to get the ID
+                  final containerId = await containerService.createContainer(
                     householdId: widget.householdId,
                     name: nameController.text.trim(),
                     containerType: selectedType,
@@ -713,6 +895,23 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                     description: descriptionController.text.trim().isEmpty ? null : descriptionController.text.trim(),
                     icon: selectedIcon,
                   );
+
+                  // Upload photo if selected
+                  if (selectedPhoto != null) {
+                    final photoPaths = await containerRepo.uploadPhoto(
+                      householdId: widget.householdId,
+                      containerId: containerId,
+                      userId: authService.currentUserId!,
+                      photo: selectedPhoto!,
+                    );
+
+                    // Update container with photo paths
+                    await containerService.updateContainer(
+                      containerId: containerId,
+                      photoPath: photoPaths['photoPath'],
+                      photoThumbPath: photoPaths['photoThumbPath'],
+                    );
+                  }
 
                   if (context.mounted) {
                     Navigator.pop(context);
@@ -750,6 +949,8 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
     final descriptionController = TextEditingController(text: container.description);
     String selectedType = container.containerType;
     String? selectedIcon = container.icon;
+    File? selectedPhoto;
+    final picker = ImagePicker();
 
     showDialog(
       context: context,
@@ -787,6 +988,74 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                     labelText: 'Description (optional)',
                   ),
                 ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final ImageSource? source = await showModalBottomSheet<ImageSource>(
+                      context: context,
+                      builder: (context) => SafeArea(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.camera_alt),
+                              title: const Text('Take Photo'),
+                              onTap: () => Navigator.pop(context, ImageSource.camera),
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.photo_library),
+                              title: const Text('Choose from Gallery'),
+                              onTap: () => Navigator.pop(context, ImageSource.gallery),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+                        ),
+                      ),
+                    );
+
+                    if (source != null) {
+                      final XFile? image = await picker.pickImage(
+                        source: source,
+                        maxWidth: 1920,
+                        maxHeight: 1080,
+                        imageQuality: 85,
+                      );
+                      if (image != null) {
+                        setState(() {
+                          selectedPhoto = File(image.path);
+                        });
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.add_a_photo),
+                  label: Text(
+                    selectedPhoto == null
+                      ? (container.photoPath == null ? 'Add Photo (Optional)' : 'Change Photo (Optional)')
+                      : 'New Photo Selected'
+                  ),
+                ),
+                if (selectedPhoto != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    height: 150,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      image: DecorationImage(
+                        image: FileImage(selectedPhoto!),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        selectedPhoto = null;
+                      });
+                    },
+                    icon: const Icon(Icons.delete, size: 18),
+                    label: const Text('Remove New Photo'),
+                  ),
+                ],
               ],
             ),
           ),
@@ -801,6 +1070,22 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
 
                 try {
                   final containerService = ref.read(containerServiceProvider);
+                  final containerRepo = ref.read(containerRepositoryProvider);
+                  final authService = ref.read(authServiceProvider);
+
+                  // Upload photo if selected
+                  String? photoPath;
+                  String? photoThumbPath;
+                  if (selectedPhoto != null) {
+                    final photoPaths = await containerRepo.uploadPhoto(
+                      householdId: widget.householdId,
+                      containerId: container.id,
+                      userId: authService.currentUserId!,
+                      photo: selectedPhoto!,
+                    );
+                    photoPath = photoPaths['photoPath'];
+                    photoThumbPath = photoPaths['photoThumbPath'];
+                  }
 
                   await containerService.updateContainer(
                     containerId: container.id,
@@ -808,6 +1093,8 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                     containerType: selectedType,
                     description: descriptionController.text.trim().isEmpty ? null : descriptionController.text.trim(),
                     icon: selectedIcon,
+                    photoPath: photoPath,
+                    photoThumbPath: photoThumbPath,
                   );
 
                   if (context.mounted) {
@@ -1048,20 +1335,94 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
     }
   }
 
+  void _showQuickAddMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.qr_code_scanner, color: Colors.blue),
+              ),
+              title: const Text('Scan Book'),
+              subtitle: const Text('Quick scan ISBN barcode'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => BookScanScreen(
+                      householdId: widget.householdId,
+                      initialMode: BookScanMode.camera,
+                      preSelectedContainerId: widget.parentContainerId,
+                    ),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.purple.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.album, color: Colors.purple),
+              ),
+              title: const Text('Scan Music'),
+              subtitle: const Text('Quick scan music barcode'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => VinylScanScreen(
+                      householdId: widget.householdId,
+                      initialMode: VinylScanMode.camera,
+                      preSelectedContainerId: widget.parentContainerId,
+                    ),
+                  ),
+                );
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.add_circle_outline),
+              title: const Text('Show All Options'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ItemTypeSelectionScreen(
+                      householdId: widget.householdId,
+                      preSelectedContainerId: widget.parentContainerId,
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _navigateToAddItem(BuildContext context, WidgetRef ref) async {
-    // Get household info from providers
-    final householdsAsync = await ref.read(userHouseholdsProvider.future);
-    final household = householdsAsync.firstWhere(
-      (h) => h.id == widget.householdId,
-      orElse: () => throw Exception('Household not found'),
-    );
-
     if (context.mounted) {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => AddItemScreen(
-            household: household,
+          builder: (context) => ItemTypeSelectionScreen(
+            householdId: widget.householdId,
             preSelectedContainerId: widget.parentContainerId,
           ),
         ),
@@ -1069,26 +1430,6 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
     }
   }
 
-  void _navigateToScanBook(BuildContext context, WidgetRef ref) async {
-    // Get household info from providers
-    final householdsAsync = await ref.read(userHouseholdsProvider.future);
-    final household = householdsAsync.firstWhere(
-      (h) => h.id == widget.householdId,
-      orElse: () => throw Exception('Household not found'),
-    );
-
-    if (context.mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => BarcodeScanScreen(
-            household: household,
-            preSelectedContainerId: widget.parentContainerId,
-          ),
-        ),
-      );
-    }
-  }
 }
 
 class _IconOption extends StatelessWidget {
@@ -1162,9 +1503,7 @@ class _CategoryTab extends StatelessWidget {
           color: isSelected ? Theme.of(context).colorScheme.primaryContainer : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected
-              ? Theme.of(context).colorScheme.primary
-              : Colors.grey[300]!,
+            color: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey[300]!,
           ),
         ),
         child: Row(
@@ -1175,17 +1514,15 @@ class _CategoryTab extends StatelessWidget {
               style: TextStyle(
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 color: isSelected
-                  ? Theme.of(context).colorScheme.onPrimaryContainer
-                  : Theme.of(context).textTheme.bodyLarge?.color,
+                    ? Theme.of(context).colorScheme.onPrimaryContainer
+                    : Theme.of(context).textTheme.bodyLarge?.color,
               ),
             ),
             const SizedBox(width: 4),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: isSelected
-                  ? Theme.of(context).colorScheme.primary
-                  : Colors.grey[300],
+                color: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey[300],
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
@@ -1193,9 +1530,7 @@ class _CategoryTab extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: isSelected
-                    ? Theme.of(context).colorScheme.onPrimary
-                    : Colors.grey[700],
+                  color: isSelected ? Theme.of(context).colorScheme.onPrimary : Colors.grey[700],
                 ),
               ),
             ),

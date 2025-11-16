@@ -10,6 +10,8 @@ class Container {
   final String containerType; // 'room', 'shelf', 'box', 'fridge', 'drawer', 'cabinet', etc.
   final String? description;
   final String? icon; // Icon name for UI
+  final String? photoPath; // Full-size photo path in Firebase Storage
+  final String? photoThumbPath; // Thumbnail photo path in Firebase Storage
   final DateTime createdAt;
   final DateTime lastModified;
   final String createdBy;
@@ -23,6 +25,8 @@ class Container {
     required this.containerType,
     this.description,
     this.icon,
+    this.photoPath,
+    this.photoThumbPath,
     required this.createdAt,
     required this.lastModified,
     required this.createdBy,
@@ -39,6 +43,8 @@ class Container {
       containerType: data['containerType'] ?? 'room',
       description: data['description'],
       icon: data['icon'],
+      photoPath: data['photoPath'],
+      photoThumbPath: data['photoThumbPath'],
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       lastModified: (data['lastModified'] as Timestamp).toDate(),
       createdBy: data['createdBy'] ?? '',
@@ -53,6 +59,8 @@ class Container {
         'containerType': containerType,
         'description': description,
         'icon': icon,
+        'photoPath': photoPath,
+        'photoThumbPath': photoThumbPath,
         'createdAt': Timestamp.fromDate(createdAt),
         'lastModified': Timestamp.fromDate(lastModified),
         'createdBy': createdBy,
@@ -65,6 +73,8 @@ class Container {
     String? containerType,
     String? description,
     String? icon,
+    String? photoPath,
+    String? photoThumbPath,
     DateTime? lastModified,
     int? sortOrder,
   }) {
@@ -76,6 +86,8 @@ class Container {
       containerType: containerType ?? this.containerType,
       description: description ?? this.description,
       icon: icon ?? this.icon,
+      photoPath: photoPath ?? this.photoPath,
+      photoThumbPath: photoThumbPath ?? this.photoThumbPath,
       createdAt: createdAt,
       lastModified: lastModified ?? this.lastModified,
       createdBy: createdBy,

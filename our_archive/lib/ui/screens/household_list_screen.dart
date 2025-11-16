@@ -147,6 +147,21 @@ class HouseholdListScreen extends ConsumerWidget {
                             ),
                           )
                         : null,
+                      onTap: () {
+                        ref.read(currentHouseholdIdProvider.notifier).state = household.id;
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ContainerScreen(
+                              householdId: household.id,
+                              householdName: household.name,
+                            ),
+                          ),
+                        );
+                      },
+                      onLongPress: () {
+                        _showEditHouseholdDialog(context, ref, household);
+                      },
                     ),
                     // Show pending members if owner
                     if (isOwner && pendingCount > 0)
@@ -585,4 +600,513 @@ class _PendingMemberRow extends ConsumerWidget {
       ],
     );
   }
+}
+
+// Member card widget for edit dialog
+class _MemberCard extends ConsumerWidget {
+  final String userId;
+  final String currentUserId;
+  final String role;
+  final Household household;
+  final bool isOwner;
+
+  const _MemberCard({
+    required this.userId,
+    required this.currentUserId,
+    required this.role,
+    required this.household,
+    required this.isOwner,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userProfileAsync = ref.watch(userProfileProvider(userId));
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: userProfileAsync.when(
+        loading: () => const ListTile(
+          leading: CircleAvatar(child: CircularProgressIndicator()),
+          title: Text('Loading...'),
+        ),
+        error: (error, stack) {
+          return _buildMemberTile(
+            context,
+            ref,
+            'User ${userId.substring(0, 8)}...',
+            null,
+            null,
+          );
+        },
+        data: (profile) {
+          final displayName = profile?['displayName'] as String?;
+          final email = profile?['email'] as String?;
+
+          final title = displayName ?? email ?? 'User ${userId.substring(0, 8)}...';
+          final subtitle = displayName != null ? email : null;
+
+          return _buildMemberTile(context, ref, title, subtitle, profile);
+        },
+      ),
+    );
+  }
+
+  Widget _buildMemberTile(
+    BuildContext context,
+    WidgetRef ref,
+    String title,
+    String? subtitle,
+    Map<String, dynamic>? profile,
+  ) {
+    return ListTile(
+      leading: CircleAvatar(
+        child: Text(title[0].toUpperCase()),
+      ),
+      title: Text(
+        userId == currentUserId ? 'You' : title,
+        style: const TextStyle(fontSize: 14),
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (subtitle != null) Text(subtitle, style: const TextStyle(fontSize: 12)),
+          if (isOwner && userId != currentUserId)
+            DropdownButton<String>(
+              value: role,
+              isExpanded: true,
+              items: ['owner', 'member', 'viewer']
+                  .map((r) => DropdownMenuItem(
+                        value: r,
+                        child: Text(r),
+                      ))
+                  .toList(),
+              onChanged: (newRole) async {
+                if (newRole == null) return;
+
+                try {
+                  final householdService = ref.read(householdServiceProvider);
+                  await householdService.updateMemberRole(
+                    householdId: household.id,
+                    memberUid: userId,
+                    newRole: newRole,
+                    updaterUid: currentUserId,
+                  );
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Role updated successfully'),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error: ${e.toString()}'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+            )
+          else
+            Text(role, style: const TextStyle(fontSize: 12)),
+        ],
+      ),
+      trailing: isOwner && userId != currentUserId && role != 'owner'
+          ? IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Remove Member'),
+                    content: const Text(
+                      'Are you sure you want to remove this member?',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text(
+                          'Remove',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirm == true) {
+                  try {
+                    final householdService = ref.read(householdServiceProvider);
+                    await householdService.removeMember(
+                      householdId: household.id,
+                      memberUid: userId,
+                      removerUid: currentUserId,
+                    );
+
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Member removed successfully'),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Error: ${e.toString()}'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                }
+              },
+            )
+          : null,
+    );
+  }
+}
+
+// Add existing user dialog
+void _showAddExistingUserDialog(
+  BuildContext context,
+  WidgetRef ref,
+  String currentHouseholdId,
+  String currentUserId,
+) {
+  showDialog(
+    context: context,
+    builder: (dialogContext) => Consumer(
+      builder: (context, ref, _) {
+        final householdsAsync = ref.watch(userHouseholdsProvider);
+
+        return householdsAsync.when(
+          loading: () => const AlertDialog(
+            content: Center(child: CircularProgressIndicator()),
+          ),
+          error: (error, stack) => AlertDialog(
+            title: const Text('Error'),
+            content: Text('Failed to load users: $error'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+          data: (households) {
+            // Get all unique user IDs from other households
+            final currentHousehold = households.firstWhere(
+              (h) => h.id == currentHouseholdId,
+            );
+            final currentMemberIds = currentHousehold.members.keys.toSet();
+
+            // Collect users from all other households
+            final potentialUsers = <String>{};
+            for (final household in households) {
+              if (household.id != currentHouseholdId) {
+                potentialUsers.addAll(household.members.keys);
+              }
+            }
+
+            // Filter out users already in current household
+            final usersToAdd = potentialUsers.difference(currentMemberIds).toList();
+
+            if (usersToAdd.isEmpty) {
+              return AlertDialog(
+                title: const Text('Add Existing User'),
+                content: const Text(
+                  'No users from your other households are available to add.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: const Text('Close'),
+                  ),
+                ],
+              );
+            }
+
+            return AlertDialog(
+              title: const Text('Add Existing User'),
+              contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: usersToAdd.length,
+                  itemBuilder: (context, index) {
+                    final userId = usersToAdd[index];
+                    final userProfileAsync = ref.watch(userProfileProvider(userId));
+
+                    return userProfileAsync.when(
+                      loading: () => const ListTile(
+                        leading: CircleAvatar(child: CircularProgressIndicator()),
+                        title: Text('Loading...'),
+                      ),
+                      error: (error, stack) => ListTile(
+                        leading: CircleAvatar(
+                          child: Text(userId.substring(0, 2).toUpperCase()),
+                        ),
+                        title: Text('User ${userId.substring(0, 8)}...'),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.add),
+                          onPressed: () async {
+                            await _addUserToHousehold(
+                              context,
+                              dialogContext,
+                              ref,
+                              currentHouseholdId,
+                              userId,
+                              currentUserId,
+                            );
+                          },
+                        ),
+                      ),
+                      data: (profile) {
+                        final displayName = profile?['displayName'] as String?;
+                        final email = profile?['email'] as String?;
+                        final title = displayName ?? email ?? 'User ${userId.substring(0, 8)}...';
+                        final subtitle = displayName != null ? email : null;
+
+                        return ListTile(
+                          leading: CircleAvatar(
+                            child: Text(title[0].toUpperCase()),
+                          ),
+                          title: Text(title),
+                          subtitle: subtitle != null ? Text(subtitle) : null,
+                          trailing: IconButton(
+                            icon: const Icon(Icons.add),
+                            onPressed: () async {
+                              await _addUserToHousehold(
+                                context,
+                                dialogContext,
+                                ref,
+                                currentHouseholdId,
+                                userId,
+                                currentUserId,
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ),
+  );
+}
+
+// Helper function to add user to household
+Future<void> _addUserToHousehold(
+  BuildContext context,
+  BuildContext dialogContext,
+  WidgetRef ref,
+  String householdId,
+  String userId,
+  String currentUserId,
+) async {
+  try {
+    final householdService = ref.read(householdServiceProvider);
+    await householdService.addExistingMember(
+      householdId: householdId,
+      memberUid: userId,
+      adderUid: currentUserId,
+    );
+
+    if (context.mounted) {
+      Navigator.pop(dialogContext);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User added successfully'),
+        ),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
+
+// Edit household dialog
+void _showEditHouseholdDialog(BuildContext context, WidgetRef ref, Household household) {
+  final authService = ref.read(authServiceProvider);
+  final currentUserId = authService.currentUserId!;
+  final householdId = household.id;
+
+  final nameController = TextEditingController(text: household.name);
+
+  showDialog(
+    context: context,
+    builder: (dialogContext) => Consumer(
+      builder: (context, ref, _) {
+        final householdsAsync = ref.watch(userHouseholdsProvider);
+
+        return householdsAsync.when(
+          loading: () => const AlertDialog(
+            content: Center(child: CircularProgressIndicator()),
+          ),
+          error: (error, stack) => AlertDialog(
+            title: const Text('Error'),
+            content: Text('Failed to load household: $error'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+          data: (households) {
+            final currentHousehold = households.firstWhere(
+              (h) => h.id == householdId,
+              orElse: () => household, // Fallback to original if not found
+            );
+            final isOwner = currentHousehold.isOwner(currentUserId);
+
+            return AlertDialog(
+              title: const Text('Edit Household'),
+              contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              content: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 600,
+                  maxHeight: MediaQuery.of(context).size.height * 0.7,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Name field
+                      TextField(
+                        controller: nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Household Name',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Members section
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Members',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (isOwner)
+                            TextButton.icon(
+                              onPressed: () {
+                                _showAddExistingUserDialog(
+                                  context,
+                                  ref,
+                                  householdId,
+                                  currentUserId,
+                                );
+                              },
+                              icon: const Icon(Icons.person_add, size: 18),
+                              label: const Text('Add Existing User'),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Members list - using new _MemberCard widget
+                      ...currentHousehold.members.entries.map((entry) {
+                        return _MemberCard(
+                          userId: entry.key,
+                          currentUserId: currentUserId,
+                          role: entry.value,
+                          household: currentHousehold,
+                          isOwner: isOwner,
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () async {
+                    final newName = nameController.text.trim();
+                    if (newName.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Name cannot be empty'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+
+                    try {
+                      final householdService = ref.read(householdServiceProvider);
+                      await householdService.updateHouseholdName(
+                        householdId: householdId,
+                        newName: newName,
+                        userId: currentUserId,
+                      );
+
+                      if (context.mounted) {
+                        Navigator.pop(dialogContext);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Household updated successfully'),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: ${e.toString()}'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ),
+  );
 }

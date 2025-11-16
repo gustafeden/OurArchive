@@ -176,4 +176,85 @@ class HouseholdService {
           return pending;
         });
   }
+
+  // Update household name
+  Future<void> updateHouseholdName({
+    required String householdId,
+    required String newName,
+    required String userId,
+  }) async {
+    final doc = await _firestore.collection('households').doc(householdId).get();
+    final data = doc.data()!;
+
+    // Check user is a member (owner or member can edit name)
+    if (!data['members'].containsKey(userId)) {
+      throw Exception('Only household members can edit the name');
+    }
+
+    // Update name
+    await _firestore.collection('households').doc(householdId).update({
+      'name': newName,
+    });
+  }
+
+  // Update member role (owner only)
+  Future<void> updateMemberRole({
+    required String householdId,
+    required String memberUid,
+    required String newRole,
+    required String updaterUid,
+  }) async {
+    final doc = await _firestore.collection('households').doc(householdId).get();
+    final data = doc.data()!;
+
+    // Check updater is owner
+    if (data['members'][updaterUid] != 'owner') {
+      throw Exception('Only owners can change member roles');
+    }
+
+    // Don't allow changing the owner's role
+    if (data['members'][memberUid] == 'owner' && memberUid != updaterUid) {
+      throw Exception('Cannot change the household owner\'s role');
+    }
+
+    // Validate role
+    if (!['owner', 'member', 'viewer'].contains(newRole)) {
+      throw Exception('Invalid role');
+    }
+
+    // Update role
+    await _firestore.collection('households').doc(householdId).update({
+      'members.$memberUid': newRole,
+    });
+  }
+
+  // Add existing user to household (owner only)
+  Future<void> addExistingMember({
+    required String householdId,
+    required String memberUid,
+    required String adderUid,
+  }) async {
+    final doc = await _firestore.collection('households').doc(householdId).get();
+    final data = doc.data()!;
+
+    // Check adder is owner
+    if (data['members'][adderUid] != 'owner') {
+      throw Exception('Only owners can add members');
+    }
+
+    // Check member doesn't already exist
+    if (data['members'].containsKey(memberUid)) {
+      throw Exception('User is already a member of this household');
+    }
+
+    // Add as member
+    await _firestore.collection('households').doc(householdId).update({
+      'members.$memberUid': 'member',
+    });
+
+    // Add to user's household list
+    await _firestore.collection('users').doc(memberUid).update({
+      'households': FieldValue.arrayUnion([householdId]),
+    });
+  }
 }

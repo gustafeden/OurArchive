@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers/providers.dart';
 import 'email_sign_in_screen.dart';
 
 class WelcomeScreen extends ConsumerWidget {
@@ -8,8 +7,6 @@ class WelcomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authService = ref.read(authServiceProvider);
-
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -35,27 +32,8 @@ class WelcomeScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 48),
 
-              // Week 1: Anonymous sign in
+              // Email sign in
               FilledButton.icon(
-                onPressed: () async {
-                  try {
-                    await authService.signInAnonymously();
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error: ${e.toString()}')),
-                      );
-                    }
-                  }
-                },
-                icon: const Icon(Icons.arrow_forward),
-                label: const Text('Get Started'),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Week 2: Email sign in
-              TextButton(
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -64,7 +42,8 @@ class WelcomeScreen extends ConsumerWidget {
                     ),
                   );
                 },
-                child: const Text('Sign in with Email'),
+                icon: const Icon(Icons.login),
+                label: const Text('Sign in with Email'),
               ),
             ],
           ),

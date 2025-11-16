@@ -260,6 +260,10 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
                 const SizedBox(height: 8),
                 Text('Year: ${vinyl.year}'),
               ],
+              if (vinyl.format != null && vinyl.format!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text('Format: ${vinyl.format!.join(', ')}'),
+              ],
             ],
           ),
         ),
@@ -469,7 +473,17 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
                       ? Image.network(vinyl.coverUrl!, width: 40, fit: BoxFit.cover)
                       : const Icon(Icons.album),
                   title: Text(vinyl.title),
-                  subtitle: vinyl.artist.isNotEmpty ? Text(vinyl.artist) : null,
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (vinyl.artist.isNotEmpty) Text(vinyl.artist),
+                      if (vinyl.format != null && vinyl.format!.isNotEmpty)
+                        Text(
+                          vinyl.format!.join(', '),
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                    ],
+                  ),
                   onTap: () => _handleSearchResultTap(vinyl),
                 );
               },

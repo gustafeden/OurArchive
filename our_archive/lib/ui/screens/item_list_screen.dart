@@ -26,6 +26,9 @@ class ItemListScreen extends ConsumerStatefulWidget {
 }
 
 class _ItemListScreenState extends ConsumerState<ItemListScreen> {
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -33,11 +36,24 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(currentHouseholdIdProvider.notifier).state = widget.household.id;
 
-      // Apply initial filter if provided
+      // Apply initial filter if provided, otherwise clear filters
       if (widget.initialFilter == 'unorganized') {
         ref.read(selectedContainerFilterProvider.notifier).state = 'unorganized';
+      } else if (widget.initialFilter == null) {
+        // Clear all filters when entering without a specific filter
+        // This ensures newly added items are visible
+        ref.read(selectedContainerFilterProvider.notifier).state = null;
+        ref.read(selectedTypeProvider.notifier).state = null;
+        ref.read(selectedTagFilterProvider.notifier).state = null;
+        ref.read(selectedMusicFormatProvider.notifier).state = null;
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -53,44 +69,50 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.household.name),
-        actions: [
-          // View mode toggle
-          IconButton(
-            icon: Icon(
-              viewMode == ViewMode.list
-                ? Icons.dashboard_outlined
-                : Icons.list,
-              color: viewMode == ViewMode.browse
-                ? Theme.of(context).colorScheme.primary
-                : null,
-            ),
-            tooltip: viewMode == ViewMode.list ? 'Browse all categories' : 'List view',
-            onPressed: () {
-              ref.read(viewModeProvider.notifier).state =
-                viewMode == ViewMode.list ? ViewMode.browse : ViewMode.list;
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.inventory_2),
-            tooltip: 'Organize',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ContainerScreen(
-                    householdId: widget.household.id,
-                    householdName: widget.household.name,
-                  ),
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Search...',
+                  border: InputBorder.none,
                 ),
-              );
+                onChanged: (value) {
+                  ref.read(searchQueryProvider.notifier).state = value;
+                },
+              )
+            : Text(widget.household.name),
+        actions: [
+          // Search button
+          IconButton(
+            icon: Icon(_isSearching ? Icons.close : Icons.search),
+            onPressed: () {
+              setState(() {
+                _isSearching = !_isSearching;
+                if (!_isSearching) {
+                  _searchController.clear();
+                  ref.read(searchQueryProvider.notifier).state = '';
+                }
+              });
             },
           ),
-          if (isOwner)
-            IconButton(
-              icon: const Icon(Icons.qr_code),
-              tooltip: 'Show household code',
-              onPressed: () {
+          // Three-dot menu
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'view_mode') {
+                ref.read(viewModeProvider.notifier).state =
+                    viewMode == ViewMode.list ? ViewMode.browse : ViewMode.list;
+              } else if (value == 'organize') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ContainerScreen(
+                      householdId: widget.household.id,
+                      householdName: widget.household.name,
+                    ),
+                  ),
+                );
+              } else if (value == 'household_code') {
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
@@ -141,43 +163,59 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                     ],
                   ),
                 );
-              },
-            ),
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'view_mode',
+                child: Row(
+                  children: [
+                    Icon(
+                      viewMode == ViewMode.list ? Icons.dashboard_outlined : Icons.list,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(viewMode == ViewMode.list ? 'Browse Mode' : 'List Mode'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'organize',
+                child: Row(
+                  children: [
+                    Icon(Icons.inventory_2, size: 20),
+                    SizedBox(width: 8),
+                    Text('Organize'),
+                  ],
+                ),
+              ),
+              if (isOwner)
+                const PopupMenuItem(
+                  value: 'household_code',
+                  child: Row(
+                    children: [
+                      Icon(Icons.qr_code, size: 20),
+                      SizedBox(width: 8),
+                      Text('Household Code'),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
       body: Column(
         children: [
-          // Search bar
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search items...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          ref.read(searchQueryProvider.notifier).state = '';
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onChanged: (value) {
-                ref.read(searchQueryProvider.notifier).state = value;
-              },
-            ),
-          ),
-
           // Filter chips
           _buildFilterChips(ref),
 
           // Category tabs (hide in browse mode)
           if (viewMode == ViewMode.list)
             _buildCategoryTabs(ref, filteredItems),
+
+          // Music sub-category filter (show only when Music tab is selected)
+          if (viewMode == ViewMode.list && selectedType == 'vinyl')
+            _buildMusicFormatFilter(ref, filteredItems),
 
           // Items list
           Expanded(
@@ -337,12 +375,18 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
   }
 
   Widget _buildGroupedItemList(List<Item> items) {
-    // Group items by type
+    // Group items by type, but split vinyl into music sub-types
     final groupedItems = <String, List<Item>>{};
-    final categoryOrder = ['book', 'vinyl', 'game', 'tool', 'pantry', 'camera', 'electronics', 'clothing', 'kitchen', 'outdoor', 'general'];
+    final categoryOrder = ['book', 'music-cd', 'music-vinyl', 'music-cassette', 'music-digital', 'music-other', 'game', 'tool', 'pantry', 'camera', 'electronics', 'clothing', 'kitchen', 'outdoor', 'general'];
 
     for (final item in items) {
-      groupedItems.putIfAbsent(item.type, () => []).add(item);
+      if (item.type == 'vinyl') {
+        // Split vinyl items by format
+        final subType = _getMusicSubType(item);
+        groupedItems.putIfAbsent(subType, () => []).add(item);
+      } else {
+        groupedItems.putIfAbsent(item.type, () => []).add(item);
+      }
     }
 
     // Sort categories by predefined order, then alphabetically for others
@@ -360,7 +404,32 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
       itemBuilder: (context, sectionIndex) {
         final type = sortedTypes[sectionIndex];
         final typeItems = groupedItems[type]!;
-        final typeLabel = type[0].toUpperCase() + type.substring(1);
+
+        // Custom labels for music sub-types
+        String typeLabel;
+        if (type.startsWith('music-')) {
+          switch (type) {
+            case 'music-cd':
+              typeLabel = 'CD';
+              break;
+            case 'music-vinyl':
+              typeLabel = 'Vinyl';
+              break;
+            case 'music-cassette':
+              typeLabel = 'Cassette';
+              break;
+            case 'music-digital':
+              typeLabel = 'Digital';
+              break;
+            case 'music-other':
+              typeLabel = 'Music (Other)';
+              break;
+            default:
+              typeLabel = 'Music';
+          }
+        } else {
+          typeLabel = type[0].toUpperCase() + type.substring(1);
+        }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -390,12 +459,18 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
   }
 
   Widget _buildBrowseView(List<Item> items) {
-    // Group items by type
+    // Group items by type, but split vinyl into music sub-types
     final groupedItems = <String, List<Item>>{};
-    final categoryOrder = ['book', 'vinyl', 'game', 'tool', 'pantry', 'camera', 'electronics', 'clothing', 'kitchen', 'outdoor', 'general'];
+    final categoryOrder = ['book', 'music-cd', 'music-vinyl', 'music-cassette', 'music-digital', 'music-other', 'game', 'tool', 'pantry', 'camera', 'electronics', 'clothing', 'kitchen', 'outdoor', 'general'];
 
     for (final item in items) {
-      groupedItems.putIfAbsent(item.type, () => []).add(item);
+      if (item.type == 'vinyl') {
+        // Split vinyl items by format
+        final subType = _getMusicSubType(item);
+        groupedItems.putIfAbsent(subType, () => []).add(item);
+      } else {
+        groupedItems.putIfAbsent(item.type, () => []).add(item);
+      }
     }
 
     // Sort categories by predefined order
@@ -415,7 +490,33 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
       itemBuilder: (context, index) {
         final type = sortedTypes[index];
         final typeItems = groupedItems[type]!;
-        final typeLabel = type[0].toUpperCase() + type.substring(1);
+
+        // Custom labels for music sub-types
+        String typeLabel;
+        if (type.startsWith('music-')) {
+          switch (type) {
+            case 'music-cd':
+              typeLabel = 'CD';
+              break;
+            case 'music-vinyl':
+              typeLabel = 'Vinyl';
+              break;
+            case 'music-cassette':
+              typeLabel = 'Cassette';
+              break;
+            case 'music-digital':
+              typeLabel = 'Digital';
+              break;
+            case 'music-other':
+              typeLabel = 'Music (Other)';
+              break;
+            default:
+              typeLabel = 'Music';
+          }
+        } else {
+          typeLabel = type[0].toUpperCase() + type.substring(1);
+        }
+
         final isExpanded = expandedCategories.contains(type);
 
         return _CollapsibleCategorySection(
@@ -440,11 +541,26 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
     );
   }
 
+  String _getMusicSubType(Item item) {
+    if (item.format == null || item.format!.isEmpty) return 'music-other';
+    final formatStr = item.format!.join(' ').toLowerCase();
+    if (formatStr.contains('cd')) return 'music-cd';
+    if (formatStr.contains('vinyl') || formatStr.contains('lp')) return 'music-vinyl';
+    if (formatStr.contains('cassette')) return 'music-cassette';
+    if (formatStr.contains('digital') || formatStr.contains('file')) return 'music-digital';
+    return 'music-other';
+  }
+
   IconData _getIconForType(String type) {
     switch (type) {
       case 'book':
         return Icons.book;
       case 'vinyl':
+      case 'music-vinyl':
+      case 'music-cd':
+      case 'music-cassette':
+      case 'music-digital':
+      case 'music-other':
         return Icons.album;
       case 'game':
         return Icons.sports_esports;
@@ -497,10 +613,13 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
           ),
           const SizedBox(width: 8),
           _CategoryTab(
-            label: 'Vinyl',
+            label: 'Music',
             count: vinylCount,
             isSelected: selectedType == 'vinyl',
-            onTap: () => ref.read(selectedTypeProvider.notifier).state = 'vinyl',
+            onTap: () {
+              ref.read(selectedTypeProvider.notifier).state = 'vinyl';
+              ref.read(selectedMusicFormatProvider.notifier).state = null;
+            },
           ),
           const SizedBox(width: 8),
           _CategoryTab(
@@ -524,6 +643,69 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
             onTap: () => _showOtherTypesDialog(ref),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMusicFormatFilter(WidgetRef ref, List<Item> allItems) {
+    final selectedMusicFormat = ref.watch(selectedMusicFormatProvider);
+
+    // Count items by music format
+    final cdCount = allItems.where((i) => i.type == 'vinyl' && _getMusicSubType(i) == 'music-cd').length;
+    final vinylCount = allItems.where((i) => i.type == 'vinyl' && _getMusicSubType(i) == 'music-vinyl').length;
+    final cassetteCount = allItems.where((i) => i.type == 'vinyl' && _getMusicSubType(i) == 'music-cassette').length;
+    final digitalCount = allItems.where((i) => i.type == 'vinyl' && _getMusicSubType(i) == 'music-digital').length;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _MusicFormatChip(
+              label: 'All Music',
+              count: allItems.where((i) => i.type == 'vinyl').length,
+              isSelected: selectedMusicFormat == null,
+              onTap: () => ref.read(selectedMusicFormatProvider.notifier).state = null,
+            ),
+            const SizedBox(width: 8),
+            if (cdCount > 0) ...[
+              _MusicFormatChip(
+                label: 'CD',
+                count: cdCount,
+                isSelected: selectedMusicFormat == 'cd',
+                onTap: () => ref.read(selectedMusicFormatProvider.notifier).state = 'cd',
+              ),
+              const SizedBox(width: 8),
+            ],
+            if (vinylCount > 0) ...[
+              _MusicFormatChip(
+                label: 'Vinyl',
+                count: vinylCount,
+                isSelected: selectedMusicFormat == 'vinyl',
+                onTap: () => ref.read(selectedMusicFormatProvider.notifier).state = 'vinyl',
+              ),
+              const SizedBox(width: 8),
+            ],
+            if (cassetteCount > 0) ...[
+              _MusicFormatChip(
+                label: 'Cassette',
+                count: cassetteCount,
+                isSelected: selectedMusicFormat == 'cassette',
+                onTap: () => ref.read(selectedMusicFormatProvider.notifier).state = 'cassette',
+              ),
+              const SizedBox(width: 8),
+            ],
+            if (digitalCount > 0) ...[
+              _MusicFormatChip(
+                label: 'Digital',
+                count: digitalCount,
+                isSelected: selectedMusicFormat == 'digital',
+                onTap: () => ref.read(selectedMusicFormatProvider.notifier).state = 'digital',
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -635,6 +817,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
               ref.read(selectedTypeProvider.notifier).state = null;
               ref.read(selectedContainerFilterProvider.notifier).state = null;
               ref.read(selectedTagFilterProvider.notifier).state = null;
+              ref.read(selectedMusicFormatProvider.notifier).state = null;
             },
           ),
         ],
@@ -817,6 +1000,18 @@ class _ItemCard extends ConsumerWidget {
             ),
           );
         },
+        onLongPress: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ItemDetailScreen(
+                item: item,
+                household: household,
+                openInEditMode: true,
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -970,6 +1165,43 @@ class _CategoryTab extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _MusicFormatChip extends StatelessWidget {
+  final String label;
+  final int count;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _MusicFormatChip({
+    required this.label,
+    required this.count,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FilterChip(
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label),
+          const SizedBox(width: 4),
+          Text(
+            '$count',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+      selected: isSelected,
+      onSelected: (_) => onTap(),
+      showCheckmark: false,
     );
   }
 }

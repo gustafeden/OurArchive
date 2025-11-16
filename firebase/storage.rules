@@ -1,7 +1,17 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    // Items photos: households/{hid}/{itemId}/{fileName}
     match /households/{hid}/{itemId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.resource != null
+        && request.resource.metadata.owner == request.auth.uid
+        && request.resource.size < 10 * 1024 * 1024; // 10MB limit
+    }
+
+    // Container photos: households/{hid}/containers/{containerId}/{fileName}
+    match /households/{hid}/containers/{containerId}/{fileName} {
       allow read: if request.auth != null;
       allow write: if request.auth != null
         && request.resource != null

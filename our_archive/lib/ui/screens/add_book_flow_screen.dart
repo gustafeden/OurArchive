@@ -4,10 +4,12 @@ import 'package:our_archive/ui/screens/add_book_screen.dart';
 
 class AddBookFlowScreen extends StatelessWidget {
   final String householdId;
+  final String? preSelectedContainerId;
 
   const AddBookFlowScreen({
     Key? key,
     required this.householdId,
+    this.preSelectedContainerId,
   }) : super(key: key);
 
   @override
@@ -53,6 +55,7 @@ class AddBookFlowScreen extends StatelessWidget {
                             builder: (context) => BookScanScreen(
                               householdId: householdId,
                               initialMode: BookScanMode.camera,
+                              preSelectedContainerId: preSelectedContainerId,
                             ),
                           ),
                         );
@@ -71,6 +74,7 @@ class AddBookFlowScreen extends StatelessWidget {
                             builder: (context) => BookScanScreen(
                               householdId: householdId,
                               initialMode: BookScanMode.photoOcr,
+                              preSelectedContainerId: preSelectedContainerId,
                             ),
                           ),
                         );
@@ -89,6 +93,7 @@ class AddBookFlowScreen extends StatelessWidget {
                             builder: (context) => BookScanScreen(
                               householdId: householdId,
                               initialMode: BookScanMode.textSearch,
+                              preSelectedContainerId: preSelectedContainerId,
                             ),
                           ),
                         );
@@ -106,6 +111,7 @@ class AddBookFlowScreen extends StatelessWidget {
                           MaterialPageRoute(
                             builder: (context) => AddBookScreen(
                               householdId: householdId,
+                              preSelectedContainerId: preSelectedContainerId,
                             ),
                           ),
                         );

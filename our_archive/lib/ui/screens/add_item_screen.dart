@@ -258,7 +258,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
       );
 
       if (mounted) {
-        Navigator.pop(context);
+        Navigator.popUntil(context, (route) => route.isFirst);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Item added successfully!')),
         );

@@ -8,10 +8,12 @@ import 'package:our_archive/ui/screens/vinyl_scan_screen.dart';
 
 class ItemTypeSelectionScreen extends StatelessWidget {
   final String householdId;
+  final String? preSelectedContainerId;
 
   const ItemTypeSelectionScreen({
     Key? key,
     required this.householdId,
+    this.preSelectedContainerId,
   }) : super(key: key);
 
   @override
@@ -53,6 +55,7 @@ class ItemTypeSelectionScreen extends StatelessWidget {
                             builder: (context) => BookScanScreen(
                               householdId: householdId,
                               initialMode: BookScanMode.camera,
+                              preSelectedContainerId: preSelectedContainerId,
                             ),
                           ),
                         );
@@ -76,6 +79,7 @@ class ItemTypeSelectionScreen extends StatelessWidget {
                             builder: (context) => VinylScanScreen(
                               householdId: householdId,
                               initialMode: VinylScanMode.camera,
+                              preSelectedContainerId: preSelectedContainerId,
                             ),
                           ),
                         );
@@ -110,6 +114,7 @@ class ItemTypeSelectionScreen extends StatelessWidget {
                           MaterialPageRoute(
                             builder: (context) => AddBookFlowScreen(
                               householdId: householdId,
+                              preSelectedContainerId: preSelectedContainerId,
                             ),
                           ),
                         );
@@ -126,6 +131,7 @@ class ItemTypeSelectionScreen extends StatelessWidget {
                           MaterialPageRoute(
                             builder: (context) => AddVinylFlowScreen(
                               householdId: householdId,
+                              preSelectedContainerId: preSelectedContainerId,
                             ),
                           ),
                         );
@@ -142,6 +148,7 @@ class ItemTypeSelectionScreen extends StatelessWidget {
                           MaterialPageRoute(
                             builder: (context) => AddGameScreen(
                               householdId: householdId,
+                              preSelectedContainerId: preSelectedContainerId,
                             ),
                           ),
                         );
@@ -158,6 +165,7 @@ class ItemTypeSelectionScreen extends StatelessWidget {
                           MaterialPageRoute(
                             builder: (context) => AddItemScreen(
                               householdId: householdId,
+                              preSelectedContainerId: preSelectedContainerId,
                             ),
                           ),
                         );

@@ -83,7 +83,7 @@ class _EmailSignInScreenState extends ConsumerState<EmailSignInScreen> {
                 const SizedBox(height: 32),
 
                 Text(
-                  'Welcome Back',
+                  'Welcome!',
                   style: Theme.of(context).textTheme.headlineMedium,
                   textAlign: TextAlign.center,
                 ),

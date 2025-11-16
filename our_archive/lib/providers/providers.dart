@@ -7,6 +7,7 @@ import '../data/services/book_lookup_service.dart';
 import '../data/services/logger_service.dart';
 import '../services/vinyl_lookup_service.dart';
 import '../data/repositories/item_repository.dart';
+import '../data/repositories/container_repository.dart';
 import '../core/sync/sync_queue.dart';
 import '../data/models/household.dart';
 import '../data/models/item.dart';
@@ -25,6 +26,8 @@ final itemRepositoryProvider = Provider((ref) {
   final syncQueue = ref.watch(syncQueueProvider);
   return ItemRepository(syncQueue);
 });
+
+final containerRepositoryProvider = Provider((ref) => ContainerRepository());
 
 // Current user
 final currentUserProvider = StreamProvider<User?>((ref) {
@@ -66,6 +69,7 @@ final filteredItemsProvider = Provider<List<Item>>((ref) {
   final selectedType = ref.watch(selectedTypeProvider);
   final selectedContainer = ref.watch(selectedContainerFilterProvider);
   final selectedTag = ref.watch(selectedTagFilterProvider);
+  final selectedMusicFormat = ref.watch(selectedMusicFormatProvider);
 
   return items.where((item) {
     if (searchQuery.isNotEmpty &&
@@ -75,6 +79,28 @@ final filteredItemsProvider = Provider<List<Item>>((ref) {
 
     if (selectedType != null && item.type != selectedType) {
       return false;
+    }
+
+    // Music format sub-filtering (only applies when viewing vinyl type)
+    if (selectedType == 'vinyl' && selectedMusicFormat != null) {
+      if (item.format == null || item.format!.isEmpty) {
+        return false;
+      }
+      final formatStr = item.format!.join(' ').toLowerCase();
+      switch (selectedMusicFormat) {
+        case 'cd':
+          if (!formatStr.contains('cd')) return false;
+          break;
+        case 'vinyl':
+          if (!formatStr.contains('vinyl') && !formatStr.contains('lp')) return false;
+          break;
+        case 'cassette':
+          if (!formatStr.contains('cassette')) return false;
+          break;
+        case 'digital':
+          if (!formatStr.contains('digital') && !formatStr.contains('file')) return false;
+          break;
+      }
     }
 
     if (selectedContainer != null) {
@@ -98,6 +124,7 @@ final searchQueryProvider = StateProvider<String>((ref) => '');
 final selectedTypeProvider = StateProvider<String?>((ref) => null);
 final selectedContainerFilterProvider = StateProvider<String?>((ref) => null);
 final selectedTagFilterProvider = StateProvider<String?>((ref) => null);
+final selectedMusicFormatProvider = StateProvider<String?>((ref) => null);
 
 // View mode for ItemListScreen (list vs browse)
 enum ViewMode { list, browse }

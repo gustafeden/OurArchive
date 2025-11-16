@@ -197,7 +197,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
       );
 
       if (mounted) {
-        Navigator.pop(context);
+        Navigator.popUntil(context, (route) => route.isFirst);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Book added successfully!')),
         );

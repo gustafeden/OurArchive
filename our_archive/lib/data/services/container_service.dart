@@ -13,6 +13,8 @@ class ContainerService {
     String? parentId,
     String? description,
     String? icon,
+    String? photoPath,
+    String? photoThumbPath,
   }) async {
     final now = DateTime.now();
 
@@ -23,6 +25,8 @@ class ContainerService {
       'containerType': containerType,
       'description': description,
       'icon': icon,
+      'photoPath': photoPath,
+      'photoThumbPath': photoThumbPath,
       'createdAt': Timestamp.fromDate(now),
       'lastModified': Timestamp.fromDate(now),
       'createdBy': creatorUid,
@@ -81,6 +85,8 @@ class ContainerService {
     String? containerType,
     String? description,
     String? icon,
+    String? photoPath,
+    String? photoThumbPath,
     int? sortOrder,
     String? parentId,
   }) async {
@@ -92,6 +98,8 @@ class ContainerService {
     if (containerType != null) updates['containerType'] = containerType;
     if (description != null) updates['description'] = description;
     if (icon != null) updates['icon'] = icon;
+    if (photoPath != null) updates['photoPath'] = photoPath;
+    if (photoThumbPath != null) updates['photoThumbPath'] = photoThumbPath;
     if (sortOrder != null) updates['sortOrder'] = sortOrder;
     if (parentId != null) updates['parentId'] = parentId;
 

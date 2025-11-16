@@ -11,11 +11,13 @@ import '../../providers/providers.dart';
 class ItemDetailScreen extends ConsumerStatefulWidget {
   final Item item;
   final Household household;
+  final bool openInEditMode;
 
   const ItemDetailScreen({
     super.key,
     required this.item,
     required this.household,
+    this.openInEditMode = false,
   });
 
   @override
@@ -38,6 +40,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _isEditMode = widget.openInEditMode;
     _titleController = TextEditingController(text: widget.item.title);
     _typeController = TextEditingController(text: widget.item.type);
     _quantityController = TextEditingController(text: widget.item.quantity.toString());

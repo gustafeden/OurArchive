@@ -4,10 +4,12 @@ import 'package:our_archive/ui/screens/add_vinyl_screen.dart';
 
 class AddVinylFlowScreen extends StatelessWidget {
   final String householdId;
+  final String? preSelectedContainerId;
 
   const AddVinylFlowScreen({
     Key? key,
     required this.householdId,
+    this.preSelectedContainerId,
   }) : super(key: key);
 
   @override
@@ -53,6 +55,7 @@ class AddVinylFlowScreen extends StatelessWidget {
                             builder: (context) => VinylScanScreen(
                               householdId: householdId,
                               initialMode: VinylScanMode.camera,
+                              preSelectedContainerId: preSelectedContainerId,
                             ),
                           ),
                         );
@@ -71,6 +74,7 @@ class AddVinylFlowScreen extends StatelessWidget {
                             builder: (context) => VinylScanScreen(
                               householdId: householdId,
                               initialMode: VinylScanMode.textSearch,
+                              preSelectedContainerId: preSelectedContainerId,
                             ),
                           ),
                         );
@@ -88,6 +92,7 @@ class AddVinylFlowScreen extends StatelessWidget {
                           MaterialPageRoute(
                             builder: (context) => AddVinylScreen(
                               householdId: householdId,
+                              preSelectedContainerId: preSelectedContainerId,
                             ),
                           ),
                         );

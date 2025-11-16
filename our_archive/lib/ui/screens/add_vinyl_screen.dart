@@ -60,6 +60,20 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
       _genreController.text = widget.vinylData!.genre ?? '';
       _catalogController.text = widget.vinylData!.catalogNumber ?? '';
 
+      // Auto-select format based on API data
+      if (widget.vinylData!.format != null && widget.vinylData!.format!.isNotEmpty) {
+        final formatLower = widget.vinylData!.format!.join(' ').toLowerCase();
+        if (formatLower.contains('cd')) {
+          _selectedFormat = 'cd';
+        } else if (formatLower.contains('vinyl') || formatLower.contains('lp')) {
+          _selectedFormat = 'vinyl';
+        } else if (formatLower.contains('cassette')) {
+          _selectedFormat = 'cassette';
+        } else if (formatLower.contains('digital') || formatLower.contains('file')) {
+          _selectedFormat = 'digital';
+        }
+      }
+
       if (widget.vinylData!.coverUrl != null) {
         _downloadCover(widget.vinylData!.coverUrl!);
       }
@@ -128,13 +142,31 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
         'barcode': widget.vinylData?.discogsId,
       };
 
-      // Save the selected format
-      itemData['musicFormat'] = _selectedFormat;
-
-      if (widget.vinylData != null) {
-        itemData['styles'] = widget.vinylData!.styles;
+      // Save format based on user selection or API data
+      if (widget.vinylData != null && widget.vinylData!.format != null) {
+        // Use API format if available
         itemData['format'] = widget.vinylData!.format;
+        itemData['styles'] = widget.vinylData!.styles;
         itemData['country'] = widget.vinylData!.country;
+      } else {
+        // Convert user selection to format array for manual entries
+        switch (_selectedFormat) {
+          case 'cd':
+            itemData['format'] = ['CD'];
+            break;
+          case 'vinyl':
+            itemData['format'] = ['Vinyl'];
+            break;
+          case 'cassette':
+            itemData['format'] = ['Cassette'];
+            break;
+          case 'digital':
+            itemData['format'] = ['Digital File'];
+            break;
+          case 'other':
+            itemData['format'] = ['Unknown'];
+            break;
+        }
       }
 
       await itemRepo.addItem(
@@ -145,7 +177,7 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
       );
 
       if (mounted) {
-        Navigator.pop(context);
+        Navigator.popUntil(context, (route) => route.isFirst);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Vinyl added successfully!')),
         );
