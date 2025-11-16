@@ -108,6 +108,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
+                    settings: const RouteSettings(name: '/container'),
                     builder: (context) => ContainerScreen(
                       householdId: widget.household.id,
                       householdName: widget.household.name,

@@ -197,9 +197,20 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
       );
 
       if (mounted) {
-        Navigator.pop(context); // Pop AddBookScreen
-        Navigator.pop(context); // Pop AddBookFlowScreen
-        Navigator.pop(context); // Pop ItemTypeSelectionScreen
+        // Pop all screens and return to the main list/container screen
+        print('📱 [AddBookScreen] Starting navigation pop');
+        Navigator.popUntil(
+          context,
+          (route) {
+            final routeName = route.settings.name ?? 'unnamed';
+            final isTarget = route.settings.name == '/item_list' ||
+                route.settings.name == '/container' ||
+                route.isFirst;
+            print('📱 [AddBookScreen] Checking route: $routeName, isFirst: ${route.isFirst}, isTarget: $isTarget');
+            return isTarget;
+          },
+        );
+        print('📱 [AddBookScreen] Navigation pop completed');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Book added successfully!')),
         );

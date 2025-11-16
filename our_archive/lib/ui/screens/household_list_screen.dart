@@ -184,6 +184,7 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
+                            settings: const RouteSettings(name: '/container'),
                             builder: (context) => ContainerScreen(
                               householdId: household.id,
                               householdName: household.name,
@@ -211,6 +212,7 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
+                                    settings: const RouteSettings(name: '/item_list'),
                                     builder: (context) => ItemListScreen(
                                       household: household,
                                     ),
@@ -229,6 +231,7 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
+                                    settings: const RouteSettings(name: '/container'),
                                     builder: (context) => ContainerScreen(
                                       householdId: household.id,
                                       householdName: household.name,

@@ -127,8 +127,20 @@ class _AddGameScreenState extends ConsumerState<AddGameScreen> {
       );
 
       if (mounted) {
-        Navigator.pop(context); // Pop AddGameScreen
-        Navigator.pop(context); // Pop ItemTypeSelectionScreen
+        // Pop all screens and return to the main list/container screen
+        print('🎮 [AddGameScreen] Starting navigation pop');
+        Navigator.popUntil(
+          context,
+          (route) {
+            final routeName = route.settings.name ?? 'unnamed';
+            final isTarget = route.settings.name == '/item_list' ||
+                route.settings.name == '/container' ||
+                route.isFirst;
+            print('🎮 [AddGameScreen] Checking route: $routeName, isFirst: ${route.isFirst}, isTarget: $isTarget');
+            return isTarget;
+          },
+        );
+        print('🎮 [AddGameScreen] Navigation pop completed');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Game added successfully!')),
         );

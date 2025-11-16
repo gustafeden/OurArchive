@@ -249,8 +249,20 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
       );
 
       if (mounted) {
-        Navigator.pop(context); // Pop AddItemScreen
-        Navigator.pop(context); // Pop ItemTypeSelectionScreen
+        // Pop all screens and return to the main list/container screen
+        print('📦 [AddItemScreen] Starting navigation pop');
+        Navigator.popUntil(
+          context,
+          (route) {
+            final routeName = route.settings.name ?? 'unnamed';
+            final isTarget = route.settings.name == '/item_list' ||
+                route.settings.name == '/container' ||
+                route.isFirst;
+            print('📦 [AddItemScreen] Checking route: $routeName, isFirst: ${route.isFirst}, isTarget: $isTarget');
+            return isTarget;
+          },
+        );
+        print('📦 [AddItemScreen] Navigation pop completed');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Item added successfully!')),
         );

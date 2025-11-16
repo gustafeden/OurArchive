@@ -319,6 +319,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
+                settings: const RouteSettings(name: '/item_list'),
                 builder: (context) => ItemListScreen(
                   household: household,
                   initialFilter: 'unorganized',
@@ -343,6 +344,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
+              settings: const RouteSettings(name: '/container'),
               builder: (context) => ContainerScreen(
                 householdId: widget.householdId,
                 householdName: widget.householdName,

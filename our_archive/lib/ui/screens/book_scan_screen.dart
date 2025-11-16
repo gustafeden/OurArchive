@@ -320,10 +320,7 @@ class _BookScanScreenState extends ConsumerState<BookScanScreen> {
             ),
           ),
         );
-
-        if (mounted) {
-          Navigator.pop(context);
-        }
+        // No need to pop - AddBookScreen handles navigation with popUntil
       } else if (action == 'scanNext') {
         await Navigator.push(
           context,

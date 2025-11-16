@@ -177,9 +177,20 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
       );
 
       if (mounted) {
-        Navigator.pop(context); // Pop AddVinylScreen
-        Navigator.pop(context); // Pop AddVinylFlowScreen
-        Navigator.pop(context); // Pop ItemTypeSelectionScreen
+        // Pop all screens and return to the main list/container screen
+        print('🎵 [AddVinylScreen] Starting navigation pop');
+        Navigator.popUntil(
+          context,
+          (route) {
+            final routeName = route.settings.name ?? 'unnamed';
+            final isTarget = route.settings.name == '/item_list' ||
+                route.settings.name == '/container' ||
+                route.isFirst;
+            print('🎵 [AddVinylScreen] Checking route: $routeName, isFirst: ${route.isFirst}, isTarget: $isTarget');
+            return isTarget;
+          },
+        );
+        print('🎵 [AddVinylScreen] Navigation pop completed');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Music added successfully!')),
         );
