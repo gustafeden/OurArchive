@@ -704,50 +704,58 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
   }
 
   void _showOtherTypesDialog(WidgetRef ref) {
-    final itemTypesAsync = ref.watch(itemTypesProvider(widget.household.id));
     final primaryTypes = ['book', 'vinyl', 'game', 'tool'];
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Other Types'),
-        content: itemTypesAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stack) => Text('Error loading types: $error'),
-          data: (itemTypes) {
-            // Get all types that are not in the primary list
-            final otherTypes = itemTypes.where((t) => !primaryTypes.contains(t.name)).toList();
+      builder: (context) => Consumer(
+        builder: (context, ref, child) {
+          final itemTypesAsync = ref.watch(itemTypesProvider(widget.household.id));
 
-            if (otherTypes.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text('No other types available'),
-              );
-            }
-
-            return SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: otherTypes.map((type) {
-                  return ListTile(
-                    leading: Icon(IconHelper.getIconData(type.icon), size: 20),
-                    title: Text(type.displayName),
-                    onTap: () {
-                      ref.read(selectedTypeProvider.notifier).state = type.name;
-                      Navigator.pop(context);
-                    },
-                  );
-                }).toList(),
+          return AlertDialog(
+            title: const Text('Other Types'),
+            content: itemTypesAsync.when(
+              loading: () => const SizedBox(
+                height: 100,
+                child: Center(child: CircularProgressIndicator()),
               ),
-            );
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-        ],
+              error: (error, stack) => Text('Error loading types: $error'),
+              data: (itemTypes) {
+                // Get all types that are not in the primary list
+                final otherTypes = itemTypes.where((t) => !primaryTypes.contains(t.name)).toList();
+
+                if (otherTypes.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text('No other types available'),
+                  );
+                }
+
+                return SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: otherTypes.map((type) {
+                      return ListTile(
+                        leading: Icon(IconHelper.getIconData(type.icon), size: 20),
+                        title: Text(type.displayName),
+                        onTap: () {
+                          ref.read(selectedTypeProvider.notifier).state = type.name;
+                          Navigator.pop(context);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                );
+              },
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -849,42 +857,46 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
   }
 
   void _showTypeFilter(WidgetRef ref) {
-    final itemTypesAsync = ref.watch(itemTypesProvider(widget.household.id));
-
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Filter by Type'),
-        content: itemTypesAsync.when(
-          loading: () => const SizedBox(
-            height: 100,
-            child: Center(child: CircularProgressIndicator()),
-          ),
-          error: (error, stack) => Text('Error loading types: $error'),
-          data: (itemTypes) {
-            return SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: itemTypes.map((type) {
-                  return ListTile(
-                    leading: Icon(IconHelper.getIconData(type.icon), size: 20),
-                    title: Text(type.displayName),
-                    onTap: () {
-                      ref.read(selectedTypeProvider.notifier).state = type.name;
-                      Navigator.pop(context);
-                    },
-                  );
-                }).toList(),
+      builder: (context) => Consumer(
+        builder: (context, ref, child) {
+          final itemTypesAsync = ref.watch(itemTypesProvider(widget.household.id));
+
+          return AlertDialog(
+            title: const Text('Filter by Type'),
+            content: itemTypesAsync.when(
+              loading: () => const SizedBox(
+                height: 100,
+                child: Center(child: CircularProgressIndicator()),
               ),
-            );
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-        ],
+              error: (error, stack) => Text('Error loading types: $error'),
+              data: (itemTypes) {
+                return SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: itemTypes.map((type) {
+                      return ListTile(
+                        leading: Icon(IconHelper.getIconData(type.icon), size: 20),
+                        title: Text(type.displayName),
+                        onTap: () {
+                          ref.read(selectedTypeProvider.notifier).state = type.name;
+                          Navigator.pop(context);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                );
+              },
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
