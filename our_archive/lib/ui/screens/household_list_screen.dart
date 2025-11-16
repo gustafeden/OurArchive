@@ -263,7 +263,7 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                           );
                         },
                         icon: const Icon(Icons.qr_code_scanner),
-                        label: const Text('Scan to Check Books'),
+                        label: const Text('Scan to Check if We Have It'),
                         style: FilledButton.styleFrom(
                           minimumSize: const Size(double.infinity, 40),
                         ),

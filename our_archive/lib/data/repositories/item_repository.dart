@@ -280,6 +280,33 @@ class ItemRepository {
     return findItemByIsbn(householdId, barcode);
   }
 
+  // Find item by discogsId in a household
+  Future<Item?> findItemByDiscogsId(String householdId, String discogsId) async {
+    if (discogsId.isEmpty) return null;
+
+    // Get all items for the household
+    final snapshot = await _firestore
+        .collection('households')
+        .doc(householdId)
+        .collection('items')
+        .get();
+
+    // Search through items in memory
+    for (final doc in snapshot.docs) {
+      final item = Item.fromFirestore(doc);
+
+      // Skip deleted items
+      if (item.deletedAt != null) continue;
+
+      // Check if discogsId matches
+      if (item.discogsId != null && item.discogsId == discogsId) {
+        return item;
+      }
+    }
+
+    return null;
+  }
+
   // Update item with conflict resolution
   Future<void> updateItem({
     required String householdId,

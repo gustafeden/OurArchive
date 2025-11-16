@@ -8,7 +8,23 @@ class VinylLookupService {
       final result = await DiscogsService.searchByBarcode(barcode);
 
       if (result != null) {
-        return VinylMetadata.fromDiscogsJson(result);
+        final metadata = VinylMetadata.fromDiscogsJson(result);
+        // Create a new instance with the barcode included
+        return VinylMetadata(
+          title: metadata.title,
+          artist: metadata.artist,
+          label: metadata.label,
+          year: metadata.year,
+          genre: metadata.genre,
+          styles: metadata.styles,
+          catalogNumber: metadata.catalogNumber,
+          coverUrl: metadata.coverUrl,
+          format: metadata.format,
+          country: metadata.country,
+          discogsId: metadata.discogsId,
+          resourceUrl: metadata.resourceUrl,
+          barcode: barcode, // Store the actual scanned barcode
+        );
       }
 
       return null;

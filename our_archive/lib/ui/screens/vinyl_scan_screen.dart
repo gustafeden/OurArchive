@@ -125,10 +125,80 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
 
   Future<void> _lookupVinyl(String barcode) async {
     try {
-      final vinylMetadata = await VinylLookupService.lookupByBarcode(barcode);
+      final itemRepository = ref.read(itemRepositoryProvider);
+
+      // Run API lookup and duplicate check in parallel for better performance
+      final results = await Future.wait([
+        VinylLookupService.lookupByBarcode(barcode),
+        itemRepository.findItemByBarcode(widget.householdId, barcode),
+      ]);
 
       if (!mounted) return;
 
+      final vinylMetadata = results[0] as VinylMetadata?;
+      var existingItem = results[1] as Item?;
+
+      // If not found by barcode but we have discogsId from API, try searching by discogsId
+      // This handles old items that were stored with discogsId in barcode field
+      if (existingItem == null && vinylMetadata?.discogsId != null) {
+        existingItem = await itemRepository.findItemByDiscogsId(
+          widget.householdId,
+          vinylMetadata!.discogsId!,
+        );
+      }
+
+      if (!mounted) return;
+
+      // If item exists in collection, show duplicate dialog first
+      if (existingItem != null) {
+        final existingNonNull = existingItem; // Capture non-null value for use after async
+        final action = await _showDuplicateFoundDialog(existingNonNull, vinylMetadata);
+
+        if (action == 'scanNext' || action == null) {
+          setState(() {
+            _isProcessing = false;
+            _lastScannedCode = null;
+          });
+          return;
+        } else if (action == 'addCopy') {
+          // User wants to add another copy
+          // If we don't have metadata from API, try to use existing item data
+          if (vinylMetadata == null) {
+            // Navigate directly to AddVinylScreen with existing item data
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AddVinylScreen(
+                  householdId: widget.householdId,
+                  vinylData: VinylMetadata(
+                    title: existingNonNull.title,
+                    artist: existingNonNull.artist ?? '',
+                    label: existingNonNull.label,
+                    year: existingNonNull.releaseYear,
+                    genre: existingNonNull.genre,
+                    coverUrl: existingNonNull.coverUrl,
+                    discogsId: existingNonNull.discogsId,
+                    barcode: barcode,
+                  ),
+                  preSelectedContainerId: widget.preSelectedContainerId,
+                ),
+              ),
+            );
+
+            if (mounted) {
+              setState(() {
+                _vinylsScanned++;
+                _isProcessing = false;
+                _lastScannedCode = null;
+              });
+            }
+            return;
+          }
+          // Otherwise continue with API metadata below
+        }
+      }
+
+      // If no metadata found and not a duplicate, show error
       if (vinylMetadata == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Music not found for barcode: $barcode')),
@@ -140,30 +210,9 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
         return;
       }
 
-      // Check for duplicate
-      final itemRepository = ref.read(itemRepositoryProvider);
-      final existingItem = await itemRepository.findItemByBarcode(
-        widget.householdId,
-        barcode,
-      );
-
       if (!mounted) return;
 
-      if (existingItem != null) {
-        final action = await _showDuplicateFoundDialog(existingItem, vinylMetadata);
-
-        if (action == 'scanNext' || action == null) {
-          setState(() {
-            _isProcessing = false;
-            _lastScannedCode = null;
-          });
-          return;
-        } else if (action == 'addCopy') {
-          // Continue to add another copy
-        }
-      }
-
-      // Show preview dialog
+      // Show preview dialog (we already handled duplicates above)
       final action = await _showVinylPreview(vinylMetadata);
 
       if (!mounted) return;
@@ -283,7 +332,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
     );
   }
 
-  Future<String?> _showDuplicateFoundDialog(Item existingItem, VinylMetadata vinyl) async {
+  Future<String?> _showDuplicateFoundDialog(Item existingItem, VinylMetadata? vinyl) async {
     String? containerName;
 
     if (existingItem.containerId != null) {

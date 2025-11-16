@@ -269,14 +269,33 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
   }
 
   Future<void> _lookupItem(String code) async {
-    // Try vinyl lookup first (since vinyl barcodes are more specific)
+    // Try vinyl lookup and duplicate check in parallel for better performance
     try {
-      final vinylMetadata = await VinylLookupService.lookupByBarcode(code);
+      final itemRepository = ref.read(itemRepositoryProvider);
+
+      final results = await Future.wait([
+        VinylLookupService.lookupByBarcode(code),
+        itemRepository.findItemByBarcode(widget.household.id, code),
+      ]);
+
+      if (!mounted) return;
+
+      final vinylMetadata = results[0] as VinylMetadata?;
+      var existingItem = results[1] as Item?;
+
+      // If not found by barcode but we have discogsId from API, try searching by discogsId
+      // This handles old items that were stored with discogsId in barcode field
+      if (existingItem == null && vinylMetadata?.discogsId != null) {
+        existingItem = await itemRepository.findItemByDiscogsId(
+          widget.household.id,
+          vinylMetadata!.discogsId!,
+        );
+      }
 
       if (!mounted) return;
 
       if (vinylMetadata != null) {
-        await _handleVinylFound(code, vinylMetadata);
+        await _handleVinylFound(code, vinylMetadata, existingItem);
         return;
       }
     } catch (e) {
@@ -287,15 +306,8 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
     await _lookupBook(code);
   }
 
-  Future<void> _handleVinylFound(String barcode, VinylMetadata vinylMetadata) async {
+  Future<void> _handleVinylFound(String barcode, VinylMetadata vinylMetadata, Item? existingItem) async {
     try {
-      // Check if vinyl already exists in household
-      final itemRepository = ref.read(itemRepositoryProvider);
-      final existingItem = await itemRepository.findItemByBarcode(
-        widget.household.id,
-        barcode,
-      );
-
       if (!mounted) return;
 
       String? action;
@@ -392,9 +404,18 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
   Future<void> _lookupBook(String isbn) async {
     try {
       final bookLookupService = ref.read(bookLookupServiceProvider);
-      final bookMetadata = await bookLookupService.lookupBook(isbn);
+      final itemRepository = ref.read(itemRepositoryProvider);
+
+      // Run book lookup and duplicate check in parallel for better performance
+      final results = await Future.wait([
+        bookLookupService.lookupBook(isbn),
+        itemRepository.findItemByIsbn(widget.household.id, isbn),
+      ]);
 
       if (!mounted) return;
+
+      final bookMetadata = results[0] as BookMetadata?;
+      final existingItem = results[1] as Item?;
 
       if (bookMetadata == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -409,13 +430,6 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
         });
         return;
       }
-
-      // Check if book already exists in household
-      final itemRepository = ref.read(itemRepositoryProvider);
-      final existingItem = await itemRepository.findItemByIsbn(
-        widget.household.id,
-        isbn,
-      );
 
       if (!mounted) return;
 

@@ -139,7 +139,7 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
         'coverUrl': widget.vinylData?.coverUrl,
         'description': _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
         'discogsId': widget.vinylData?.discogsId,
-        'barcode': widget.vinylData?.discogsId,
+        'barcode': widget.vinylData?.barcode, // Store the actual UPC/EAN barcode
       };
 
       // Save format based on user selection or API data
@@ -178,19 +178,13 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
 
       if (mounted) {
         // Pop all screens and return to the main list/container screen
-        print('🎵 [AddVinylScreen] Starting navigation pop');
         Navigator.popUntil(
           context,
-          (route) {
-            final routeName = route.settings.name ?? 'unnamed';
-            final isTarget = route.settings.name == '/item_list' ||
-                route.settings.name == '/container' ||
-                route.isFirst;
-            print('🎵 [AddVinylScreen] Checking route: $routeName, isFirst: ${route.isFirst}, isTarget: $isTarget');
-            return isTarget;
-          },
+          (route) =>
+              route.settings.name == '/item_list' ||
+              route.settings.name == '/container' ||
+              route.isFirst,
         );
-        print('🎵 [AddVinylScreen] Navigation pop completed');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Music added successfully!')),
         );

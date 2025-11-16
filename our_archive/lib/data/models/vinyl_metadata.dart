@@ -11,6 +11,7 @@ class VinylMetadata {
   final String? country;
   final String? discogsId;
   final String? resourceUrl;
+  final String? barcode; // The actual UPC/EAN barcode scanned
 
   VinylMetadata({
     required this.title,
@@ -25,6 +26,7 @@ class VinylMetadata {
     this.country,
     this.discogsId,
     this.resourceUrl,
+    this.barcode,
   });
 
   factory VinylMetadata.fromDiscogsJson(Map<String, dynamic> json) {
@@ -76,6 +78,7 @@ class VinylMetadata {
       'country': country,
       'discogsId': discogsId,
       'resourceUrl': resourceUrl,
+      'barcode': barcode,
     };
   }
 

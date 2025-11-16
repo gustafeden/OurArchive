@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../data/models/book_metadata.dart';
+import '../../data/models/vinyl_metadata.dart';
 import '../../data/models/item.dart';
 import '../../data/models/container.dart' as model;
 import '../../providers/providers.dart';
+import '../../services/vinyl_lookup_service.dart';
 import 'add_item_screen.dart';
+import 'add_vinyl_screen.dart';
 
 class ScanToCheckScreen extends ConsumerStatefulWidget {
   final String householdId;
@@ -44,14 +47,35 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
       _lastScannedCode = code;
     });
 
-    await _checkBook(code);
+    // Detect barcode type - ISBN for books, UPC/EAN for vinyl
+    if (_isIsbn(code)) {
+      await _checkBook(code);
+    } else {
+      await _checkVinyl(code);
+    }
+  }
+
+  bool _isIsbn(String code) {
+    // Remove hyphens and spaces
+    final cleaned = code.replaceAll(RegExp(r'[-\s]'), '');
+
+    // ISBN-10 is 10 digits (possibly ending with X)
+    // ISBN-13 is 13 digits and typically starts with 978 or 979
+    if (cleaned.length == 10 && RegExp(r'^\d{9}[\dX]$').hasMatch(cleaned)) {
+      return true;
+    }
+    if (cleaned.length == 13 && RegExp(r'^(978|979)\d{10}$').hasMatch(cleaned)) {
+      return true;
+    }
+
+    return false;
   }
 
   Future<void> _handleManualEntry() async {
-    final isbn = _manualIsbnController.text.trim();
-    if (isbn.isEmpty) {
+    final code = _manualIsbnController.text.trim();
+    if (code.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter an ISBN')),
+        const SnackBar(content: Text('Please enter an ISBN or barcode')),
       );
       return;
     }
@@ -60,7 +84,12 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
       _isProcessing = true;
     });
 
-    await _checkBook(isbn);
+    // Detect barcode type - ISBN for books, UPC/EAN for vinyl
+    if (_isIsbn(code)) {
+      await _checkBook(code);
+    } else {
+      await _checkVinyl(code);
+    }
   }
 
   Future<void> _checkBook(String isbn) async {
@@ -161,6 +190,124 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error checking book: $e'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      setState(() {
+        _isProcessing = false;
+        _lastScannedCode = null;
+      });
+    }
+  }
+
+  Future<void> _checkVinyl(String barcode) async {
+    try {
+      final itemRepository = ref.read(itemRepositoryProvider);
+
+      // Run collection check and API lookup in parallel for better performance
+      final results = await Future.wait([
+        itemRepository.findItemByBarcode(widget.householdId, barcode),
+        VinylLookupService.lookupByBarcode(barcode),
+      ]);
+
+      if (!mounted) return;
+
+      var existingItem = results[0] as Item?;
+      final vinylMetadata = results[1] as VinylMetadata?;
+
+      // If not found by barcode but we have discogsId from API, try searching by discogsId
+      // This handles old items that were stored with discogsId in barcode field
+      if (existingItem == null && vinylMetadata?.discogsId != null) {
+        existingItem = await itemRepository.findItemByDiscogsId(
+          widget.householdId,
+          vinylMetadata!.discogsId!,
+        );
+      }
+
+      if (!mounted) return;
+
+      if (existingItem != null) {
+        // Vinyl found in collection
+        final action = await _showVinylFoundDialog(existingItem);
+
+        if (!mounted) return;
+
+        if (action == 'scanNext') {
+          // Reset for next scan
+          setState(() {
+            _isProcessing = false;
+            _lastScannedCode = null;
+          });
+        } else {
+          // Close scanner
+          if (mounted) {
+            Navigator.pop(context);
+          }
+        }
+      } else if (vinylMetadata != null) {
+        // Vinyl not found in collection but found in API
+        // Show "not found" dialog with option to add
+        final action = await _showVinylNotFoundDialog(vinylMetadata);
+
+        if (!mounted) return;
+
+        if (action == 'addVinyl') {
+          // Navigate to AddVinylScreen
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddVinylScreen(
+                householdId: widget.householdId,
+                vinylData: vinylMetadata,
+              ),
+            ),
+          );
+
+          if (mounted) {
+            // Reset for next scan after adding
+            setState(() {
+              _isProcessing = false;
+              _lastScannedCode = null;
+            });
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Music added! Scan next item to check'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        } else if (action == 'scanNext') {
+          // Reset for next scan without adding
+          setState(() {
+            _isProcessing = false;
+            _lastScannedCode = null;
+          });
+        } else {
+          // Close scanner
+          if (mounted) {
+            Navigator.pop(context);
+          }
+        }
+      } else {
+        // Neither found in collection nor in API
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No music information found for barcode: $barcode'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        setState(() {
+          _isProcessing = false;
+          _lastScannedCode = null;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error checking music: $e'),
           duration: const Duration(seconds: 3),
         ),
       );
@@ -371,11 +518,203 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
     );
   }
 
+  Future<String?> _showVinylFoundDialog(Item item) async {
+    // Get container name if item has one
+    String locationText = 'Not assigned to a container';
+    if (item.containerId != null) {
+      try {
+        // Temporarily set current household to get containers
+        final previousHouseholdId = ref.read(currentHouseholdIdProvider);
+        ref.read(currentHouseholdIdProvider.notifier).state = widget.householdId;
+
+        final containerService = ref.read(containerServiceProvider);
+        final containers = await containerService.getAllContainers(widget.householdId).first;
+
+        // Restore previous household
+        ref.read(currentHouseholdIdProvider.notifier).state = previousHouseholdId;
+
+        final container = containers.firstWhere(
+          (c) => c.id == item.containerId,
+          orElse: () => model.Container(
+            id: '',
+            name: 'Unknown',
+            householdId: widget.householdId,
+            containerType: 'unknown',
+            createdAt: DateTime.now(),
+            lastModified: DateTime.now(),
+            createdBy: '',
+          ),
+        );
+
+        if (container.id.isNotEmpty) {
+          locationText = 'In: ${container.name}';
+        }
+      } catch (e) {
+        locationText = 'Location unavailable';
+      }
+    }
+
+    if (!mounted) return null;
+
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.green, size: 28),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text('You Already Have This!'),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (item.coverUrl != null)
+                Center(
+                  child: Image.network(
+                    item.coverUrl!,
+                    height: 200,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(Icons.album, size: 100),
+                  ),
+                ),
+              const SizedBox(height: 16),
+              Text(
+                item.title,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              if (item.artist != null && item.artist!.isNotEmpty)
+                Text(
+                  'By ${item.artist}',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.location_on,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        locationText,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (item.quantity > 1) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Quantity: ${item.quantity}',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'close'),
+            child: const Text('Close'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, 'scanNext'),
+            child: const Text('Scan Next'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<String?> _showVinylNotFoundDialog(VinylMetadata vinyl) async {
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.info_outline, color: Colors.orange, size: 28),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text('Not in Your Collection'),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (vinyl.coverUrl != null && vinyl.coverUrl!.isNotEmpty)
+                Center(
+                  child: Image.network(
+                    vinyl.coverUrl!,
+                    height: 200,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(Icons.album, size: 100),
+                  ),
+                ),
+              const SizedBox(height: 16),
+              Text(
+                vinyl.title,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              if (vinyl.artist.isNotEmpty)
+                Text(
+                  'By ${vinyl.artist}',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              const SizedBox(height: 8),
+              if (vinyl.label != null && vinyl.label!.isNotEmpty)
+                Text('Label: ${vinyl.label}'),
+              if (vinyl.year != null)
+                Text('Year: ${vinyl.year}'),
+              if (vinyl.format != null && vinyl.format!.isNotEmpty)
+                Text('Format: ${vinyl.format!.join(', ')}'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'scanNext'),
+            child: const Text('Scan Next'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'close'),
+            child: const Text('Close'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(context, 'addVinyl'),
+            icon: const Icon(Icons.add),
+            label: const Text('Add to Collection'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Scan to Check - ${widget.householdName}'),
+        title: Text('Scan to Check Items - ${widget.householdName}'),
         actions: [
           IconButton(
             icon: Icon(_scannerController.torchEnabled
@@ -416,13 +755,13 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.book, size: 100),
+                    const Icon(Icons.qr_code, size: 100),
                     const SizedBox(height: 24),
                     TextField(
                       controller: _manualIsbnController,
                       decoration: const InputDecoration(
-                        labelText: 'Enter ISBN',
-                        hintText: '9780143127796',
+                        labelText: 'Enter ISBN or Barcode',
+                        hintText: '9780143127796 or UPC',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.numbers),
                       ),
@@ -434,7 +773,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
                     FilledButton.icon(
                       onPressed: _isProcessing ? null : _handleManualEntry,
                       icon: const Icon(Icons.search),
-                      label: const Text('Check Book'),
+                      label: const Text('Check Item'),
                     ),
                   ],
                 ),
@@ -452,7 +791,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
                       children: [
                         CircularProgressIndicator(),
                         SizedBox(height: 16),
-                        Text('Checking book...'),
+                        Text('Checking item...'),
                       ],
                     ),
                   ),
