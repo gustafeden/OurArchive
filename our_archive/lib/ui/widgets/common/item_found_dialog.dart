@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/item.dart';
 import '../../../data/models/container.dart' as model;
+import '../../../data/models/track.dart';
 import '../../../providers/providers.dart';
 import 'network_image_with_fallback.dart';
+import '../scanner/track_preview_section.dart';
 
 /// Shows a dialog when an item is found in the collection during scanning.
 ///
@@ -33,6 +35,9 @@ Future<String?> showItemFoundDialog({
   String itemTypeName = 'Item',
   IconData fallbackIcon = Ionicons.cube_outline,
   bool showAddCopyOption = false,
+  List<Track>? tracks,
+  bool isLoadingTracks = false,
+  VoidCallback? onLoadTracks,
 }) async {
   // Get container name if item has one
   String locationText = 'Not assigned to a container';
@@ -144,6 +149,14 @@ Future<String?> showItemFoundDialog({
                 style: Theme.of(dialogContext).textTheme.bodyMedium,
               ),
             ],
+
+            // Track preview section
+            TrackPreviewSection(
+              tracks: tracks,
+              isLoading: isLoadingTracks,
+              onLoadTracks: onLoadTracks,
+              item: item, // Pass item for iTunes preview lookup
+            ),
           ],
         ),
       ),

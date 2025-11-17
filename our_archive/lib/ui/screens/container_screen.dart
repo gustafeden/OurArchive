@@ -357,14 +357,20 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
   }
 
   Widget _buildItemsOnlyView(AsyncValue<List<Item>> nestedItemsAsync) {
+    final selectedType = ref.watch(selectedTypeProvider);
+
     return nestedItemsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => Center(child: Text('Error: $error')),
       data: (allItems) {
+        // Apply type filter
+        var filteredItems = selectedType == null
+            ? allItems
+            : allItems.where((item) => item.type == selectedType).toList();
+
         // Apply search filter
-        var filteredItems = allItems;
         if (_searchQuery.isNotEmpty) {
-          filteredItems = allItems.where((item) {
+          filteredItems = filteredItems.where((item) {
             return item.title.toLowerCase().contains(_searchQuery) ||
                 (item.authors?.any((author) => author.toLowerCase().contains(_searchQuery)) ?? false) ||
                 (item.artist?.toLowerCase().contains(_searchQuery) ?? false) ||

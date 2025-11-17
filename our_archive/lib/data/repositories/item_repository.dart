@@ -5,6 +5,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import '../models/item.dart';
+import '../models/track.dart';
 import '../../core/sync/sync_queue.dart';
 
 class ItemRepository {
@@ -352,6 +353,29 @@ class ItemRepository {
         .update({
           'deletedAt': FieldValue.serverTimestamp(),
         });
+  }
+
+  /// Update tracks for an item (lightweight update without version check)
+  Future<void> updateItemTracks({
+    required String householdId,
+    required String itemId,
+    required List<Track> tracks,
+  }) async {
+    try {
+      final docRef = _firestore
+          .collection('households')
+          .doc(householdId)
+          .collection('items')
+          .doc(itemId);
+
+      await docRef.update({
+        'tracks': tracks.map((t) => t.toJson()).toList(),
+        'lastModified': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      // Log error but don't throw - track caching is not critical
+      print('Error updating tracks for item $itemId: $e');
+    }
   }
 
   // Get download URL for photo

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../common/network_image_with_fallback.dart';
+import 'track_preview_section.dart';
+import '../../../data/models/track.dart';
+import '../../../data/models/item.dart';
 
 /// A metadata field to display in the item preview dialog
 class ItemPreviewField {
@@ -46,6 +49,10 @@ Future<String?> showItemPreviewDialog({
   List<ItemPreviewField> metadataFields = const [],
   required String primaryActionLabel,
   bool showCancelButton = true,
+  List<Track>? tracks,
+  bool isLoadingTracks = false,
+  VoidCallback? onLoadTracks,
+  Item? item, // For iTunes preview lookup
 }) async {
   return showDialog<String>(
     context: context,
@@ -94,6 +101,14 @@ Future<String?> showItemPreviewDialog({
                 ),
               ),
             ],
+
+            // Track preview section
+            TrackPreviewSection(
+              tracks: tracks,
+              isLoading: isLoadingTracks,
+              onLoadTracks: onLoadTracks,
+              item: item, // Pass item for iTunes preview lookup
+            ),
           ],
         ),
       ),

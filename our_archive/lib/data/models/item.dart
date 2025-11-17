@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'track.dart';
 
 enum SyncStatus { pending, syncing, synced, error }
 
@@ -42,6 +43,7 @@ class Item {
   final List<String>? format;
   final String? country;
   final String? discogsId;
+  final List<Track>? tracks; // Track listing for music albums
 
   // Game-specific fields
   final String? platform;
@@ -84,6 +86,7 @@ class Item {
     this.format,
     this.country,
     this.discogsId,
+    this.tracks,
     this.platform,
     this.gamePublisher,
     this.players,
@@ -102,8 +105,12 @@ class Item {
       sortOrder: data['sortOrder'] ?? 0,
       photoPath: data['photoPath'],
       photoThumbPath: data['photoThumbPath'],
-      lastModified: (data['lastModified'] as Timestamp).toDate(),
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      lastModified: data['lastModified'] != null
+          ? (data['lastModified'] as Timestamp).toDate()
+          : DateTime.now(),
+      createdAt: data['createdAt'] != null
+          ? (data['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
       createdBy: data['createdBy'] ?? '',
       syncStatus: _parseSyncStatus(data['syncStatus']),
       searchText: data['searchText'] ?? '',
@@ -135,6 +142,11 @@ class Item {
         : null,
       country: data['country'],
       discogsId: data['discogsId'],
+      tracks: data['tracks'] != null
+        ? (data['tracks'] as List<dynamic>)
+            .map((t) => Track.fromJson(t as Map<String, dynamic>))
+            .toList()
+        : null,
       platform: data['platform'],
       gamePublisher: data['gamePublisher'],
       players: data['players'],
@@ -176,6 +188,7 @@ class Item {
     'format': format,
     'country': country,
     'discogsId': discogsId,
+    'tracks': tracks?.map((t) => t.toJson()).toList(),
     'platform': platform,
     'gamePublisher': gamePublisher,
     'players': players,
@@ -231,6 +244,7 @@ class Item {
     List<String>? format,
     String? country,
     String? discogsId,
+    List<Track>? tracks,
     String? platform,
     String? gamePublisher,
     String? players,
@@ -271,6 +285,7 @@ class Item {
       format: format ?? this.format,
       country: country ?? this.country,
       discogsId: discogsId ?? this.discogsId,
+      tracks: tracks ?? this.tracks,
       platform: platform ?? this.platform,
       gamePublisher: gamePublisher ?? this.gamePublisher,
       players: players ?? this.players,

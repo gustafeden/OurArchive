@@ -10,6 +10,7 @@ import 'container_screen.dart';
 import 'item_list_screen.dart';
 import 'profile_screen.dart';
 import 'scan_to_check_screen.dart';
+import 'coverflow_music_browser.dart';
 
 class HouseholdListScreen extends ConsumerStatefulWidget {
   const HouseholdListScreen({super.key});
@@ -221,10 +222,13 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                                 );
                               },
                               icon: const Icon(Ionicons.list_outline),
-                              label: const Text('View Items'),
+                              label: const Text('Items'),
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           Expanded(
                             child: FilledButton.tonalIcon(
                               onPressed: () {
@@ -242,6 +246,30 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                               },
                               icon: const Icon(Ionicons.cube_outline),
                               label: const Text('Organize'),
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: FilledButton.tonalIcon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    settings: const RouteSettings(name: '/coverflow'),
+                                    builder: (context) => CoverFlowMusicBrowser(
+                                      householdId: household.id,
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Ionicons.disc_outline),
+                              label: const Text('Music'),
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                              ),
                             ),
                           ),
                         ],

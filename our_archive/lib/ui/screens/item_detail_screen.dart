@@ -7,7 +7,10 @@ import 'package:image_picker/image_picker.dart';
 import '../../data/models/item.dart';
 import '../../data/models/household.dart';
 import '../../data/models/container.dart' as model;
+import '../../data/models/track.dart';
 import '../../providers/providers.dart';
+import '../../providers/music_providers.dart';
+import '../widgets/scanner/track_preview_section.dart';
 
 class ItemDetailScreen extends ConsumerStatefulWidget {
   final Item item;
@@ -37,6 +40,8 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
   bool _isLoading = false;
   String? _photoUrl;
   File? _newPhoto;
+  List<Track>? _tracks;
+  bool _loadingTracks = false;
 
   @override
   void initState() {
@@ -49,6 +54,11 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     _tags = List.from(widget.item.tags);
     _selectedContainerId = widget.item.containerId;
     _loadPhotoUrl();
+
+    // Load tracks for vinyl/music items
+    if (widget.item.type == 'vinyl') {
+      _loadTracks();
+    }
   }
 
   @override
@@ -67,6 +77,30 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
       if (mounted) {
         setState(() {
           _photoUrl = url;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadTracks() async {
+    setState(() {
+      _loadingTracks = true;
+    });
+
+    try {
+      final trackService = ref.read(trackServiceProvider);
+      final tracks = await trackService.getTracksForItem(widget.item, widget.household.id);
+
+      if (mounted) {
+        setState(() {
+          _tracks = tracks;
+          _loadingTracks = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingTracks = false;
         });
       }
     }
@@ -466,6 +500,12 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                     const SizedBox(height: 24),
                   ],
 
+                  // Vinyl/Music-specific information (if this is a vinyl/music item)
+                  if (widget.item.type == 'vinyl') ...[
+                    _buildVinylInfoSection(),
+                    const SizedBox(height: 24),
+                  ],
+
                   // Tags
                   _buildTagsSection(),
                   const SizedBox(height: 24),
@@ -753,6 +793,79 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVinylInfoSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Ionicons.disc_outline, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Album Information',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Artist
+            if (widget.item.artist != null && widget.item.artist!.isNotEmpty) ...[
+              _buildInfoRow('Artist', widget.item.artist!),
+              const SizedBox(height: 12),
+            ],
+
+            // Label
+            if (widget.item.label != null && widget.item.label!.isNotEmpty) ...[
+              _buildInfoRow('Label', widget.item.label!),
+              const SizedBox(height: 12),
+            ],
+
+            // Release Year
+            if (widget.item.releaseYear != null && widget.item.releaseYear!.isNotEmpty) ...[
+              _buildInfoRow('Year', widget.item.releaseYear!),
+              const SizedBox(height: 12),
+            ],
+
+            // Genre
+            if (widget.item.genre != null && widget.item.genre!.isNotEmpty) ...[
+              _buildInfoRow('Genre', widget.item.genre!),
+              const SizedBox(height: 12),
+            ],
+
+            // Format
+            if (widget.item.format != null && widget.item.format!.isNotEmpty) ...[
+              _buildInfoRow('Format', widget.item.format!.join(', ')),
+              const SizedBox(height: 12),
+            ],
+
+            // Country
+            if (widget.item.country != null && widget.item.country!.isNotEmpty) ...[
+              _buildInfoRow('Country', widget.item.country!),
+              const SizedBox(height: 12),
+            ],
+
+            // Catalog Number
+            if (widget.item.catalogNumber != null && widget.item.catalogNumber!.isNotEmpty) ...[
+              _buildInfoRow('Catalog #', widget.item.catalogNumber!),
+              const SizedBox(height: 12),
+            ],
+
+            // Track Listing with Live Preview
+            TrackPreviewSection(
+              tracks: _tracks,
+              isLoading: _loadingTracks,
+              item: widget.item,
+            ),
           ],
         ),
       ),

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ionicons/ionicons.dart';
+import 'package:our_archive/providers/music_providers.dart';
 import '../../../data/models/item.dart';
+import '../../../data/models/track.dart';
+import '../../../providers/providers.dart';
 import '../../widgets/common/item_found_dialog.dart';
 import 'base_scanner_mixin.dart';
 
@@ -40,6 +43,29 @@ mixin DuplicateCheckMixin<T extends ConsumerStatefulWidget>
     // Determine fallback icon based on item type
     final fallbackIcon = _getFallbackIcon(existingItem.type);
 
+    // Load tracks for vinyl items
+    List<Track>? tracks;
+    bool isLoadingTracks = false;
+
+    if (existingItem.type == 'vinyl') {
+      tracks = existingItem.tracks; // Use cached tracks if available
+      isLoadingTracks = tracks == null || tracks.isEmpty;
+
+      // Load tracks asynchronously if not cached
+      if (isLoadingTracks) {
+        final trackService = ref.read(trackServiceProvider);
+        try {
+          tracks = await trackService.getTracksForItem(existingItem, householdId);
+          isLoadingTracks = false;
+        } catch (e) {
+          isLoadingTracks = false;
+          // Continue without tracks if loading fails
+        }
+      }
+    }
+
+    if (!mounted) return null;
+
     final action = await showItemFoundDialog(
       context: context,
       ref: ref,
@@ -48,6 +74,8 @@ mixin DuplicateCheckMixin<T extends ConsumerStatefulWidget>
       itemTypeName: itemTypeName,
       fallbackIcon: fallbackIcon,
       showAddCopyOption: true,
+      tracks: tracks,
+      isLoadingTracks: isLoadingTracks,
     );
 
     if (!mounted) return null;

@@ -5,10 +5,13 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../data/models/book_metadata.dart';
 import '../../data/models/vinyl_metadata.dart';
 import '../../data/models/item.dart';
+import '../../data/models/track.dart';
 import '../../providers/providers.dart';
+import '../../providers/music_providers.dart';
 import '../../services/vinyl_lookup_service.dart';
 import '../widgets/common/item_found_dialog.dart';
 import '../widgets/scanner/item_not_found_dialog.dart';
+import '../widgets/scanner/track_preview_section.dart';
 import 'add_item_screen.dart';
 import 'add_vinyl_screen.dart';
 
@@ -32,6 +35,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
   bool _isProcessing = false;
   bool _showManualEntry = false;
   String? _lastScannedCode;
+  List<Track>? _loadedTracks; // Store tracks loaded during preview
 
   @override
   void dispose() {
@@ -261,6 +265,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
               builder: (context) => AddVinylScreen(
                 householdId: widget.householdId,
                 vinylData: vinylMetadata,
+                tracks: _loadedTracks, // Pass pre-loaded tracks
               ),
             ),
           );
@@ -359,33 +364,345 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
   }
 
   Future<String?> _showVinylFoundDialog(Item item) async {
-    return showItemFoundDialog(
+    List<Track>? tracks = item.tracks; // Use cached tracks if available
+    bool loadingTracks = tracks == null || tracks.isEmpty;
+
+    // Load tracks asynchronously if not already cached
+    final trackService = ref.read(trackServiceProvider);
+
+    Future<void> loadTracks() async {
+      if (tracks != null && (tracks?.isNotEmpty ?? false)) return; // Already have tracks
+
+      try {
+        final fetchedTracks = await trackService.getTracksForItem(item, widget.householdId);
+        if (mounted) {
+          tracks = fetchedTracks;
+          loadingTracks = false;
+        }
+      } catch (e) {
+        if (mounted) {
+          loadingTracks = false;
+        }
+      }
+    }
+
+    // Start loading if needed
+    if (loadingTracks) {
+      loadTracks();
+    }
+
+    // Show dialog using StatefulBuilder to update when tracks load
+    return showDialog<String>(
       context: context,
-      ref: ref,
-      item: item,
-      householdId: widget.householdId,
-      itemTypeName: 'Music',
-      fallbackIcon: Ionicons.disc_outline,
-      showAddCopyOption: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          // Update dialog when tracks load
+          if (loadingTracks && (tracks == null || (tracks?.isEmpty ?? true))) {
+            loadTracks().then((_) {
+              if (mounted) setDialogState(() {});
+            });
+          }
+
+          // Call the original showItemFoundDialog but build it manually
+          // to work with StatefulBuilder
+          return FutureBuilder<String>(
+            future: _getContainerName(item),
+            builder: (context, snapshot) {
+              final locationText = snapshot.data ?? 'Loading location...';
+
+              return AlertDialog(
+                title: Row(
+                  children: [
+                    const Icon(Ionicons.checkmark_circle_outline, color: Colors.green, size: 28),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text('You Already Have This!'),
+                    ),
+                  ],
+                ),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Cover image
+                      if (item.coverUrl != null && item.coverUrl!.isNotEmpty)
+                        Image.network(
+                          item.coverUrl!,
+                          height: 200,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Icon(Ionicons.disc_outline, size: 100, color: Colors.grey[400]),
+                        )
+                      else
+                        Icon(Ionicons.disc_outline, size: 100, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+
+                      // Title
+                      Text(
+                        item.title,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Artist
+                      if (item.artist != null && item.artist!.isNotEmpty)
+                        Text(
+                          'By ${item.artist}',
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
+                      const SizedBox(height: 16),
+
+                      // Location container (highlighted)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Ionicons.location_outline,
+                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                locationText,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Quantity
+                      if (item.quantity > 1) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Quantity: ${item.quantity}',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ],
+
+                      // Track preview section
+                      TrackPreviewSection(
+                        tracks: tracks,
+                        isLoading: loadingTracks,
+                        item: item,
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, 'scanNext'),
+                    child: const Text('Scan Next'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(context, 'close'),
+                    child: const Text('Close'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
+  Future<String> _getContainerName(Item item) async {
+    if (item.containerId == null) {
+      return 'Not assigned to a container';
+    }
+
+    try {
+      final containerService = ref.read(containerServiceProvider);
+      final containers = await containerService.getAllContainers(widget.householdId).first;
+
+      final container = containers.firstWhere(
+        (c) => c.id == item.containerId,
+        orElse: () => throw Exception('Container not found'),
+      );
+
+      return 'In: ${container.name}';
+    } catch (e) {
+      return 'Location unavailable';
+    }
+  }
+
   Future<String?> _showVinylNotFoundDialog(VinylMetadata vinyl) async {
-    return showItemNotFoundDialog(
+    List<Track>? tracks;
+    bool loadingTracks = true;
+
+    // Create temporary item for track fetching
+    final tempItem = Item(
+      id: '', // Temporary ID
+      title: vinyl.title,
+      type: 'vinyl',
+      location: '',
+      tags: [],
+      lastModified: DateTime.now(),
+      createdAt: DateTime.now(),
+      createdBy: '',
+      searchText: vinyl.title.toLowerCase(),
+      barcode: '',
+      discogsId: vinyl.discogsId,
+      artist: vinyl.artist.isNotEmpty ? vinyl.artist : null,
+      label: vinyl.label,
+      releaseYear: vinyl.year?.toString(),
+      genre: vinyl.genre,
+    );
+
+    // Start loading tracks asynchronously
+    final trackService = ref.read(trackServiceProvider);
+
+    Future<void> loadTracks() async {
+      try {
+        final fetchedTracks = await trackService.getTracksForItem(tempItem, widget.householdId);
+        if (mounted) {
+          tracks = fetchedTracks;
+          _loadedTracks = fetchedTracks; // Store for passing to AddVinylScreen
+          loadingTracks = false;
+        }
+      } catch (e) {
+        if (mounted) {
+          loadingTracks = false;
+        }
+      }
+    }
+
+    // Start loading immediately
+    loadTracks();
+
+    // Show dialog with StatefulBuilder to update when tracks load
+    return showDialog<String>(
       context: context,
-      imageUrl: vinyl.coverUrl,
-      fallbackIcon: Ionicons.disc_outline,
-      itemTitle: vinyl.title,
-      creator: vinyl.artist.isNotEmpty ? vinyl.artist : null,
-      metadataFields: [
-        if (vinyl.label != null && vinyl.label!.isNotEmpty)
-          ItemNotFoundField(label: 'Label', value: vinyl.label!),
-        if (vinyl.year != null)
-          ItemNotFoundField(label: 'Year', value: vinyl.year.toString()),
-        if (vinyl.format != null && vinyl.format!.isNotEmpty)
-          ItemNotFoundField(label: 'Format', value: vinyl.format!.join(', ')),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) {
+          // Update dialog when tracks load
+          if (loadingTracks && tracks == null) {
+            loadTracks().then((_) {
+              if (mounted) setState(() {});
+            });
+          }
+
+          return _buildVinylNotFoundDialog(
+            context: dialogContext,
+            vinyl: vinyl,
+            tempItem: tempItem,
+            tracks: tracks,
+            isLoadingTracks: loadingTracks,
+          );
+        },
+      ),
+    );
+  }
+
+  AlertDialog _buildVinylNotFoundDialog({
+    required BuildContext context,
+    required VinylMetadata vinyl,
+    required Item tempItem,
+    List<Track>? tracks,
+    bool isLoadingTracks = false,
+  }) {
+    return AlertDialog(
+      title: Row(
+        children: [
+          const Icon(
+            Ionicons.information_circle_outline,
+            color: Colors.orange,
+            size: 28,
+          ),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text('Not in Your Collection'),
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Cover image
+            if (vinyl.coverUrl != null && vinyl.coverUrl!.isNotEmpty)
+              Image.network(
+                vinyl.coverUrl!,
+                height: 200,
+                errorBuilder: (context, error, stackTrace) =>
+                    Icon(Ionicons.disc_outline, size: 100, color: Colors.grey[400]),
+              )
+            else
+              Icon(Ionicons.disc_outline, size: 100, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+
+            // Title
+            Text(
+              vinyl.title,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+
+            // Artist
+            if (vinyl.artist.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                'By ${vinyl.artist}',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+            ],
+
+            // Metadata fields
+            if (vinyl.label != null && vinyl.label!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Label: ${vinyl.label!}',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+            if (vinyl.year != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Year: ${vinyl.year}',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+            if (vinyl.format != null && vinyl.format!.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Format: ${vinyl.format!.join(', ')}',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+
+            // Track preview section
+            TrackPreviewSection(
+              tracks: tracks,
+              isLoading: isLoadingTracks,
+              item: tempItem,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, 'scanNext'),
+          child: const Text('Scan Next'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, 'close'),
+          child: const Text('Close'),
+        ),
+        FilledButton.icon(
+          onPressed: () => Navigator.pop(context, 'add'),
+          icon: const Icon(Ionicons.add_outline),
+          label: const Text('Add to Collection'),
+        ),
       ],
-      addActionLabel: 'Add to Collection',
     );
   }
 

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:ionicons/ionicons.dart';
 import '../common/network_image_with_fallback.dart';
+import 'track_preview_section.dart';
+import '../../../data/models/track.dart';
+import '../../../data/models/item.dart';
 
 /// A metadata field to display in the item not found dialog
 class ItemNotFoundField {
@@ -56,6 +59,10 @@ Future<String?> showItemNotFoundDialog({
   String? creator,
   List<ItemNotFoundField> metadataFields = const [],
   required String addActionLabel,
+  List<Track>? tracks,
+  bool isLoadingTracks = false,
+  VoidCallback? onLoadTracks,
+  Item? item, // For iTunes preview lookup
 }) async {
   return showDialog<String>(
     context: context,
@@ -118,6 +125,14 @@ Future<String?> showItemNotFoundDialog({
                 ),
               ),
             ],
+
+            // Track preview section
+            TrackPreviewSection(
+              tracks: tracks,
+              isLoading: isLoadingTracks,
+              onLoadTracks: onLoadTracks,
+              item: item, // Pass item for iTunes preview lookup
+            ),
           ],
         ),
       ),

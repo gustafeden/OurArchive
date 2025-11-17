@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../providers/providers.dart';
 import '../../data/models/household.dart';
 import '../../data/models/vinyl_metadata.dart';
+import '../../data/models/track.dart';
 import '../widgets/common/photo_picker_widget.dart';
 import '../widgets/common/loading_button.dart';
 import '../widgets/form/container_selector_field.dart';
@@ -18,6 +19,7 @@ class AddVinylScreen extends ConsumerStatefulWidget {
   final String? householdId; // Alternative to household object
   final String? preSelectedContainerId;
   final VinylMetadata? vinylData;
+  final List<Track>? tracks; // Pre-loaded tracks from scanner
 
   const AddVinylScreen({
     super.key,
@@ -25,6 +27,7 @@ class AddVinylScreen extends ConsumerStatefulWidget {
     this.householdId,
     this.preSelectedContainerId,
     this.vinylData,
+    this.tracks,
   }) : assert(household != null || householdId != null,
             'Either household or householdId must be provided');
 
@@ -138,6 +141,7 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
         'description': _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
         'discogsId': widget.vinylData?.discogsId,
         'barcode': widget.vinylData?.barcode, // Store the actual UPC/EAN barcode
+        'tracks': widget.tracks?.map((t) => t.toJson()).toList(), // Save pre-loaded tracks
       };
 
       // Save format based on user selection or API data
