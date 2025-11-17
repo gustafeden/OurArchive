@@ -6,6 +6,10 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import '../../data/models/book_metadata.dart';
 import '../../data/models/item.dart';
 import '../../providers/providers.dart';
+import '../../utils/text_search_helper.dart';
+import '../widgets/common/item_found_dialog.dart';
+import '../widgets/common/network_image_with_fallback.dart';
+import '../widgets/common/search_results_view.dart';
 import 'add_book_screen.dart';
 
 enum BookScanMode { camera, manualIsbn, textSearch, photoOcr }
@@ -130,48 +134,18 @@ class _BookScanScreenState extends ConsumerState<BookScanScreen> {
   }
 
   Future<void> _performTextSearch() async {
-    final query = _textSearchController.text.trim();
-    if (query.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a book title or author')),
-      );
-      return;
-    }
+    final bookLookupService = ref.read(bookLookupServiceProvider);
 
-    setState(() {
-      _isSearching = true;
-      _searchResults = [];
-    });
-
-    try {
-      final bookLookupService = ref.read(bookLookupServiceProvider);
-      final results = await bookLookupService.searchByText(query);
-
-      if (!mounted) return;
-
-      setState(() {
-        _searchResults = results;
-        _isSearching = false;
-      });
-
-      if (results.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No books found. Try a different search term.')),
-          );
-        }
-      }
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        _isSearching = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Search failed: ${e.toString()}')),
-      );
-    }
+    await TextSearchHelper.performSearchWithState<BookMetadata>(
+      context: context,
+      query: _textSearchController.text,
+      searchFunction: (query) => bookLookupService.searchByText(query),
+      setState: setState,
+      setIsSearching: (value) => _isSearching = value,
+      setSearchResults: (results) => _searchResults = results,
+      emptyMessage: 'No books found. Try a different search term.',
+      itemTypeName: 'book title or author',
+    );
   }
 
   Future<void> _handleSearchResultTap(BookMetadata book) async {
@@ -376,14 +350,11 @@ class _BookScanScreenState extends ConsumerState<BookScanScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (book.thumbnailUrl != null && book.thumbnailUrl!.isNotEmpty)
-                Center(
-                  child: Image.network(
-                    book.thumbnailUrl!,
-                    height: 200,
-                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.book, size: 100),
-                  ),
-                ),
+              NetworkImageWithFallback(
+                imageUrl: book.thumbnailUrl,
+                height: 200,
+                fallbackIcon: Icons.book,
+              ),
               const SizedBox(height: 16),
               Text(book.title ?? 'Unknown Title', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               if (book.authors.isNotEmpty) ...[
@@ -416,55 +387,14 @@ class _BookScanScreenState extends ConsumerState<BookScanScreen> {
   }
 
   Future<String?> _showDuplicateFoundDialog(Item existingItem, BookMetadata book) async {
-    String? containerName;
-
-    if (existingItem.containerId != null) {
-      try {
-        final containerService = ref.read(containerServiceProvider);
-        final containers = await containerService.getAllContainers(widget.householdId).first;
-        final container = containers.firstWhere(
-          (c) => c.id == existingItem.containerId,
-          orElse: () => throw Exception('Container not found'),
-        );
-        containerName = container.name;
-      } catch (e) {
-        debugPrint('Error getting container name: $e');
-      }
-    }
-
-    if (!mounted) return null;
-
-    return showDialog<String>(
+    return showItemFoundDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Book Already Exists'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'This book is already in your collection:',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(existingItem.title),
-            if (containerName != null) ...[
-              const SizedBox(height: 4),
-              Text('Location: $containerName'),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'scanNext'),
-            child: const Text('Scan Next'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'addCopy'),
-            child: const Text('Add Another Copy'),
-          ),
-        ],
-      ),
+      ref: ref,
+      item: existingItem,
+      householdId: widget.householdId,
+      itemTypeName: 'Book',
+      fallbackIcon: Icons.book,
+      showAddCopyOption: true,
     );
   }
 
@@ -610,53 +540,21 @@ class _BookScanScreenState extends ConsumerState<BookScanScreen> {
   }
 
   Widget _buildTextSearch() {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _textSearchController,
-                  decoration: const InputDecoration(
-                    labelText: 'Search',
-                    hintText: 'Book title or author',
-                    border: OutlineInputBorder(),
-                  ),
-                  onSubmitted: (_) => _performTextSearch(),
-                ),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed: _isSearching ? null : _performTextSearch,
-                child: const Icon(Icons.search),
-              ),
-            ],
-          ),
-        ),
-        if (_isSearching)
-          const Expanded(
-            child: Center(child: CircularProgressIndicator()),
-          )
-        else if (_searchResults.isNotEmpty)
-          Expanded(
-            child: ListView.builder(
-              itemCount: _searchResults.length,
-              itemBuilder: (context, index) {
-                final book = _searchResults[index];
-                return ListTile(
-                  leading: book.thumbnailUrl != null && book.thumbnailUrl!.isNotEmpty
-                      ? Image.network(book.thumbnailUrl!, width: 40, fit: BoxFit.cover)
-                      : const Icon(Icons.book),
-                  title: Text(book.title ?? 'Unknown Title'),
-                  subtitle: book.authors.isNotEmpty ? Text(book.authors.join(', ')) : null,
-                  onTap: () => _handleSearchResultTap(book),
-                );
-              },
-            ),
-          ),
-      ],
+    return SearchResultsView<BookMetadata>(
+      controller: _textSearchController,
+      labelText: 'Search',
+      hintText: 'Book title or author',
+      isSearching: _isSearching,
+      searchResults: _searchResults,
+      onSearch: _performTextSearch,
+      resultBuilder: (context, book) => ListTile(
+        leading: book.thumbnailUrl != null && book.thumbnailUrl!.isNotEmpty
+            ? Image.network(book.thumbnailUrl!, width: 40, fit: BoxFit.cover)
+            : const Icon(Icons.book),
+        title: Text(book.title ?? 'Unknown Title'),
+        subtitle: book.authors.isNotEmpty ? Text(book.authors.join(', ')) : null,
+        onTap: () => _handleSearchResultTap(book),
+      ),
     );
   }
 

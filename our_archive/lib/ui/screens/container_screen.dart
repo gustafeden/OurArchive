@@ -8,14 +8,14 @@ import '../../data/models/container.dart' as model;
 import '../../data/models/item.dart';
 import '../../data/models/household.dart';
 import 'item_type_selection_screen.dart';
-import 'item_detail_screen.dart';
 import 'item_list_screen.dart';
 import 'book_scan_screen.dart';
 import 'vinyl_scan_screen.dart';
 import 'manage_types_screen.dart';
 import '../../utils/icon_helper.dart';
 import '../../../data/models/container_type.dart';
-import '../../data/models/item_type.dart';
+import '../widgets/common/category_tabs_builder.dart';
+import '../widgets/common/item_card_widget.dart';
 
 class ContainerScreen extends ConsumerStatefulWidget {
   final String householdId;
@@ -211,7 +211,11 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
               return Column(
                 children: [
                   // Category tabs (only show if there are items)
-                  if (items.isNotEmpty) _buildCategoryTabs(ref, items),
+                  if (items.isNotEmpty)
+                    CategoryTabsBuilder.dynamic(
+                      items: items,
+                      householdId: widget.householdId,
+                    ),
 
                   // Content list
                   Expanded(
@@ -249,7 +253,21 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                           SliverList(
                             delegate: SliverChildBuilderDelegate(
                               (context, index) {
-                                return _buildItemCard(context, ref, filteredItems[index]);
+                                final household = Household(
+                                  id: widget.householdId,
+                                  name: widget.householdName,
+                                  createdBy: '',
+                                  members: {},
+                                  createdAt: DateTime.now(),
+                                  code: '',
+                                );
+                                return ItemCardWidget(
+                                  item: filteredItems[index],
+                                  household: household,
+                                  showEditActions: _isEditMode,
+                                  onMoveItem: () => _showMoveItemDialog(context, ref, filteredItems[index]),
+                                  onDeleteItem: () => _showDeleteItemConfirmation(context, ref, filteredItems[index]),
+                                );
                               },
                               childCount: filteredItems.length,
                             ),
@@ -523,250 +541,6 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
         ),
       ),
     );
-  }
-
-  Widget _buildItemCard(BuildContext context, WidgetRef ref, Item item) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ListTile(
-        leading: _buildItemThumbnail(ref, item),
-        title: Text(item.title),
-        subtitle: _buildItemSubtitle(item),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (_isEditMode) ...[
-              IconButton(
-                icon: const Icon(Icons.drive_file_move),
-                onPressed: () => _showMoveItemDialog(context, ref, item),
-                tooltip: 'Move to another container',
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _showDeleteItemConfirmation(context, ref, item),
-                tooltip: 'Delete item',
-              ),
-            ],
-            const Icon(Icons.arrow_forward_ios),
-          ],
-        ),
-        onTap: () async {
-          // Create a minimal household object for navigation
-          // (ItemDetailScreen needs it mainly for the ID and name)
-          final household = Household(
-            id: widget.householdId,
-            name: widget.householdName,
-            createdBy: '',
-            members: {},
-            createdAt: DateTime.now(),
-            code: '',
-          );
-
-          if (context.mounted) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ItemDetailScreen(
-                  item: item,
-                  household: household,
-                ),
-              ),
-            );
-          }
-        },
-        onLongPress: () {
-          // Create a minimal household object for navigation
-          final household = Household(
-            id: widget.householdId,
-            name: widget.householdName,
-            createdBy: '',
-            members: {},
-            createdAt: DateTime.now(),
-            code: '',
-          );
-
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ItemDetailScreen(
-                item: item,
-                household: household,
-                openInEditMode: true,
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildItemSubtitle(Item item) {
-    // Type-aware subtitle display
-    switch (item.type) {
-      case 'book':
-        if (item.authors != null && item.authors!.isNotEmpty) {
-          return Text(item.authors!.join(', '));
-        }
-        return const Text('Unknown Author');
-
-      case 'vinyl':
-        if (item.artist != null && item.artist!.isNotEmpty) {
-          return Text(item.artist!);
-        }
-        return const Text('Unknown Artist');
-
-      case 'game':
-        if (item.platform != null) {
-          return Text(item.platform!);
-        }
-        return const Text('Game');
-
-      default:
-        // Generic items show type and quantity
-        return Text('${item.type} • Qty: ${item.quantity}');
-    }
-  }
-
-  Widget _buildCategoryTabs(WidgetRef ref, List<Item> allItems) {
-    final selectedType = ref.watch(selectedTypeProvider);
-    final itemTypesAsync = ref.watch(itemTypesProvider(widget.householdId));
-
-    return itemTypesAsync.when(
-      loading: () => const SizedBox(
-        height: 50,
-        child: Center(child: CircularProgressIndicator()),
-      ),
-      error: (error, stack) => const SizedBox.shrink(),
-      data: (itemTypes) {
-        // Get primary types to show as main tabs (specialized + a few common ones)
-        final primaryTypes = ['book', 'vinyl', 'game', 'tool', 'general'];
-
-        // Count items for each primary type
-        final typeCounts = <String, int>{};
-        for (var type in primaryTypes) {
-          typeCounts[type] = allItems.where((i) => i.type == type).length;
-        }
-
-        // Count items for "other" types (not in primary list)
-        final otherCount = allItems.where((i) => !primaryTypes.contains(i.type)).length;
-
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              _CategoryTab(
-                label: 'All',
-                count: allItems.length,
-                isSelected: selectedType == null,
-                onTap: () => ref.read(selectedTypeProvider.notifier).state = null,
-              ),
-              const SizedBox(width: 8),
-              // Build tabs for primary types that exist in itemTypes
-              ...primaryTypes.map((typeName) {
-                final itemType = itemTypes.firstWhere(
-                  (t) => t.name == typeName,
-                  orElse: () => ItemType(
-                    id: '',
-                    name: typeName,
-                    displayName: typeName,
-                    icon: 'category',
-                    isDefault: false,
-                    hasSpecializedForm: false,
-                    createdBy: '',
-                    createdAt: DateTime.now(),
-                  ),
-                );
-
-                return [
-                  _CategoryTab(
-                    label: itemType.displayName,
-                    count: typeCounts[typeName] ?? 0,
-                    isSelected: selectedType == typeName,
-                    onTap: () => ref.read(selectedTypeProvider.notifier).state = typeName,
-                  ),
-                  const SizedBox(width: 8),
-                ];
-              }).expand((widgets) => widgets),
-              // Show "Other" tab if there are other types or custom types
-              if (otherCount > 0 || itemTypes.any((t) => !primaryTypes.contains(t.name)))
-                _CategoryTab(
-                  label: 'Other',
-                  count: otherCount,
-                  isSelected: selectedType != null && !primaryTypes.contains(selectedType),
-                  onTap: () => _showOtherTypesDialog(ref, itemTypes, primaryTypes),
-                ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showOtherTypesDialog(WidgetRef ref, List<ItemType> itemTypes, List<String> primaryTypes) {
-    // Get all types that are not in the primary list
-    final otherTypes = itemTypes.where((t) => !primaryTypes.contains(t.name)).toList();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Other Types'),
-        content: otherTypes.isEmpty
-            ? const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text('No other types available'),
-              )
-            : SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: otherTypes.map((type) {
-                    return ListTile(
-                      leading: Icon(IconHelper.getIconData(type.icon), size: 20),
-                      title: Text(type.displayName),
-                      onTap: () {
-                        ref.read(selectedTypeProvider.notifier).state = type.name;
-                        Navigator.pop(context);
-                      },
-                    );
-                  }).toList(),
-                ),
-              ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildItemThumbnail(WidgetRef ref, Item item) {
-    if (item.photoThumbPath == null) {
-      return CircleAvatar(
-        child: Icon(_getIconForItemType(item.type)),
-      );
-    }
-
-    final itemRepo = ref.read(itemRepositoryProvider);
-
-    return FutureBuilder<String?>(
-      future: itemRepo.getPhotoUrl(item.photoThumbPath!),
-      builder: (context, snapshot) {
-        if (snapshot.hasData && snapshot.data != null) {
-          return CircleAvatar(
-            backgroundImage: CachedNetworkImageProvider(snapshot.data!),
-          );
-        }
-        return CircleAvatar(
-          child: Icon(_getIconForItemType(item.type)),
-        );
-      },
-    );
-  }
-
-  IconData _getIconForItemType(String type) {
-    return IconHelper.getItemIcon(type);
   }
 
   IconData _getContainerIcon(model.Container container) {
@@ -1665,63 +1439,3 @@ class _IconOption extends StatelessWidget {
   }
 }
 
-class _CategoryTab extends StatelessWidget {
-  final String label;
-  final int count;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _CategoryTab({
-    required this.label,
-    required this.count,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? Theme.of(context).colorScheme.primaryContainer : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey[300]!,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected
-                    ? Theme.of(context).colorScheme.onPrimaryContainer
-                    : Theme.of(context).textTheme.bodyLarge?.color,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey[300],
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                '$count',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: isSelected ? Theme.of(context).colorScheme.onPrimary : Colors.grey[700],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

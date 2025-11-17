@@ -1,16 +1,15 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import '../../providers/providers.dart';
 import '../../data/models/household.dart';
 import '../../data/models/book_metadata.dart';
 import '../../data/models/vinyl_metadata.dart';
-import '../../data/models/item_type.dart';
 import '../../utils/icon_helper.dart';
 import 'barcode_scan_screen.dart';
+import '../widgets/common/photo_picker_widget.dart';
 
 class AddItemScreen extends ConsumerStatefulWidget {
   final Household? household;
@@ -155,37 +154,6 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.camera,
-      maxWidth: 1920,
-      maxHeight: 1920,
-      imageQuality: 85,
-    );
-
-    if (pickedFile != null) {
-      setState(() {
-        _photo = File(pickedFile.path);
-      });
-    }
-  }
-
-  Future<void> _pickFromGallery() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1920,
-      maxHeight: 1920,
-      imageQuality: 85,
-    );
-
-    if (pickedFile != null) {
-      setState(() {
-        _photo = File(pickedFile.path);
-      });
-    }
-  }
 
   Future<void> _saveItem() async {
     if (!_formKey.currentState!.validate()) return;
@@ -295,49 +263,10 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             // Photo section
-            if (_photo != null)
-              Stack(
-                alignment: Alignment.topRight,
-                children: [
-                  Container(
-                    height: 200,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      image: DecorationImage(
-                        image: FileImage(_photo!),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    onPressed: () {
-                      setState(() => _photo = null);
-                    },
-                  ),
-                ],
-              )
-            else
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _pickImage,
-                      icon: const Icon(Icons.camera_alt),
-                      label: const Text('Take Photo'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _pickFromGallery,
-                      icon: const Icon(Icons.photo_library),
-                      label: const Text('From Gallery'),
-                    ),
-                  ),
-                ],
-              ),
+            PhotoPickerWidget(
+              photo: _photo,
+              onPhotoChanged: (photo) => setState(() => _photo = photo),
+            ),
 
             const SizedBox(height: 24),
 

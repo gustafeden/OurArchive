@@ -7,12 +7,12 @@ import '../../data/models/book_metadata.dart';
 import '../../data/models/vinyl_metadata.dart';
 import '../../data/models/household.dart';
 import '../../data/models/item.dart';
-import '../../data/models/container.dart' as model;
 import '../../providers/providers.dart';
 import '../../services/vinyl_lookup_service.dart';
 import 'add_book_screen.dart';
 import 'add_vinyl_screen.dart';
-import '../../utils/icon_helper.dart';
+import '../../utils/text_search_helper.dart';
+import '../widgets/common/item_found_dialog.dart';
 
 class BarcodeScanScreen extends ConsumerStatefulWidget {
   final Household household;
@@ -131,48 +131,18 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
   }
 
   Future<void> _performTextSearch() async {
-    final query = _textSearchController.text.trim();
-    if (query.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a book title or author')),
-      );
-      return;
-    }
+    final bookLookupService = ref.read(bookLookupServiceProvider);
 
-    setState(() {
-      _isSearching = true;
-      _searchResults = [];
-    });
-
-    try {
-      final bookLookupService = ref.read(bookLookupServiceProvider);
-      final results = await bookLookupService.searchByText(query);
-
-      if (!mounted) return;
-
-      setState(() {
-        _searchResults = results;
-        _isSearching = false;
-      });
-
-      if (results.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No books found. Try a different search term.')),
-          );
-        }
-      }
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        _isSearching = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Search failed: ${e.toString()}')),
-      );
-    }
+    await TextSearchHelper.performSearchWithState<BookMetadata>(
+      context: context,
+      query: _textSearchController.text,
+      searchFunction: (query) => bookLookupService.searchByText(query),
+      setState: setState,
+      setIsSearching: (value) => _isSearching = value,
+      setSearchResults: (results) => _searchResults = results,
+      emptyMessage: 'No books found. Try a different search term.',
+      itemTypeName: 'book title or author',
+    );
   }
 
   Future<void> _handleSearchResultTap(BookMetadata book) async {
@@ -646,148 +616,27 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
     );
   }
 
-  Future<String> _getContainerName(String? containerId) async {
-    if (containerId == null) {
-      return 'Not assigned to a container';
-    }
-
-    try {
-      final containerService = ref.read(containerServiceProvider);
-      final containers = await containerService.getAllContainers(widget.household.id).first;
-
-      final container = containers.firstWhere(
-        (c) => c.id == containerId,
-        orElse: () => model.Container(
-          id: '',
-          name: 'Unknown',
-          householdId: widget.household.id,
-          containerType: 'unknown',
-          createdAt: DateTime.now(),
-          lastModified: DateTime.now(),
-          createdBy: '',
-        ),
-      );
-
-      return container.id.isNotEmpty ? 'In: ${container.name}' : 'Location unavailable';
-    } catch (e) {
-      return 'Location unavailable';
-    }
-  }
 
   Future<String?> _showDuplicateFoundDialog(Item item, BookMetadata? bookMetadata,
       {VinylMetadata? vinylMetadata}) async {
-    final locationText = await _getContainerName(item.containerId);
+    // Determine fallback icon based on item type
+    IconData fallbackIcon = Icons.inventory_2;
+    if (bookMetadata != null || item.type == 'book') {
+      fallbackIcon = Icons.book;
+    } else if (vinylMetadata != null || item.type == 'vinyl') {
+      fallbackIcon = Icons.album;
+    } else if (item.type == 'game') {
+      fallbackIcon = Icons.sports_esports;
+    }
 
-    if (!mounted) return null;
-
-    return showDialog<String>(
+    return showItemFoundDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.warning_amber, color: Colors.orange, size: 28),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text('You Already Have This!'),
-            ),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (item.coverUrl != null)
-                Center(
-                  child: Image.network(
-                    item.coverUrl!,
-                    height: 200,
-                    errorBuilder: (context, error, stackTrace) =>
-                        Icon(IconHelper.getItemIcon(item.type), size: 100),
-                  ),
-                )
-              else if (bookMetadata?.thumbnailUrl != null)
-                Center(
-                  child: Image.network(
-                    bookMetadata!.thumbnailUrl!,
-                    height: 200,
-                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.book, size: 100),
-                  ),
-                )
-              else if (vinylMetadata?.coverUrl != null)
-                Center(
-                  child: Image.network(
-                    vinylMetadata!.coverUrl!,
-                    height: 200,
-                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.album, size: 100),
-                  ),
-                ),
-              const SizedBox(height: 16),
-              Text(
-                item.title,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              if (item.authors != null && item.authors!.isNotEmpty)
-                Text(
-                  'By ${item.authors!.join(", ")}',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.location_on,
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        locationText,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onPrimaryContainer,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (item.quantity > 1) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Quantity: ${item.quantity}',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-              const SizedBox(height: 16),
-              Text(
-                'What would you like to do?',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontStyle: FontStyle.italic,
-                    ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'scanNext'),
-            child: const Text('Scan Next'),
-          ),
-          TextButton.icon(
-            onPressed: () => Navigator.pop(context, 'addCopy'),
-            icon: const Icon(Icons.add),
-            label: const Text('Add Another Copy'),
-          ),
-        ],
-      ),
+      ref: ref,
+      item: item,
+      householdId: widget.household.id,
+      itemTypeName: 'Item',
+      fallbackIcon: fallbackIcon,
+      showAddCopyOption: true,
     );
   }
 

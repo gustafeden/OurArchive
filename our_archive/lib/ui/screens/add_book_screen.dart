@@ -1,12 +1,16 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import '../../providers/providers.dart';
 import '../../data/models/household.dart';
 import '../../data/models/book_metadata.dart';
+import '../widgets/common/photo_picker_widget.dart';
+import '../widgets/common/loading_button.dart';
+import '../widgets/form/container_selector_field.dart';
+import '../widgets/form/year_field.dart';
+import '../widgets/form/notes_field.dart';
 
 class AddBookScreen extends ConsumerStatefulWidget {
   final Household? household;
@@ -128,27 +132,6 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
     }
   }
 
-  Future<void> _takephoto() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.camera);
-
-    if (pickedFile != null) {
-      setState(() {
-        _photo = File(pickedFile.path);
-      });
-    }
-  }
-
-  Future<void> _pickPhotoFromGallery() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
-    if (pickedFile != null) {
-      setState(() {
-        _photo = File(pickedFile.path);
-      });
-    }
-  }
 
   Future<void> _saveBook() async {
     if (!_formKey.currentState!.validate()) return;
@@ -221,28 +204,14 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final containersAsync = ref.watch(allContainersProvider);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Book'),
         actions: [
-          if (_isLoading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            )
-          else
-            IconButton(
-              icon: const Icon(Icons.check),
-              onPressed: _saveBook,
-            ),
+          LoadingButton(
+            isLoading: _isLoading,
+            onPressed: _saveBook,
+          ),
         ],
       ),
       body: Form(
@@ -251,65 +220,11 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
           padding: const EdgeInsets.all(16.0),
           children: [
             // Photo Section
-            GestureDetector(
-              onTap: () {
-                showModalBottomSheet(
-                  context: context,
-                  builder: (context) => SafeArea(
-                    child: Wrap(
-                      children: [
-                        ListTile(
-                          leading: const Icon(Icons.camera_alt),
-                          title: const Text('Take Photo'),
-                          onTap: () {
-                            Navigator.pop(context);
-                            _takephoto();
-                          },
-                        ),
-                        ListTile(
-                          leading: const Icon(Icons.photo_library),
-                          title: const Text('Choose from Gallery'),
-                          onTap: () {
-                            Navigator.pop(context);
-                            _pickPhotoFromGallery();
-                          },
-                        ),
-                        if (_photo != null)
-                          ListTile(
-                            leading: const Icon(Icons.delete),
-                            title: const Text('Remove Photo'),
-                            onTap: () {
-                              Navigator.pop(context);
-                              setState(() => _photo = null);
-                            },
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-              child: Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey[400]!),
-                ),
-                child: _photo != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.file(_photo!, fit: BoxFit.cover),
-                      )
-                    : const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.book, size: 64, color: Colors.grey),
-                          SizedBox(height: 8),
-                          Text('Tap to add cover photo',
-                              style: TextStyle(color: Colors.grey)),
-                        ],
-                      ),
-              ),
+            PhotoPickerWidget(
+              photo: _photo,
+              onPhotoChanged: (photo) => setState(() => _photo = photo),
+              placeholderIcon: Icons.book,
+              placeholderText: 'Tap to add cover photo',
             ),
             const SizedBox(height: 24),
 
@@ -398,66 +313,23 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextFormField(
-                    controller: _yearController,
-                    decoration: const InputDecoration(
-                      labelText: 'Year',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    maxLength: 4,
-                    buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
-                  ),
+                  child: YearField(controller: _yearController),
                 ),
               ],
             ),
             const SizedBox(height: 16),
 
             // Container/Location
-            containersAsync.when(
-              data: (containers) {
-                return DropdownButtonFormField<String>(
-                  value: _selectedContainerId,
-                  decoration: const InputDecoration(
-                    labelText: 'Container (optional)',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.place),
-                  ),
-                  items: [
-                    const DropdownMenuItem<String>(
-                      value: null,
-                      child: Text('No container'),
-                    ),
-                    ...containers.map((container) {
-                      return DropdownMenuItem<String>(
-                        value: container.id,
-                        child: Text(container.name),
-                      );
-                    }),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedContainerId = value;
-                    });
-                  },
-                );
-              },
-              loading: () => const LinearProgressIndicator(),
-              error: (_, __) => const Text('Failed to load containers'),
+            ContainerSelectorField(
+              selectedContainerId: _selectedContainerId,
+              onChanged: (value) => setState(() => _selectedContainerId = value),
             ),
             const SizedBox(height: 16),
 
             // Notes/Description
-            TextFormField(
+            NotesField(
               controller: _notesController,
-              decoration: const InputDecoration(
-                labelText: 'Notes / Description (optional)',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.note),
-                alignLabelWithHint: true,
-              ),
-              maxLines: 4,
-              textCapitalization: TextCapitalization.sentences,
+              labelText: 'Notes / Description (optional)',
             ),
             const SizedBox(height: 24),
           ],

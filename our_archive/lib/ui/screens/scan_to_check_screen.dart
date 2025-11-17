@@ -4,9 +4,9 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../data/models/book_metadata.dart';
 import '../../data/models/vinyl_metadata.dart';
 import '../../data/models/item.dart';
-import '../../data/models/container.dart' as model;
 import '../../providers/providers.dart';
 import '../../services/vinyl_lookup_service.dart';
+import '../widgets/common/item_found_dialog.dart';
 import 'add_item_screen.dart';
 import 'add_vinyl_screen.dart';
 
@@ -319,127 +319,14 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
   }
 
   Future<String?> _showBookFoundDialog(Item item) async {
-    // Get container name if item has one
-    String locationText = 'Not assigned to a container';
-    if (item.containerId != null) {
-      try {
-        // Temporarily set current household to get containers
-        final previousHouseholdId = ref.read(currentHouseholdIdProvider);
-        ref.read(currentHouseholdIdProvider.notifier).state = widget.householdId;
-
-        final containerService = ref.read(containerServiceProvider);
-        final containers = await containerService.getAllContainers(widget.householdId).first;
-
-        // Restore previous household
-        ref.read(currentHouseholdIdProvider.notifier).state = previousHouseholdId;
-
-        final container = containers.firstWhere(
-          (c) => c.id == item.containerId,
-          orElse: () => model.Container(
-            id: '',
-            name: 'Unknown',
-            householdId: widget.householdId,
-            containerType: 'unknown',
-            createdAt: DateTime.now(),
-            lastModified: DateTime.now(),
-            createdBy: '',
-          ),
-        );
-
-        if (container.id.isNotEmpty) {
-          locationText = 'In: ${container.name}';
-        }
-      } catch (e) {
-        locationText = 'Location unavailable';
-      }
-    }
-
-    if (!mounted) return null;
-
-    return showDialog<String>(
+    return showItemFoundDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 28),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text('You Already Have This!'),
-            ),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (item.coverUrl != null)
-                Center(
-                  child: Image.network(
-                    item.coverUrl!,
-                    height: 200,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.book, size: 100),
-                  ),
-                ),
-              const SizedBox(height: 16),
-              Text(
-                item.title,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              if (item.authors != null && item.authors!.isNotEmpty)
-                Text(
-                  'By ${item.authors!.join(", ")}',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.location_on,
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        locationText,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onPrimaryContainer,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (item.quantity > 1) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Quantity: ${item.quantity}',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'close'),
-            child: const Text('Close'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, 'scanNext'),
-            child: const Text('Scan Next'),
-          ),
-        ],
-      ),
+      ref: ref,
+      item: item,
+      householdId: widget.householdId,
+      itemTypeName: 'Book',
+      fallbackIcon: Icons.book,
+      showAddCopyOption: false,
     );
   }
 
@@ -519,127 +406,14 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
   }
 
   Future<String?> _showVinylFoundDialog(Item item) async {
-    // Get container name if item has one
-    String locationText = 'Not assigned to a container';
-    if (item.containerId != null) {
-      try {
-        // Temporarily set current household to get containers
-        final previousHouseholdId = ref.read(currentHouseholdIdProvider);
-        ref.read(currentHouseholdIdProvider.notifier).state = widget.householdId;
-
-        final containerService = ref.read(containerServiceProvider);
-        final containers = await containerService.getAllContainers(widget.householdId).first;
-
-        // Restore previous household
-        ref.read(currentHouseholdIdProvider.notifier).state = previousHouseholdId;
-
-        final container = containers.firstWhere(
-          (c) => c.id == item.containerId,
-          orElse: () => model.Container(
-            id: '',
-            name: 'Unknown',
-            householdId: widget.householdId,
-            containerType: 'unknown',
-            createdAt: DateTime.now(),
-            lastModified: DateTime.now(),
-            createdBy: '',
-          ),
-        );
-
-        if (container.id.isNotEmpty) {
-          locationText = 'In: ${container.name}';
-        }
-      } catch (e) {
-        locationText = 'Location unavailable';
-      }
-    }
-
-    if (!mounted) return null;
-
-    return showDialog<String>(
+    return showItemFoundDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 28),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text('You Already Have This!'),
-            ),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (item.coverUrl != null)
-                Center(
-                  child: Image.network(
-                    item.coverUrl!,
-                    height: 200,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.album, size: 100),
-                  ),
-                ),
-              const SizedBox(height: 16),
-              Text(
-                item.title,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              if (item.artist != null && item.artist!.isNotEmpty)
-                Text(
-                  'By ${item.artist}',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.location_on,
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        locationText,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onPrimaryContainer,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (item.quantity > 1) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Quantity: ${item.quantity}',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'close'),
-            child: const Text('Close'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, 'scanNext'),
-            child: const Text('Scan Next'),
-          ),
-        ],
-      ),
+      ref: ref,
+      item: item,
+      householdId: widget.householdId,
+      itemTypeName: 'Music',
+      fallbackIcon: Icons.album,
+      showAddCopyOption: false,
     );
   }
 

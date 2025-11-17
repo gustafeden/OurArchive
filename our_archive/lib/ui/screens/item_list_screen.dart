@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../providers/providers.dart';
 import '../../data/models/household.dart';
 import '../../data/models/item.dart';
@@ -9,9 +8,11 @@ import 'item_type_selection_screen.dart';
 import 'book_scan_screen.dart';
 import 'vinyl_scan_screen.dart';
 import 'container_screen.dart';
-import 'item_detail_screen.dart';
 import 'manage_types_screen.dart';
 import '../../utils/icon_helper.dart';
+import '../widgets/common/category_tabs_builder.dart';
+import '../widgets/common/item_card_widget.dart';
+import '../widgets/common/empty_state_widget.dart';
 
 class ItemListScreen extends ConsumerStatefulWidget {
   final Household household;
@@ -236,7 +237,14 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
 
           // Category tabs (hide in browse mode)
           if (viewMode == ViewMode.list)
-            _buildCategoryTabs(ref, filteredItems),
+            CategoryTabsBuilder.static(
+              items: filteredItems,
+              householdId: widget.household.id,
+              onMusicTap: () {
+                ref.read(selectedTypeProvider.notifier).state = 'vinyl';
+                ref.read(selectedMusicFormatProvider.notifier).state = null;
+              },
+            ),
 
           // Music sub-category filter (show only when Music tab is selected)
           if (viewMode == ViewMode.list && selectedType == 'vinyl')
@@ -252,28 +260,12 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
               data: (items) {
                 // Use the filtered items from filteredItemsProvider
                 if (filteredItems.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          searchQuery.isNotEmpty ? Icons.search_off : Icons.inventory_outlined,
-                          size: 80,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          searchQuery.isNotEmpty ? 'No items found' : 'No items yet',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          searchQuery.isNotEmpty
-                              ? 'Try a different search term'
-                              : 'Tap + to add your first item',
-                        ),
-                      ],
-                    ),
+                  return EmptyStateWidget(
+                    icon: searchQuery.isNotEmpty ? Icons.search_off : Icons.inventory_outlined,
+                    title: searchQuery.isNotEmpty ? 'No items found' : 'No items yet',
+                    subtitle: searchQuery.isNotEmpty
+                        ? 'Try a different search term'
+                        : 'Tap + to add your first item',
                   );
                 }
 
@@ -290,7 +282,12 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                     itemCount: filteredItems.length,
                     itemBuilder: (context, index) {
                       final item = filteredItems[index];
-                      return _ItemCard(item: item, household: widget.household);
+                      return ItemCardWidget(
+                        item: item,
+                        household: widget.household,
+                        showSyncStatus: true,
+                        showLocationInSubtitle: true,
+                      );
                     },
                   );
                 }
@@ -474,7 +471,12 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                 ],
               ),
             ),
-            ...typeItems.map((item) => _ItemCard(item: item, household: widget.household)),
+            ...typeItems.map((item) => ItemCardWidget(
+              item: item,
+              household: widget.household,
+              showSyncStatus: true,
+              showLocationInSubtitle: true,
+            )),
             if (sectionIndex < sortedTypes.length - 1)
               const Divider(height: 1, thickness: 1),
           ],
@@ -577,70 +579,6 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
   }
 
 
-  Widget _buildCategoryTabs(WidgetRef ref, List<Item> allItems) {
-    final selectedType = ref.watch(selectedTypeProvider);
-
-    // Count items by type
-    final bookCount = allItems.where((i) => i.type == 'book').length;
-    final vinylCount = allItems.where((i) => i.type == 'vinyl').length;
-    final gameCount = allItems.where((i) => i.type == 'game').length;
-    final toolCount = allItems.where((i) => i.type == 'tool').length;
-    final otherCount = allItems.where((i) => !['book', 'vinyl', 'game', 'tool'].contains(i.type)).length;
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          _CategoryTab(
-            label: 'All',
-            count: allItems.length,
-            isSelected: selectedType == null,
-            onTap: () => ref.read(selectedTypeProvider.notifier).state = null,
-          ),
-          const SizedBox(width: 8),
-          _CategoryTab(
-            label: 'Books',
-            count: bookCount,
-            isSelected: selectedType == 'book',
-            onTap: () => ref.read(selectedTypeProvider.notifier).state = 'book',
-          ),
-          const SizedBox(width: 8),
-          _CategoryTab(
-            label: 'Music',
-            count: vinylCount,
-            isSelected: selectedType == 'vinyl',
-            onTap: () {
-              ref.read(selectedTypeProvider.notifier).state = 'vinyl';
-              ref.read(selectedMusicFormatProvider.notifier).state = null;
-            },
-          ),
-          const SizedBox(width: 8),
-          _CategoryTab(
-            label: 'Games',
-            count: gameCount,
-            isSelected: selectedType == 'game',
-            onTap: () => ref.read(selectedTypeProvider.notifier).state = 'game',
-          ),
-          const SizedBox(width: 8),
-          _CategoryTab(
-            label: 'Tools',
-            count: toolCount,
-            isSelected: selectedType == 'tool',
-            onTap: () => ref.read(selectedTypeProvider.notifier).state = 'tool',
-          ),
-          const SizedBox(width: 8),
-          _CategoryTab(
-            label: 'Other',
-            count: otherCount,
-            isSelected: selectedType != null && !['book', 'vinyl', 'game', 'tool'].contains(selectedType),
-            onTap: () => _showOtherTypesDialog(ref),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildMusicFormatFilter(WidgetRef ref, List<Item> allItems) {
     final selectedMusicFormat = ref.watch(selectedMusicFormatProvider);
 
@@ -700,63 +638,6 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
             ],
           ],
         ),
-      ),
-    );
-  }
-
-  void _showOtherTypesDialog(WidgetRef ref) {
-    final primaryTypes = ['book', 'vinyl', 'game', 'tool'];
-
-    showDialog(
-      context: context,
-      builder: (context) => Consumer(
-        builder: (context, ref, child) {
-          final itemTypesAsync = ref.watch(itemTypesProvider(widget.household.id));
-
-          return AlertDialog(
-            title: const Text('Other Types'),
-            content: itemTypesAsync.when(
-              loading: () => const SizedBox(
-                height: 100,
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (error, stack) => Text('Error loading types: $error'),
-              data: (itemTypes) {
-                // Get all types that are not in the primary list
-                final otherTypes = itemTypes.where((t) => !primaryTypes.contains(t.name)).toList();
-
-                if (otherTypes.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Text('No other types available'),
-                  );
-                }
-
-                return SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: otherTypes.map((type) {
-                      return ListTile(
-                        leading: Icon(IconHelper.getIconData(type.icon), size: 20),
-                        title: Text(type.displayName),
-                        onTap: () {
-                          ref.read(selectedTypeProvider.notifier).state = type.name;
-                          Navigator.pop(context);
-                        },
-                      );
-                    }).toList(),
-                  ),
-                );
-              },
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-            ],
-          );
-        },
       ),
     );
   }
@@ -1021,177 +902,6 @@ class _FilterButton extends StatelessWidget {
   }
 }
 
-class _ItemCard extends ConsumerWidget {
-  final Item item;
-  final Household household;
-
-  const _ItemCard({required this.item, required this.household});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ListTile(
-        leading: _buildThumbnail(ref),
-        title: Text(item.title),
-        subtitle: _buildSubtitle(),
-        trailing: item.syncStatus != SyncStatus.synced
-            ? const Icon(Icons.sync, size: 16)
-            : null,
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ItemDetailScreen(
-                item: item,
-                household: household,
-              ),
-            ),
-          );
-        },
-        onLongPress: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ItemDetailScreen(
-                item: item,
-                household: household,
-                openInEditMode: true,
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildSubtitle() {
-    // Type-aware subtitle display
-    switch (item.type) {
-      case 'book':
-        if (item.authors != null && item.authors!.isNotEmpty) {
-          return Text(item.authors!.join(', '));
-        }
-        return const Text('Unknown Author');
-
-      case 'vinyl':
-        if (item.artist != null && item.artist!.isNotEmpty) {
-          return Text(item.artist!);
-        }
-        return const Text('Unknown Artist');
-
-      case 'game':
-        if (item.platform != null) {
-          return Text(item.platform!);
-        }
-        return const Text('Game');
-
-      default:
-        // Generic items show type and quantity
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(item.type),
-            if (item.location.isNotEmpty) Text('📍 ${item.location}'),
-            if (item.quantity > 1) Text('Qty: ${item.quantity}'),
-          ],
-        );
-    }
-  }
-
-  Widget _buildThumbnail(WidgetRef ref) {
-    if (item.photoThumbPath == null) {
-      return CircleAvatar(
-        child: Icon(IconHelper.getItemIcon(item.type)),
-      );
-    }
-
-    final itemRepo = ref.read(itemRepositoryProvider);
-
-    return FutureBuilder<String?>(
-      future: itemRepo.getPhotoUrl(item.photoThumbPath!),
-      builder: (context, snapshot) {
-        if (snapshot.hasData && snapshot.data != null) {
-          return CircleAvatar(
-            backgroundImage: CachedNetworkImageProvider(snapshot.data!),
-          );
-        }
-        return CircleAvatar(
-          child: Icon(IconHelper.getItemIcon(item.type)),
-        );
-      },
-    );
-  }
-
-}
-
-class _CategoryTab extends StatelessWidget {
-  final String label;
-  final int count;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _CategoryTab({
-    required this.label,
-    required this.count,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? Theme.of(context).colorScheme.primaryContainer : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected
-              ? Theme.of(context).colorScheme.primary
-              : Colors.grey[300]!,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected
-                  ? Theme.of(context).colorScheme.onPrimaryContainer
-                  : Theme.of(context).textTheme.bodyLarge?.color,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: isSelected
-                  ? Theme.of(context).colorScheme.primary
-                  : Colors.grey[300],
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                '$count',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: isSelected
-                    ? Theme.of(context).colorScheme.onPrimary
-                    : Colors.grey[700],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _MusicFormatChip extends StatelessWidget {
   final String label;
   final int count;
@@ -1282,7 +992,12 @@ class _CollapsibleCategorySection extends StatelessWidget {
           ),
         ),
         if (isExpanded)
-          ...items.map((item) => _ItemCard(item: item, household: household)),
+          ...items.map((item) => ItemCardWidget(
+            item: item,
+            household: household,
+            showSyncStatus: true,
+            showLocationInSubtitle: true,
+          )),
         const Divider(height: 1, thickness: 1),
       ],
     );

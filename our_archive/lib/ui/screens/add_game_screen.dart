@@ -1,9 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../providers/providers.dart';
 import '../../data/models/household.dart';
+import '../widgets/common/photo_picker_widget.dart';
+import '../widgets/common/loading_button.dart';
+import '../widgets/form/container_selector_field.dart';
+import '../widgets/form/year_field.dart';
+import '../widgets/form/notes_field.dart';
 
 class AddGameScreen extends ConsumerStatefulWidget {
   final Household? household;
@@ -86,13 +90,6 @@ class _AddGameScreenState extends ConsumerState<AddGameScreen> {
     super.dispose();
   }
 
-  Future<void> _pickPhoto(ImageSource source) async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: source);
-    if (pickedFile != null) {
-      setState(() => _photo = File(pickedFile.path));
-    }
-  }
 
   Future<void> _saveGame() async {
     if (!_formKey.currentState!.validate()) return;
@@ -151,16 +148,14 @@ class _AddGameScreenState extends ConsumerState<AddGameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final containersAsync = ref.watch(allContainersProvider);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Game'),
         actions: [
-          if (_isLoading)
-            const Center(child: Padding(padding: EdgeInsets.all(16), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))))
-          else
-            IconButton(icon: const Icon(Icons.check), onPressed: _saveGame),
+          LoadingButton(
+            isLoading: _isLoading,
+            onPressed: _saveGame,
+          ),
         ],
       ),
       body: Form(
@@ -168,24 +163,11 @@ class _AddGameScreenState extends ConsumerState<AddGameScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            GestureDetector(
-              onTap: () => showModalBottomSheet(
-                context: context,
-                builder: (context) => SafeArea(
-                  child: Wrap(children: [
-                    ListTile(leading: const Icon(Icons.camera_alt), title: const Text('Take Photo'), onTap: () { Navigator.pop(context); _pickPhoto(ImageSource.camera); }),
-                    ListTile(leading: const Icon(Icons.photo_library), title: const Text('Choose from Gallery'), onTap: () { Navigator.pop(context); _pickPhoto(ImageSource.gallery); }),
-                    if (_photo != null) ListTile(leading: const Icon(Icons.delete), title: const Text('Remove Photo'), onTap: () { Navigator.pop(context); setState(() => _photo = null); }),
-                  ]),
-                ),
-              ),
-              child: Container(
-                height: 200,
-                decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey[400]!)),
-                child: _photo != null
-                    ? ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.file(_photo!, fit: BoxFit.cover))
-                    : const Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.sports_esports, size: 64, color: Colors.grey), SizedBox(height: 8), Text('Tap to add cover photo', style: TextStyle(color: Colors.grey))]),
-              ),
+            PhotoPickerWidget(
+              photo: _photo,
+              onPhotoChanged: (photo) => setState(() => _photo = photo),
+              placeholderIcon: Icons.sports_esports,
+              placeholderText: 'Tap to add cover photo',
             ),
             const SizedBox(height: 24),
             TextFormField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder(), prefixIcon: Icon(Icons.title)), validator: (v) => v?.trim().isEmpty ?? true ? 'Title is required' : null, textCapitalization: TextCapitalization.words),
@@ -200,7 +182,7 @@ class _AddGameScreenState extends ConsumerState<AddGameScreen> {
             Row(children: [
               Expanded(flex: 2, child: TextFormField(controller: _publisherController, decoration: const InputDecoration(labelText: 'Publisher', border: OutlineInputBorder(), prefixIcon: Icon(Icons.business)), textCapitalization: TextCapitalization.words)),
               const SizedBox(width: 12),
-              Expanded(child: TextFormField(controller: _yearController, decoration: const InputDecoration(labelText: 'Year', border: OutlineInputBorder()), keyboardType: TextInputType.number, maxLength: 4, buildCounter: (_, {required currentLength, required isFocused, maxLength}) => null)),
+              Expanded(child: YearField(controller: _yearController)),
             ]),
             const SizedBox(height: 16),
             Row(children: [
@@ -209,18 +191,12 @@ class _AddGameScreenState extends ConsumerState<AddGameScreen> {
               Expanded(child: TextFormField(controller: _playersController, decoration: const InputDecoration(labelText: 'Players', border: OutlineInputBorder(), prefixIcon: Icon(Icons.people), hintText: '1-4'))),
             ]),
             const SizedBox(height: 16),
-            containersAsync.when(
-              data: (containers) => DropdownButtonFormField<String>(
-                value: _selectedContainerId,
-                decoration: const InputDecoration(labelText: 'Container (optional)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.place)),
-                items: [const DropdownMenuItem<String>(value: null, child: Text('No container')), ...containers.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))],
-                onChanged: (v) => setState(() => _selectedContainerId = v),
-              ),
-              loading: () => const LinearProgressIndicator(),
-              error: (_, __) => const Text('Failed to load containers'),
+            ContainerSelectorField(
+              selectedContainerId: _selectedContainerId,
+              onChanged: (v) => setState(() => _selectedContainerId = v),
             ),
             const SizedBox(height: 16),
-            TextFormField(controller: _notesController, decoration: const InputDecoration(labelText: 'Notes (optional)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.note), alignLabelWithHint: true), maxLines: 4, textCapitalization: TextCapitalization.sentences),
+            NotesField(controller: _notesController),
             const SizedBox(height: 24),
           ],
         ),

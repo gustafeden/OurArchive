@@ -5,6 +5,10 @@ import '../../data/models/vinyl_metadata.dart';
 import '../../data/models/item.dart';
 import '../../providers/providers.dart';
 import '../../services/vinyl_lookup_service.dart';
+import '../../utils/text_search_helper.dart';
+import '../widgets/common/item_found_dialog.dart';
+import '../widgets/common/network_image_with_fallback.dart';
+import '../widgets/common/search_results_view.dart';
 import 'add_vinyl_screen.dart';
 
 enum VinylScanMode { camera, textSearch }
@@ -50,47 +54,16 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
   }
 
   Future<void> _performTextSearch() async {
-    final query = _textSearchController.text.trim();
-    if (query.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter artist, album, or catalog number')),
-      );
-      return;
-    }
-
-    setState(() {
-      _isSearching = true;
-      _searchResults = [];
-    });
-
-    try {
-      final results = await VinylLookupService.searchByText(query);
-
-      if (!mounted) return;
-
-      setState(() {
-        _searchResults = results;
-        _isSearching = false;
-      });
-
-      if (results.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No vinyl records found. Try a different search term.')),
-          );
-        }
-      }
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        _isSearching = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Search failed: ${e.toString()}')),
-      );
-    }
+    await TextSearchHelper.performSearchWithState<VinylMetadata>(
+      context: context,
+      query: _textSearchController.text,
+      searchFunction: (query) => VinylLookupService.searchByText(query),
+      setState: setState,
+      setIsSearching: (value) => _isSearching = value,
+      setSearchResults: (results) => _searchResults = results,
+      emptyMessage: 'No vinyl records found. Try a different search term.',
+      itemTypeName: 'artist, album, or catalog number',
+    );
   }
 
   Future<void> _handleSearchResultTap(VinylMetadata vinyl) async {
@@ -285,14 +258,11 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (vinyl.coverUrl != null && vinyl.coverUrl!.isNotEmpty)
-                Center(
-                  child: Image.network(
-                    vinyl.coverUrl!,
-                    height: 200,
-                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.album, size: 100),
-                  ),
-                ),
+              NetworkImageWithFallback(
+                imageUrl: vinyl.coverUrl,
+                height: 200,
+                fallbackIcon: Icons.album,
+              ),
               const SizedBox(height: 16),
               Text(vinyl.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               if (vinyl.artist.isNotEmpty) ...[
@@ -333,55 +303,14 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
   }
 
   Future<String?> _showDuplicateFoundDialog(Item existingItem, VinylMetadata? vinyl) async {
-    String? containerName;
-
-    if (existingItem.containerId != null) {
-      try {
-        final containerService = ref.read(containerServiceProvider);
-        final containers = await containerService.getAllContainers(widget.householdId).first;
-        final container = containers.firstWhere(
-          (c) => c.id == existingItem.containerId,
-          orElse: () => throw Exception('Container not found'),
-        );
-        containerName = container.name;
-      } catch (e) {
-        debugPrint('Error getting container name: $e');
-      }
-    }
-
-    if (!mounted) return null;
-
-    return showDialog<String>(
+    return showItemFoundDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Music Already Exists'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'This music is already in your collection:',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(existingItem.title),
-            if (containerName != null) ...[
-              const SizedBox(height: 4),
-              Text('Location: $containerName'),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'scanNext'),
-            child: const Text('Scan Next'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'addCopy'),
-            child: const Text('Add Another Copy'),
-          ),
-        ],
-      ),
+      ref: ref,
+      item: existingItem,
+      householdId: widget.householdId,
+      itemTypeName: 'Music',
+      fallbackIcon: Icons.album,
+      showAddCopyOption: true,
     );
   }
 
@@ -475,68 +404,31 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
   }
 
   Widget _buildTextSearch() {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _textSearchController,
-                      decoration: const InputDecoration(
-                        labelText: 'Search Discogs',
-                        hintText: 'Artist, album, or catalog number',
-                        border: OutlineInputBorder(),
-                      ),
-                      onSubmitted: (_) => _performTextSearch(),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: _isSearching ? null : _performTextSearch,
-                    child: const Icon(Icons.search),
-                  ),
-                ],
+    return SearchResultsView<VinylMetadata>(
+      controller: _textSearchController,
+      labelText: 'Search Discogs',
+      hintText: 'Artist, album, or catalog number',
+      isSearching: _isSearching,
+      searchResults: _searchResults,
+      onSearch: _performTextSearch,
+      resultBuilder: (context, vinyl) => ListTile(
+        leading: vinyl.coverUrl != null && vinyl.coverUrl!.isNotEmpty
+            ? Image.network(vinyl.coverUrl!, width: 40, fit: BoxFit.cover)
+            : const Icon(Icons.album),
+        title: Text(vinyl.title),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (vinyl.artist.isNotEmpty) Text(vinyl.artist),
+            if (vinyl.format != null && vinyl.format!.isNotEmpty)
+              Text(
+                vinyl.format!.join(', '),
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
-            ],
-          ),
+          ],
         ),
-        if (_isSearching)
-          const Expanded(
-            child: Center(child: CircularProgressIndicator()),
-          )
-        else if (_searchResults.isNotEmpty)
-          Expanded(
-            child: ListView.builder(
-              itemCount: _searchResults.length,
-              itemBuilder: (context, index) {
-                final vinyl = _searchResults[index];
-                return ListTile(
-                  leading: vinyl.coverUrl != null && vinyl.coverUrl!.isNotEmpty
-                      ? Image.network(vinyl.coverUrl!, width: 40, fit: BoxFit.cover)
-                      : const Icon(Icons.album),
-                  title: Text(vinyl.title),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (vinyl.artist.isNotEmpty) Text(vinyl.artist),
-                      if (vinyl.format != null && vinyl.format!.isNotEmpty)
-                        Text(
-                          vinyl.format!.join(', '),
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                        ),
-                    ],
-                  ),
-                  onTap: () => _handleSearchResultTap(vinyl),
-                );
-              },
-            ),
-          ),
-      ],
+        onTap: () => _handleSearchResultTap(vinyl),
+      ),
     );
   }
 }
