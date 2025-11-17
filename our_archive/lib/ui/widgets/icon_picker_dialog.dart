@@ -164,8 +164,7 @@ class _IconPickerDialogState extends State<IconPickerDialog> {
 
     return iconCategories.values
         .expand((list) => list)
-        .where((icon) =>
-            icon['name'].toString().toLowerCase().contains(_searchQuery.toLowerCase()))
+        .where((icon) => icon['name'].toString().toLowerCase().contains(_searchQuery.toLowerCase()))
         .toList();
   }
 
@@ -221,6 +220,7 @@ class _IconPickerDialogState extends State<IconPickerDialog> {
                     crossAxisCount: 5,
                     crossAxisSpacing: 8,
                     mainAxisSpacing: 8,
+                    childAspectRatio: 0.85,
                   ),
                   itemCount: filteredIcons.length,
                   itemBuilder: (context, index) {
@@ -237,26 +237,21 @@ class _IconPickerDialogState extends State<IconPickerDialog> {
                       },
                       child: Container(
                         decoration: BoxDecoration(
-                          color: isSelected
-                              ? Theme.of(context).colorScheme.primaryContainer
-                              : Colors.transparent,
-                          border: Border.all(
-                            color: isSelected
-                                ? Theme.of(context).colorScheme.primary
-                                : Colors.grey.shade300,
-                            width: 2,
-                          ),
+                          color: isSelected ? Theme.of(context).colorScheme.primaryContainer : Colors.transparent,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              icon,
-                              size: 32,
-                              color: isSelected
-                                  ? Theme.of(context).colorScheme.primary
-                                  : null,
+                            SizedBox(
+                              height: 40,
+                              child: Center(
+                                child: Icon(
+                                  icon,
+                                  size: 32,
+                                  color: isSelected ? Theme.of(context).colorScheme.primary : null,
+                                ),
+                              ),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -284,9 +279,7 @@ class _IconPickerDialogState extends State<IconPickerDialog> {
                   ),
                   const SizedBox(width: 8),
                   FilledButton(
-                    onPressed: _selectedIcon != null
-                        ? () => Navigator.pop(context, _selectedIcon)
-                        : null,
+                    onPressed: _selectedIcon != null ? () => Navigator.pop(context, _selectedIcon) : null,
                     child: const Text('Select'),
                   ),
                 ],
