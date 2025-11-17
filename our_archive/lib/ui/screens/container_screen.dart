@@ -18,6 +18,7 @@ import '../../utils/icon_helper.dart';
 import '../../../data/models/container_type.dart';
 import '../widgets/common/category_tabs_builder.dart';
 import '../widgets/common/item_card_widget.dart';
+import '../widgets/common/item_list_view.dart';
 
 class ContainerScreen extends ConsumerStatefulWidget {
   final String householdId;
@@ -40,6 +41,7 @@ class ContainerScreen extends ConsumerStatefulWidget {
 class _ContainerScreenState extends ConsumerState<ContainerScreen> {
   bool _isEditMode = false;
   bool _isSearching = false;
+  bool _showItemsOnly = false;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
@@ -59,6 +61,10 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
     // Get items directly in this container
     final selectedType = ref.watch(selectedTypeProvider);
     final itemsAsync = ref.watch(containerItemsProvider(widget.parentContainerId));
+
+    // Get all items recursively (for items-only view)
+    final nestedItemsAsync = ref.watch(nestedContainerItemsProvider(widget.parentContainerId));
+    final viewMode = ref.watch(viewModeProvider);
 
     final title = widget.breadcrumb.isEmpty ? widget.householdName : widget.breadcrumb.last.name;
 
@@ -110,6 +116,13 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                 setState(() {
                   _isEditMode = !_isEditMode;
                 });
+              } else if (value == 'view_mode') {
+                setState(() {
+                  _showItemsOnly = !_showItemsOnly;
+                });
+              } else if (value == 'toggle_list_browse') {
+                ref.read(viewModeProvider.notifier).state =
+                    viewMode == ViewMode.list ? ViewMode.browse : ViewMode.list;
               } else if (value == 'manage_types') {
                 Navigator.push(
                   context,
@@ -122,6 +135,33 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
               }
             },
             itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'view_mode',
+                child: Row(
+                  children: [
+                    Icon(
+                      _showItemsOnly ? Ionicons.grid_outline : Ionicons.list_outline,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(_showItemsOnly ? 'Show Containers' : 'View All Items'),
+                  ],
+                ),
+              ),
+              if (_showItemsOnly)
+                PopupMenuItem(
+                  value: 'toggle_list_browse',
+                  child: Row(
+                    children: [
+                      Icon(
+                        viewMode == ViewMode.list ? Ionicons.albums_outline : Ionicons.reorder_four_outline,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(viewMode == ViewMode.list ? 'Browse Mode' : 'List Mode'),
+                    ],
+                  ),
+                ),
               PopupMenuItem(
                 value: 'edit',
                 child: Row(
@@ -147,19 +187,21 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
           ),
         ],
       ),
-      body: containersAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Text('Error: $error'),
-        ),
-        data: (containers) {
-          return itemsAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stack) => Center(child: Text('Error: $error')),
-            data: (items) {
-              final hasContent = containers.isNotEmpty || items.isNotEmpty;
+      body: _showItemsOnly
+          ? _buildItemsOnlyView(nestedItemsAsync)
+          : containersAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stack) => Center(
+                child: Text('Error: $error'),
+              ),
+              data: (containers) {
+                return itemsAsync.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (error, stack) => Center(child: Text('Error: $error')),
+                  data: (items) {
+                    final hasContent = containers.isNotEmpty || items.isNotEmpty;
 
-              if (!hasContent) {
+                    if (!hasContent) {
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -312,6 +354,87 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
       return widget.householdName;
     }
     return '${widget.householdName} → ${widget.breadcrumb.take(widget.breadcrumb.length - 1).map((c) => c.name).join(' → ')}';
+  }
+
+  Widget _buildItemsOnlyView(AsyncValue<List<Item>> nestedItemsAsync) {
+    return nestedItemsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(child: Text('Error: $error')),
+      data: (allItems) {
+        // Apply search filter
+        var filteredItems = allItems;
+        if (_searchQuery.isNotEmpty) {
+          filteredItems = allItems.where((item) {
+            return item.title.toLowerCase().contains(_searchQuery) ||
+                (item.authors?.any((author) => author.toLowerCase().contains(_searchQuery)) ?? false) ||
+                (item.artist?.toLowerCase().contains(_searchQuery) ?? false) ||
+                (item.platform?.toLowerCase().contains(_searchQuery) ?? false) ||
+                item.type.toLowerCase().contains(_searchQuery);
+          }).toList();
+        }
+
+        if (filteredItems.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Ionicons.cube_outline,
+                  size: 80,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _searchQuery.isNotEmpty ? 'No items found' : 'No items yet',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _searchQuery.isNotEmpty
+                      ? 'Try a different search term'
+                      : 'Add items to this container',
+                ),
+              ],
+            ),
+          );
+        }
+
+        final household = Household(
+          id: widget.householdId,
+          name: widget.householdName,
+          createdBy: '',
+          members: {},
+          createdAt: DateTime.now(),
+          code: '',
+        );
+
+        final viewMode = ref.watch(viewModeProvider);
+
+        return Column(
+          children: [
+            // Category tabs
+            CategoryTabsBuilder.dynamic(
+              items: allItems,
+              householdId: widget.householdId,
+            ),
+
+            // Items list view
+            Expanded(
+              child: ItemListView(
+                items: filteredItems,
+                household: household,
+                viewMode: viewMode,
+                showSyncStatus: false,
+                showLocationInSubtitle: true,
+                showEditActions: _isEditMode,
+                onMoveItem: (item) => _showMoveItemDialog(context, ref, item),
+                onDeleteItem: (item) => _showDeleteItemConfirmation(context, ref, item),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Widget _buildUnorganizedItemsCard(BuildContext context, WidgetRef ref, List<Item> items) {

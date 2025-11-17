@@ -15,6 +15,7 @@ import '../../utils/icon_helper.dart';
 import '../widgets/common/category_tabs_builder.dart';
 import '../widgets/common/item_card_widget.dart';
 import '../widgets/common/empty_state_widget.dart';
+import '../widgets/common/item_list_view.dart';
 
 class ItemListScreen extends ConsumerStatefulWidget {
   final Household household;
@@ -271,15 +272,17 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                   );
                 }
 
-                // Browse mode: show collapsible category sections
-                if (viewMode == ViewMode.browse) {
-                  return _buildBrowseView(filteredItems);
-                }
-
-                // List mode: show grouped when "All" selected, flat list otherwise
-                if (selectedType == null) {
-                  return _buildGroupedItemList(filteredItems);
+                // Browse mode or grouped list mode: use ItemListView
+                if (viewMode == ViewMode.browse || selectedType == null) {
+                  return ItemListView(
+                    items: filteredItems,
+                    household: widget.household,
+                    viewMode: viewMode,
+                    showSyncStatus: true,
+                    showLocationInSubtitle: true,
+                  );
                 } else {
+                  // Flat list when specific type is selected
                   return ListView.builder(
                     itemCount: filteredItems.length,
                     itemBuilder: (context, index) {
@@ -398,178 +401,6 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
     );
   }
 
-  Widget _buildGroupedItemList(List<Item> items) {
-    // Group items by type, but split vinyl into music sub-types
-    final groupedItems = <String, List<Item>>{};
-    final categoryOrder = ['book', 'music-cd', 'music-vinyl', 'music-cassette', 'music-digital', 'music-other', 'game', 'tool', 'pantry', 'camera', 'electronics', 'clothing', 'kitchen', 'outdoor', 'general'];
-
-    for (final item in items) {
-      if (item.type == 'vinyl') {
-        // Split vinyl items by format
-        final subType = _getMusicSubType(item);
-        groupedItems.putIfAbsent(subType, () => []).add(item);
-      } else {
-        groupedItems.putIfAbsent(item.type, () => []).add(item);
-      }
-    }
-
-    // Sort categories by predefined order, then alphabetically for others
-    final sortedTypes = groupedItems.keys.toList()..sort((a, b) {
-      final aIndex = categoryOrder.indexOf(a);
-      final bIndex = categoryOrder.indexOf(b);
-      if (aIndex != -1 && bIndex != -1) return aIndex.compareTo(bIndex);
-      if (aIndex != -1) return -1;
-      if (bIndex != -1) return 1;
-      return a.compareTo(b);
-    });
-
-    return ListView.builder(
-      itemCount: sortedTypes.length,
-      itemBuilder: (context, sectionIndex) {
-        final type = sortedTypes[sectionIndex];
-        final typeItems = groupedItems[type]!;
-
-        // Custom labels for music sub-types
-        String typeLabel;
-        if (type.startsWith('music-')) {
-          switch (type) {
-            case 'music-cd':
-              typeLabel = 'CD';
-              break;
-            case 'music-vinyl':
-              typeLabel = 'Vinyl';
-              break;
-            case 'music-cassette':
-              typeLabel = 'Cassette';
-              break;
-            case 'music-digital':
-              typeLabel = 'Digital';
-              break;
-            case 'music-other':
-              typeLabel = 'Music (Other)';
-              break;
-            default:
-              typeLabel = 'Music';
-          }
-        } else {
-          typeLabel = type[0].toUpperCase() + type.substring(1);
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Row(
-                children: [
-                  Icon(IconHelper.getItemIcon(type), size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    '$typeLabel (${typeItems.length})',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            ...typeItems.map((item) => ItemCardWidget(
-              item: item,
-              household: widget.household,
-              showSyncStatus: true,
-              showLocationInSubtitle: true,
-            )),
-            if (sectionIndex < sortedTypes.length - 1)
-              const Divider(height: 1, thickness: 1),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildBrowseView(List<Item> items) {
-    // Group items by type, but split vinyl into music sub-types
-    final groupedItems = <String, List<Item>>{};
-    final categoryOrder = ['book', 'music-cd', 'music-vinyl', 'music-cassette', 'music-digital', 'music-other', 'game', 'tool', 'pantry', 'camera', 'electronics', 'clothing', 'kitchen', 'outdoor', 'general'];
-
-    for (final item in items) {
-      if (item.type == 'vinyl') {
-        // Split vinyl items by format
-        final subType = _getMusicSubType(item);
-        groupedItems.putIfAbsent(subType, () => []).add(item);
-      } else {
-        groupedItems.putIfAbsent(item.type, () => []).add(item);
-      }
-    }
-
-    // Sort categories by predefined order
-    final sortedTypes = groupedItems.keys.toList()..sort((a, b) {
-      final aIndex = categoryOrder.indexOf(a);
-      final bIndex = categoryOrder.indexOf(b);
-      if (aIndex != -1 && bIndex != -1) return aIndex.compareTo(bIndex);
-      if (aIndex != -1) return -1;
-      if (bIndex != -1) return 1;
-      return a.compareTo(b);
-    });
-
-    final expandedCategories = ref.watch(expandedCategoriesProvider);
-
-    return ListView.builder(
-      itemCount: sortedTypes.length,
-      itemBuilder: (context, index) {
-        final type = sortedTypes[index];
-        final typeItems = groupedItems[type]!;
-
-        // Custom labels for music sub-types
-        String typeLabel;
-        if (type.startsWith('music-')) {
-          switch (type) {
-            case 'music-cd':
-              typeLabel = 'CD';
-              break;
-            case 'music-vinyl':
-              typeLabel = 'Vinyl';
-              break;
-            case 'music-cassette':
-              typeLabel = 'Cassette';
-              break;
-            case 'music-digital':
-              typeLabel = 'Digital';
-              break;
-            case 'music-other':
-              typeLabel = 'Music (Other)';
-              break;
-            default:
-              typeLabel = 'Music';
-          }
-        } else {
-          typeLabel = type[0].toUpperCase() + type.substring(1);
-        }
-
-        final isExpanded = expandedCategories.contains(type);
-
-        return _CollapsibleCategorySection(
-          type: type,
-          typeLabel: typeLabel,
-          icon: IconHelper.getItemIcon(type),
-          itemCount: typeItems.length,
-          isExpanded: isExpanded,
-          items: typeItems,
-          household: widget.household,
-          onToggle: () {
-            final newExpanded = Set<String>.from(expandedCategories);
-            if (isExpanded) {
-              newExpanded.remove(type);
-            } else {
-              newExpanded.add(type);
-            }
-            ref.read(expandedCategoriesProvider.notifier).state = newExpanded;
-          },
-        );
-      },
-    );
-  }
-
   String _getMusicSubType(Item item) {
     if (item.format == null || item.format!.isEmpty) return 'music-other';
     final formatStr = item.format!.join(' ').toLowerCase();
@@ -579,7 +410,6 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
     if (formatStr.contains('digital') || formatStr.contains('file')) return 'music-digital';
     return 'music-other';
   }
-
 
   Widget _buildMusicFormatFilter(WidgetRef ref, List<Item> allItems) {
     final selectedMusicFormat = ref.watch(selectedMusicFormatProvider);
@@ -941,67 +771,3 @@ class _MusicFormatChip extends StatelessWidget {
   }
 }
 
-class _CollapsibleCategorySection extends StatelessWidget {
-  final String type;
-  final String typeLabel;
-  final IconData icon;
-  final int itemCount;
-  final bool isExpanded;
-  final List<Item> items;
-  final Household household;
-  final VoidCallback onToggle;
-
-  const _CollapsibleCategorySection({
-    required this.type,
-    required this.typeLabel,
-    required this.icon,
-    required this.itemCount,
-    required this.isExpanded,
-    required this.items,
-    required this.household,
-    required this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Material(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          child: InkWell(
-            onTap: onToggle,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  Icon(icon, size: 24),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      '$typeLabel ($itemCount)',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  Icon(
-                    isExpanded ? Ionicons.chevron_up_outline : Ionicons.chevron_down_outline,
-                    size: 24,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        if (isExpanded)
-          ...items.map((item) => ItemCardWidget(
-            item: item,
-            household: household,
-            showSyncStatus: true,
-            showLocationInSubtitle: true,
-          )),
-        const Divider(height: 1, thickness: 1),
-      ],
-    );
-  }
-}
