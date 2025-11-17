@@ -20,7 +20,7 @@ Your database is currently **open to all users** until you deploy the security r
 **Option A: Use Firebase Console (Recommended)**
 1. Go to [Firebase Console](https://console.firebase.google.com/)
 2. Select your OurArchive project
-3. Deploy rules manually (see `FIREBASE_DEPLOYMENT.md` for details)
+3. Deploy rules manually (see [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md) for details)
 
 **Option B: Use Firebase CLI**
 ```bash
@@ -122,7 +122,7 @@ flutter clean && flutter pub get && flutter run
 
 ### "Permission denied" errors
 **Cause:** Firebase rules not deployed
-**Fix:** Deploy rules using FIREBASE_DEPLOYMENT.md
+**Fix:** Deploy rules using [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md)
 
 ### Items not appearing
 **Cause:** Not a member of the household
@@ -227,7 +227,7 @@ Without deployed rules, anyone can:
 - Modify any data
 - Delete everything
 
-See `FIREBASE_DEPLOYMENT.md` for instructions.
+See [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md) for instructions.
 
 ## Next Steps
 
@@ -241,9 +241,11 @@ See `FIREBASE_DEPLOYMENT.md` for instructions.
 
 ## Support
 
-- Check `MAIN_PLAN.md` for complete feature specification
-- See `IMPLEMENTATION_SUMMARY.md` for what's been built
-- Review `FIREBASE_DEPLOYMENT.md` for security rules
+- Check [docs/README.md](docs/README.md) for complete documentation index
+- See [docs/archive/ORIGINAL_PLAN.md](docs/archive/ORIGINAL_PLAN.md) for original feature specification
+- See [docs/archive/IMPLEMENTATION_SUMMARY.md](docs/archive/IMPLEMENTATION_SUMMARY.md) for what was initially built
+- Review [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md) for security rules
+- Check [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for current architecture
 
 ## Ready to Code More?
 

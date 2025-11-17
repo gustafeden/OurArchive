@@ -34,7 +34,7 @@
    ```
 
 2. **Set up Firebase:**
-   - See [docs/SETUP.md](docs/SETUP.md) for detailed Firebase configuration
+   - See [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md) for detailed Firebase configuration
 
 3. **Run the app:**
    ```bash
@@ -50,9 +50,12 @@ See [QUICK_START.md](QUICK_START.md) for detailed development setup.
 
 ## Documentation
 
-- **[Setup Guide](docs/SETUP.md)** - Firebase configuration and deployment
+- **[Documentation Hub](docs/README.md)** - Complete documentation index
+- **[Firebase Setup](docs/FIREBASE_SETUP.md)** - Firebase configuration and deployment
+- **[Architecture](docs/ARCHITECTURE.md)** - System design and widget library
 - **[Features](docs/FEATURES.md)** - Complete feature documentation
 - **[Roadmap](docs/ROADMAP.md)** - Development plans and timeline
+- **[Testing](docs/development/TESTING.md)** - Testing strategy and procedures
 - **[Project Guidelines](CLAUDE.md)** - Development guidelines and conventions
 
 ## Project Status
