@@ -73,10 +73,15 @@ class LoggerService {
     await _log(LogLevel.error, tag, message, error, stackTrace);
 
     // Send errors to Firebase Crashlytics
-    if (error != null && stackTrace != null) {
-      await FirebaseCrashlytics.instance.recordError(error, stackTrace, reason: message);
-    } else if (error != null) {
-      await FirebaseCrashlytics.instance.recordError(error, StackTrace.current, reason: message);
+    try {
+      if (error != null && stackTrace != null) {
+        await FirebaseCrashlytics.instance.recordError(error, stackTrace, reason: message);
+      } else if (error != null) {
+        await FirebaseCrashlytics.instance.recordError(error, StackTrace.current, reason: message);
+      }
+    } catch (e) {
+      // Prevent cascading errors from Crashlytics failures
+      debugPrint('Failed to record error to Crashlytics: $e');
     }
   }
 
