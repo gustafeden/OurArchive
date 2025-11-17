@@ -275,6 +275,28 @@ class _ThemePresetCard extends StatelessWidget {
         return 'Earthy olive and sage palette';
       case ThemePreset.darkTheme:
         return 'Dark mode optimized colors';
+      case ThemePreset.dustyRose:
+        return 'Warm browns with dusty rose accents';
+      case ThemePreset.nature:
+        return 'Earthy sage and forest greens';
+      case ThemePreset.ocean:
+        return 'Deep ocean teal with sage tones';
+      case ThemePreset.coastal:
+        return 'Soft sea greens and coastal blues';
+      case ThemePreset.sunset:
+        return 'Vibrant coral and warm oranges';
+      case ThemePreset.forest:
+        return 'Rich natural forest greens';
+      case ThemePreset.berry:
+        return 'Bold purples and vibrant pinks';
+      case ThemePreset.refinedTeal:
+        return 'Professional dark teal with orange highlights';
+      case ThemePreset.warmClay:
+        return 'Earthy clay browns and terracotta';
+      case ThemePreset.mutedModern:
+        return 'Sophisticated muted teal and gray';
+      case ThemePreset.contrastDark:
+        return 'High contrast emerald and turquoise';
     }
   }
 }

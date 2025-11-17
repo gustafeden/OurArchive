@@ -24,9 +24,14 @@ class GeneratedPalette {
   final Color onTertiary;
   final Color onTertiaryContainer;
 
-  // Surface colors
+  // Surface colors with proper elevation hierarchy
   final Color surface;
-  final Color surfaceVariant;
+  final Color surfaceContainerLowest;
+  final Color surfaceContainerLow;
+  final Color surfaceContainer;
+  final Color surfaceContainerHigh;
+  final Color surfaceContainerHighest;
+  final Color surfaceVariant; // Kept for backwards compatibility
   final Color surfaceTint;
   final Color onSurface;
   final Color onSurfaceVariant;
@@ -76,6 +81,11 @@ class GeneratedPalette {
     required this.onTertiary,
     required this.onTertiaryContainer,
     required this.surface,
+    required this.surfaceContainerLowest,
+    required this.surfaceContainerLow,
+    required this.surfaceContainer,
+    required this.surfaceContainerHigh,
+    required this.surfaceContainerHighest,
     required this.surfaceVariant,
     required this.surfaceTint,
     required this.onSurface,
@@ -125,7 +135,11 @@ class GeneratedPalette {
       onErrorContainer: onErrorContainer,
       surface: surface,
       onSurface: onSurface,
-      surfaceContainerHighest: surfaceVariant,
+      surfaceContainerLowest: surfaceContainerLowest,
+      surfaceContainerLow: surfaceContainerLow,
+      surfaceContainer: surfaceContainer,
+      surfaceContainerHigh: surfaceContainerHigh,
+      surfaceContainerHighest: surfaceContainerHighest,
       onSurfaceVariant: onSurfaceVariant,
       outline: outline,
       outlineVariant: outlineVariant,

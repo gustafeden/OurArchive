@@ -92,8 +92,19 @@ final darkThemeProvider = Provider<ThemeData>((ref) {
 /// Available theme presets that users can quickly switch between.
 enum ThemePreset {
   defaultTheme('Default', BaseColors.defaultTheme),
-  palette4('Palette 4', BaseColors.palette4),
-  darkTheme('Dark', BaseColors.darkTheme);
+  palette4('Earthy', BaseColors.palette4),
+  darkTheme('Dark', BaseColors.darkTheme),
+  dustyRose('Dusty Rose', BaseColors.dustyRose),
+  nature('Nature', BaseColors.nature),
+  ocean('Ocean', BaseColors.ocean),
+  coastal('Coastal', BaseColors.coastal),
+  sunset('Sunset', BaseColors.sunset),
+  forest('Forest', BaseColors.forest),
+  berry('Berry', BaseColors.berry),
+  refinedTeal('Refined Teal', BaseColors.refinedTeal),
+  warmClay('Warm Clay', BaseColors.warmClay),
+  mutedModern('Muted Modern', BaseColors.mutedModern),
+  contrastDark('Contrast Dark', BaseColors.contrastDark);
 
   final String displayName;
   final BaseColors colors;
