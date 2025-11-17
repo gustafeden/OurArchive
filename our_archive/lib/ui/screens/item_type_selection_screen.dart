@@ -7,6 +7,7 @@ import 'package:our_archive/ui/screens/add_game_screen.dart';
 import 'package:our_archive/ui/screens/add_item_screen.dart';
 import 'package:our_archive/ui/screens/book_scan_screen.dart';
 import 'package:our_archive/ui/screens/vinyl_scan_screen.dart';
+import 'package:our_archive/ui/screens/common/scan_modes.dart';
 import '../../providers/providers.dart';
 import '../../data/models/item_type.dart';
 import '../../utils/icon_helper.dart';
@@ -64,7 +65,7 @@ class ItemTypeSelectionScreen extends ConsumerWidget {
                           MaterialPageRoute(
                             builder: (context) => BookScanScreen(
                               householdId: householdId,
-                              initialMode: BookScanMode.camera,
+                              initialMode: ScanMode.camera,
                               preSelectedContainerId: preSelectedContainerId,
                             ),
                           ),
@@ -88,7 +89,7 @@ class ItemTypeSelectionScreen extends ConsumerWidget {
                           MaterialPageRoute(
                             builder: (context) => VinylScanScreen(
                               householdId: householdId,
-                              initialMode: VinylScanMode.camera,
+                              initialMode: ScanMode.camera,
                               preSelectedContainerId: preSelectedContainerId,
                             ),
                           ),

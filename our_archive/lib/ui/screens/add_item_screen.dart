@@ -133,7 +133,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => BarcodeScanScreen(
-          household: widget.household!,
+          householdId: widget.household!.id,
           preSelectedContainerId: widget.preSelectedContainerId,
         ),
       ),

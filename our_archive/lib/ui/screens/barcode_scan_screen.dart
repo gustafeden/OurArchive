@@ -1,9 +1,6 @@
 import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import '../../data/models/book_metadata.dart';
 import '../../data/models/vinyl_metadata.dart';
 import '../../data/models/household.dart';
@@ -13,15 +10,25 @@ import '../../services/vinyl_lookup_service.dart';
 import 'add_book_screen.dart';
 import 'add_vinyl_screen.dart';
 import '../../utils/text_search_helper.dart';
-import '../widgets/common/item_found_dialog.dart';
+import '../widgets/common/search_results_view.dart';
+import '../widgets/scanner/item_preview_dialog.dart';
+import '../widgets/scanner/camera_scanner_view.dart';
+import '../widgets/scanner/manual_entry_view.dart';
+import '../widgets/scanner/photo_ocr_view.dart';
+import '../widgets/scanner/scan_mode_selector.dart';
+import 'mixins/base_scanner_mixin.dart';
+import 'mixins/duplicate_check_mixin.dart';
+import 'mixins/post_scan_navigation_mixin.dart';
+import 'mixins/ocr_mixin.dart';
+import 'common/scan_modes.dart';
 
 class BarcodeScanScreen extends ConsumerStatefulWidget {
-  final Household household;
+  final String householdId;
   final String? preSelectedContainerId;
 
   const BarcodeScanScreen({
     super.key,
-    required this.household,
+    required this.householdId,
     this.preSelectedContainerId,
   });
 
@@ -29,130 +36,88 @@ class BarcodeScanScreen extends ConsumerStatefulWidget {
   ConsumerState<BarcodeScanScreen> createState() => _BarcodeScanScreenState();
 }
 
-enum ScanMode { camera, manualIsbn, textSearch, photoSearch }
+class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen>
+    with BaseScannerMixin, DuplicateCheckMixin, PostScanNavigationMixin, OcrMixin {
 
-class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
-  final MobileScannerController _scannerController = MobileScannerController();
-  final TextEditingController _manualIsbnController = TextEditingController();
-  final TextEditingController _textSearchController = TextEditingController();
-  bool _isProcessing = false;
+  // Local state
   ScanMode _currentMode = ScanMode.camera;
-  String? _lastScannedCode;
-  int _booksScanned = 0;
-  List<BookMetadata> _searchResults = [];
-  bool _isSearching = false;
   String? _extractedText;
-  final ImagePicker _imagePicker = ImagePicker();
-  final TextRecognizer _textRecognizer = TextRecognizer();
+
+  @override
+  String get householdId => widget.householdId;
+
+  @override
+  void initState() {
+    super.initState();
+    initializeScanner();
+  }
 
   @override
   void dispose() {
-    _scannerController.dispose();
-    _manualIsbnController.dispose();
-    _textSearchController.dispose();
-    _textRecognizer.close();
+    disposeScanner();
+    disposeOcr();
     super.dispose();
   }
 
-  Future<void> _captureAndRecognizeText() async {
-    try {
-      // Pick image from camera or gallery
-      final XFile? photo = await _imagePicker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1920,
-        maxHeight: 1920,
-        imageQuality: 85,
-      );
+  // OCR photo capture and text extraction
+  Future<void> _handlePhotoCapture() async {
+    setState(() {
+      isSearching = true;
+      _extractedText = null;
+      searchResults = [];
+    });
 
-      if (photo == null) return;
+    final extractedText = await captureAndRecognizeText();
 
-      setState(() {
-        _isSearching = true;
-        _extractedText = null;
-        _searchResults = [];
-      });
+    if (!mounted) return;
 
-      // Perform OCR on the image
-      final inputImage = InputImage.fromFilePath(photo.path);
-      final RecognizedText recognizedText = await _textRecognizer.processImage(inputImage);
+    setState(() {
+      _extractedText = extractedText;
+    });
 
-      if (!mounted) return;
+    if (extractedText == null || extractedText.isEmpty) {
+      setState(() => isSearching = false);
+      return;
+    }
 
-      // Extract text
-      final extractedText = recognizedText.text.trim();
+    // Search for books using extracted text
+    final bookLookupService = ref.read(bookLookupServiceProvider);
+    final results = await bookLookupService.searchByText(extractedText);
 
-      setState(() {
-        _extractedText = extractedText;
-      });
+    if (!mounted) return;
 
-      if (extractedText.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No text found in image. Try again with better lighting.')),
-          );
-        }
-        setState(() {
-          _isSearching = false;
-        });
-        return;
-      }
+    setState(() {
+      searchResults = results;
+      isSearching = false;
+    });
 
-      // Use extracted text to search for books
-      final bookLookupService = ref.read(bookLookupServiceProvider);
-      final results = await bookLookupService.searchByText(extractedText);
-
-      if (!mounted) return;
-
-      setState(() {
-        _searchResults = results;
-        _isSearching = false;
-      });
-
-      if (results.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('No books found for: "$extractedText".\nTry manual search instead.'),
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        _isSearching = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error recognizing text: ${e.toString()}')),
-      );
+    if (results.isEmpty) {
+      showError('No books found for: "$extractedText".\nTry manual search instead.');
     }
   }
 
+  // Text search for books
   Future<void> _performTextSearch() async {
     final bookLookupService = ref.read(bookLookupServiceProvider);
 
     await TextSearchHelper.performSearchWithState<BookMetadata>(
       context: context,
-      query: _textSearchController.text,
+      query: textSearchController.text,
       searchFunction: (query) => bookLookupService.searchByText(query),
       setState: setState,
-      setIsSearching: (value) => _isSearching = value,
-      setSearchResults: (results) => _searchResults = results,
+      setIsSearching: (value) => isSearching = value,
+      setSearchResults: (results) => searchResults = results,
       emptyMessage: 'No books found. Try a different search term.',
       itemTypeName: 'book title or author',
     );
   }
 
+  // Handle tapping a search result
   Future<void> _handleSearchResultTap(BookMetadata book) async {
-    // If the book has an ISBN, fetch full metadata
     BookMetadata? fullMetadata;
+
     if (book.isbn.isNotEmpty) {
-      setState(() {
-        _isProcessing = true;
-      });
+      setState(() => isProcessing = true);
 
       try {
         final bookLookupService = ref.read(bookLookupServiceProvider);
@@ -162,36 +127,28 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
       }
 
       if (!mounted) return;
-
-      setState(() {
-        _isProcessing = false;
-      });
+      setState(() => isProcessing = false);
     }
 
-    // Use full metadata if available, otherwise use search result
     final bookToAdd = fullMetadata ?? book;
 
     // Check for duplicate
     final itemRepository = ref.read(itemRepositoryProvider);
     if (bookToAdd.isbn.isNotEmpty) {
       final existingItem = await itemRepository.findItemByIsbn(
-        widget.household.id,
+        householdId,
         bookToAdd.isbn,
       );
 
       if (!mounted) return;
 
       if (existingItem != null) {
-        final action = await _showDuplicateFoundDialog(existingItem, bookToAdd);
+        final action = await handleDuplicateFlow(
+          existingItem: existingItem,
+          itemTypeName: 'Book',
+        );
 
-        if (action == 'scanNext' || action == null) {
-          setState(() {
-            _isProcessing = false;
-          });
-          return;
-        } else if (action == 'addCopy') {
-          // Continue to add another copy
-        }
+        if (action != 'addCopy') return;
       }
     }
 
@@ -202,7 +159,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => AddBookScreen(
-          household: widget.household,
+          householdId: householdId,
           bookData: bookToAdd,
           preSelectedContainerId: widget.preSelectedContainerId,
         ),
@@ -210,43 +167,32 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
     );
   }
 
+  // Handle barcode detection from camera
   Future<void> _handleBarcode(String code) async {
-    // Prevent duplicate scans
-    if (_isProcessing || code == _lastScannedCode) return;
+    if (!shouldProcessBarcode(code)) return;
 
-    setState(() {
-      _isProcessing = true;
-      _lastScannedCode = code;
-    });
-
-    // Try vinyl lookup first, then fall back to book lookup
+    startProcessing(code);
     await _lookupItem(code);
   }
 
+  // Handle manual ISBN entry
   Future<void> _handleManualEntry() async {
-    final isbn = _manualIsbnController.text.trim();
-    if (isbn.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter an ISBN or barcode')),
-      );
-      return;
-    }
+    final code = validateManualEntry();
+    if (code == null) return;
 
-    setState(() {
-      _isProcessing = true;
-    });
-
-    await _lookupItem(isbn);
+    setState(() => isProcessing = true);
+    await _lookupItem(code);
   }
 
+  // Lookup item (tries vinyl first, then book)
   Future<void> _lookupItem(String code) async {
-    // Try vinyl lookup and duplicate check in parallel for better performance
     try {
       final itemRepository = ref.read(itemRepositoryProvider);
 
+      // Try vinyl lookup and duplicate check in parallel
       final results = await Future.wait([
         VinylLookupService.lookupByBarcode(code),
-        itemRepository.findItemByBarcode(widget.household.id, code),
+        itemRepository.findItemByBarcode(householdId, code),
       ]);
 
       if (!mounted) return;
@@ -254,11 +200,10 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
       final vinylMetadata = results[0] as VinylMetadata?;
       var existingItem = results[1] as Item?;
 
-      // If not found by barcode but we have discogsId from API, try searching by discogsId
-      // This handles old items that were stored with discogsId in barcode field
+      // Check for old items stored with discogsId in barcode field
       if (existingItem == null && vinylMetadata?.discogsId != null) {
         existingItem = await itemRepository.findItemByDiscogsId(
-          widget.household.id,
+          householdId,
           vinylMetadata!.discogsId!,
         );
       }
@@ -277,31 +222,29 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
     await _lookupBook(code);
   }
 
-  Future<void> _handleVinylFound(String barcode, VinylMetadata vinylMetadata, Item? existingItem) async {
+  // Handle vinyl found
+  Future<void> _handleVinylFound(
+    String barcode,
+    VinylMetadata vinylMetadata,
+    Item? existingItem,
+  ) async {
     try {
       if (!mounted) return;
 
       String? action;
 
       if (existingItem != null) {
-        action = await _showDuplicateFoundDialog(existingItem, null, vinylMetadata: vinylMetadata);
+        action = await handleDuplicateFlow(
+          existingItem: existingItem,
+          itemTypeName: 'Vinyl',
+        );
 
         if (!mounted) return;
 
         if (action == 'addCopy') {
           action = await _showVinylPreview(vinylMetadata);
-        } else if (action == 'scanNext') {
-          setState(() {
-            _isProcessing = false;
-            _lastScannedCode = null;
-          });
-          return;
         } else {
-          setState(() {
-            _isProcessing = false;
-            _lastScannedCode = null;
-          });
-          return;
+          return; // User chose to scan next or cancelled
         }
       } else {
         action = await _showVinylPreview(vinylMetadata);
@@ -309,78 +252,33 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
 
       if (!mounted) return;
 
-      if (action == 'addVinyl') {
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AddVinylScreen(
-              household: widget.household,
-              vinylData: vinylMetadata,
-              preSelectedContainerId: widget.preSelectedContainerId,
-            ),
-          ),
-        );
-
-        if (mounted) {
-          Navigator.pop(context);
-        }
-      } else if (action == 'scanNext') {
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AddVinylScreen(
-              household: widget.household,
-              vinylData: vinylMetadata,
-              preSelectedContainerId: widget.preSelectedContainerId,
-            ),
-          ),
-        );
-
-        if (mounted) {
-          setState(() {
-            _booksScanned++;
-            _isProcessing = false;
-            _lastScannedCode = null;
-          });
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Music added! Scan next item ($_booksScanned scanned)'),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-      } else {
-        setState(() {
-          _isProcessing = false;
-          _lastScannedCode = null;
-        });
-      }
+      await handlePostScanNavigation(
+        action: action,
+        addScreen: AddVinylScreen(
+          householdId: householdId,
+          vinylData: vinylMetadata,
+          preSelectedContainerId: widget.preSelectedContainerId,
+        ),
+        successMessage: 'Vinyl added! Scan next item',
+        itemLabel: 'Vinyl',
+      );
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error processing vinyl: $e'),
-          duration: const Duration(seconds: 3),
-        ),
-      );
-      setState(() {
-        _isProcessing = false;
-        _lastScannedCode = null;
-      });
+      showError('Error processing vinyl: $e');
+      resetScanning();
     }
   }
 
+  // Lookup book by ISBN
   Future<void> _lookupBook(String isbn) async {
     try {
       final bookLookupService = ref.read(bookLookupServiceProvider);
       final itemRepository = ref.read(itemRepositoryProvider);
 
-      // Run book lookup and duplicate check in parallel for better performance
+      // Run book lookup and duplicate check in parallel
       final results = await Future.wait([
         bookLookupService.lookupBook(isbn),
-        itemRepository.findItemByIsbn(widget.household.id, isbn),
+        itemRepository.findItemByIsbn(householdId, isbn),
       ]);
 
       if (!mounted) return;
@@ -389,16 +287,8 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
       final existingItem = results[1] as Item?;
 
       if (bookMetadata == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No book found for ISBN: $isbn'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-        setState(() {
-          _isProcessing = false;
-          _lastScannedCode = null;
-        });
+        showError('No book found for ISBN: $isbn');
+        resetScanning();
         return;
       }
 
@@ -406,625 +296,230 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
 
       String? action;
 
-      // If book exists, show duplicate dialog first
+      // Check for duplicate
       if (existingItem != null) {
-        action = await _showDuplicateFoundDialog(existingItem, bookMetadata);
+        action = await handleDuplicateFlow(
+          existingItem: existingItem,
+          itemTypeName: 'Book',
+        );
 
         if (!mounted) return;
 
         if (action == 'addCopy') {
-          // User wants to add another copy - continue to book preview
           action = await _showBookPreview(bookMetadata);
-        } else if (action == 'scanNext') {
-          // Reset for next scan
-          setState(() {
-            _isProcessing = false;
-            _lastScannedCode = null;
-          });
-          return;
         } else {
-          // User cancelled - reset for next scan
-          setState(() {
-            _isProcessing = false;
-            _lastScannedCode = null;
-          });
-          return;
+          return; // User chose to scan next or cancelled
         }
       } else {
-        // Book not found - show normal preview dialog
         action = await _showBookPreview(bookMetadata);
       }
 
       if (!mounted) return;
 
-      if (action == 'addBook') {
-        // Navigate to AddBookScreen to add this book, then close scanner
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AddBookScreen(
-              household: widget.household,
-              bookData: bookMetadata,
-              preSelectedContainerId: widget.preSelectedContainerId,
-            ),
-          ),
-        );
-
-        if (mounted) {
-          // Close scanner after adding book
-          Navigator.pop(context);
-        }
-      } else if (action == 'scanNext') {
-        // Navigate to AddBookScreen but return to scanner
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AddBookScreen(
-              household: widget.household,
-              bookData: bookMetadata,
-              preSelectedContainerId: widget.preSelectedContainerId,
-            ),
-          ),
-        );
-
-        if (mounted) {
-          // Increment counter and reset for next scan
-          setState(() {
-            _booksScanned++;
-            _isProcessing = false;
-            _lastScannedCode = null;
-          });
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Book added! Scan next book ($_booksScanned scanned)'),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-      } else {
-        // User cancelled - reset for next scan
-        setState(() {
-          _isProcessing = false;
-          _lastScannedCode = null;
-        });
-      }
+      await handlePostScanNavigation(
+        action: action,
+        addScreen: AddBookScreen(
+          householdId: householdId,
+          bookData: bookMetadata,
+          preSelectedContainerId: widget.preSelectedContainerId,
+        ),
+        successMessage: 'Book added! Scan next book',
+        itemLabel: 'Book',
+      );
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error looking up book: $e'),
-          duration: const Duration(seconds: 3),
-        ),
-      );
-      setState(() {
-        _isProcessing = false;
-        _lastScannedCode = null;
-      });
+      showError('Error looking up book: $e');
+      resetScanning();
     }
   }
 
+  // Show book preview dialog
   Future<String?> _showBookPreview(BookMetadata book) async {
-    return showDialog<String>(
+    return showItemPreviewDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Book Found'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (book.thumbnailUrl != null)
-                Center(
-                  child: Image.network(
-                    book.thumbnailUrl!,
-                    height: 200,
-                    errorBuilder: (context, error, stackTrace) => const Icon(Ionicons.book_outline, size: 100),
-                  ),
-                ),
-              const SizedBox(height: 16),
-              Text(
-                book.title ?? 'Unknown Title',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              if (book.authors.isNotEmpty)
-                Text(
-                  'By ${book.authorsDisplay}',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-              const SizedBox(height: 8),
-              if (book.publisher != null) Text('Publisher: ${book.publisher}'),
-              if (book.publishedDate != null) Text('Published: ${book.publishedDate}'),
-              if (book.pageCount != null) Text('Pages: ${book.pageCount}'),
-              if (book.description != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  book.description!,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'scanNext'),
-            child: const Text('Scan Next'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, 'addBook'),
-            child: const Text('Add Book'),
-          ),
-        ],
-      ),
+      title: 'Book Found',
+      imageUrl: book.thumbnailUrl,
+      fallbackIcon: Ionicons.book_outline,
+      itemTitle: book.title ?? 'Unknown Title',
+      creator: book.authors.isNotEmpty ? book.authorsDisplay : null,
+      metadataFields: [
+        if (book.publisher != null)
+          ItemPreviewField(label: 'Publisher', value: book.publisher!),
+        if (book.publishedDate != null)
+          ItemPreviewField(label: 'Published', value: book.publishedDate!),
+        if (book.pageCount != null)
+          ItemPreviewField(label: 'Pages', value: book.pageCount.toString()),
+        if (book.description != null)
+          ItemPreviewField(label: '', value: book.description!),
+      ],
+      primaryActionLabel: 'Add Book',
+      showCancelButton: false,
     );
   }
 
+  // Show vinyl preview dialog
   Future<String?> _showVinylPreview(VinylMetadata vinyl) async {
-    return showDialog<String>(
+    return showItemPreviewDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Vinyl Record Found'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (vinyl.coverUrl != null)
-                Center(
-                  child: Image.network(
-                    vinyl.coverUrl!,
-                    height: 200,
-                    errorBuilder: (context, error, stackTrace) => const Icon(Ionicons.disc_outline, size: 100),
-                  ),
-                ),
-              const SizedBox(height: 16),
-              Text(
-                vinyl.title,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              if (vinyl.artist.isNotEmpty)
-                Text(
-                  'By ${vinyl.artist}',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-              const SizedBox(height: 8),
-              if (vinyl.label != null) Text('Label: ${vinyl.label}'),
-              if (vinyl.year != null) Text('Year: ${vinyl.year}'),
-              if (vinyl.catalogNumber != null) Text('Catalog #: ${vinyl.catalogNumber}'),
-              if (vinyl.genre != null) Text('Genre: ${vinyl.genre}'),
-              if (vinyl.format != null && vinyl.format!.isNotEmpty) Text('Format: ${vinyl.format!.join(', ')}'),
-              if (vinyl.country != null) Text('Country: ${vinyl.country}'),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'scanNext'),
-            child: const Text('Scan Next'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, 'addVinyl'),
-            child: const Text('Add Vinyl'),
-          ),
-        ],
-      ),
+      title: 'Vinyl Record Found',
+      imageUrl: vinyl.coverUrl,
+      fallbackIcon: Ionicons.disc_outline,
+      itemTitle: vinyl.title,
+      creator: vinyl.artist.isNotEmpty ? vinyl.artist : null,
+      metadataFields: [
+        if (vinyl.label != null)
+          ItemPreviewField(label: 'Label', value: vinyl.label!),
+        if (vinyl.year != null)
+          ItemPreviewField(label: 'Year', value: vinyl.year.toString()),
+        if (vinyl.catalogNumber != null)
+          ItemPreviewField(label: 'Catalog #', value: vinyl.catalogNumber!),
+        if (vinyl.genre != null)
+          ItemPreviewField(label: 'Genre', value: vinyl.genre!),
+        if (vinyl.format != null && vinyl.format!.isNotEmpty)
+          ItemPreviewField(label: 'Format', value: vinyl.format!.join(', ')),
+        if (vinyl.country != null)
+          ItemPreviewField(label: 'Country', value: vinyl.country!),
+      ],
+      primaryActionLabel: 'Add Vinyl',
+      showCancelButton: false,
     );
   }
 
+  // Build the appropriate body based on current mode
+  Widget _buildBody() {
+    switch (_currentMode) {
+      case ScanMode.camera:
+        return CameraScannerView(
+          controller: scannerController,
+          onDetect: (capture) {
+            final barcodes = capture.barcodes;
+            for (final barcode in barcodes) {
+              if (barcode.rawValue != null) {
+                _handleBarcode(barcode.rawValue!);
+                break;
+              }
+            }
+          },
+          isProcessing: isProcessing,
+          itemsScanned: itemsScanned,
+          instructionText: 'Position barcode in frame to scan',
+          scannedItemLabel: 'Items scanned',
+        );
 
-  Future<String?> _showDuplicateFoundDialog(Item item, BookMetadata? bookMetadata,
-      {VinylMetadata? vinylMetadata}) async {
-    // Determine fallback icon based on item type
-    IconData fallbackIcon = Ionicons.cube_outline;
-    if (bookMetadata != null || item.type == 'book') {
-      fallbackIcon = Ionicons.book_outline;
-    } else if (vinylMetadata != null || item.type == 'vinyl') {
-      fallbackIcon = Ionicons.disc_outline;
-    } else if (item.type == 'game') {
-      fallbackIcon = Ionicons.game_controller_outline;
+      case ScanMode.manual:
+        return ManualEntryView(
+          controller: manualIsbnController,
+          labelText: 'ISBN or Barcode',
+          hintText: '9780143127796',
+          buttonText: 'Look Up',
+          isProcessing: isProcessing,
+          onSubmit: _handleManualEntry,
+        );
+
+      case ScanMode.textSearch:
+        return SearchResultsView<BookMetadata>(
+          controller: textSearchController,
+          labelText: 'Search',
+          hintText: 'Book title or author',
+          isSearching: isSearching,
+          searchResults: searchResults.cast<BookMetadata>(),
+          onSearch: _performTextSearch,
+          resultBuilder: (context, book) => Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: ListTile(
+              leading: book.thumbnailUrl != null
+                  ? Image.network(
+                      book.thumbnailUrl!,
+                      width: 50,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(Ionicons.book_outline),
+                    )
+                  : const Icon(Ionicons.book_outline),
+              title: Text(book.title ?? 'Unknown Title'),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (book.authors.isNotEmpty)
+                    Text(book.authors.join(', ')),
+                  if (book.publishedDate != null)
+                    Text(
+                      book.publishedDate!,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
+              ),
+              isThreeLine: true,
+              trailing: const Icon(Ionicons.arrow_forward_outline),
+              onTap: () => _handleSearchResultTap(book),
+            ),
+          ),
+        );
+
+      case ScanMode.photoOcr:
+        return PhotoOcrView<BookMetadata>(
+          title: 'Photo Search',
+          description: 'Take a photo of a book cover or spine.\nWe\'ll extract text and search for matches.',
+          isSearching: isSearching,
+          extractedText: _extractedText,
+          searchResults: searchResults.cast<BookMetadata>(),
+          onCapturePhoto: _handlePhotoCapture,
+          onResultTap: _handleSearchResultTap,
+          resultBuilder: (context, book) => Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: ListTile(
+              leading: book.thumbnailUrl != null
+                  ? Image.network(
+                      book.thumbnailUrl!,
+                      width: 50,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(Ionicons.book_outline),
+                    )
+                  : const Icon(Ionicons.book_outline),
+              title: Text(book.title ?? 'Unknown Title'),
+              subtitle: book.authors.isNotEmpty
+                  ? Text(book.authors.join(', '))
+                  : null,
+              trailing: const Icon(Ionicons.arrow_forward_outline),
+            ),
+          ),
+        );
     }
-
-    return showItemFoundDialog(
-      context: context,
-      ref: ref,
-      item: item,
-      householdId: widget.household.id,
-      itemTypeName: 'Item',
-      fallbackIcon: fallbackIcon,
-      showAddCopyOption: true,
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_currentMode == ScanMode.camera
-            ? 'Scan Barcode'
-            : _currentMode == ScanMode.manualIsbn
-                ? 'Enter ISBN'
-                : _currentMode == ScanMode.textSearch
-                    ? 'Search Books'
-                    : 'Photo Search'),
+        title: Text(_currentMode.getTitle(itemType: 'Books')),
         actions: [
           if (_currentMode == ScanMode.camera)
             IconButton(
-              icon: Icon(_scannerController.torchEnabled ? Ionicons.flash_outline : Ionicons.flash_off_outline),
-              onPressed: () => _scannerController.toggleTorch(),
+              icon: Icon(scannerController.torchEnabled
+                  ? Ionicons.flash_outline
+                  : Ionicons.flash_off_outline),
+              onPressed: () => scannerController.toggleTorch(),
               tooltip: 'Toggle Flashlight',
             ),
-          PopupMenuButton<ScanMode>(
-            icon: Icon(_currentMode == ScanMode.camera
-                ? Ionicons.qr_code_outline
-                : _currentMode == ScanMode.manualIsbn
-                    ? Ionicons.keypad_outline
-                    : _currentMode == ScanMode.textSearch
-                        ? Ionicons.search_outline
-                        : Ionicons.camera_outline),
-            tooltip: 'Switch Mode',
-            onSelected: (mode) {
+          ScanModeSelector(
+            currentMode: _currentMode,
+            availableModes: const [
+              ScanMode.camera,
+              ScanMode.manual,
+              ScanMode.textSearch,
+              ScanMode.photoOcr,
+            ],
+            onModeSelected: (mode) {
               setState(() {
                 _currentMode = mode;
-                _searchResults = [];
+                searchResults = [];
                 _extractedText = null;
+                isProcessing = false; // Reset processing state when switching modes
               });
             },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: ScanMode.camera,
-                child: ListTile(
-                  leading: Icon(Ionicons.qr_code_outline),
-                  title: Text('Scan Barcode'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
-                value: ScanMode.manualIsbn,
-                child: ListTile(
-                  leading: Icon(Ionicons.keypad_outline),
-                  title: Text('Enter ISBN'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
-                value: ScanMode.textSearch,
-                child: ListTile(
-                  leading: Icon(Ionicons.search_outline),
-                  title: Text('Search by Title/Author'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
-                value: ScanMode.photoSearch,
-                child: ListTile(
-                  leading: Icon(Ionicons.camera_outline),
-                  title: Text('Photo Search (OCR)'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-            ],
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          if (_currentMode == ScanMode.camera)
-            MobileScanner(
-              controller: _scannerController,
-              onDetect: (capture) {
-                final List<Barcode> barcodes = capture.barcodes;
-                for (final barcode in barcodes) {
-                  final code = barcode.rawValue;
-                  if (code != null) {
-                    _handleBarcode(code);
-                    break;
-                  }
-                }
-              },
-            )
-          else if (_currentMode == ScanMode.manualIsbn)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Ionicons.book_outline, size: 100),
-                    const SizedBox(height: 24),
-                    TextField(
-                      controller: _manualIsbnController,
-                      decoration: const InputDecoration(
-                        labelText: 'Enter ISBN',
-                        hintText: '9780143127796',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Ionicons.keypad_outline),
-                      ),
-                      keyboardType: TextInputType.number,
-                      autofocus: true,
-                      onSubmitted: (_) => _handleManualEntry(),
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton.icon(
-                      onPressed: _isProcessing ? null : _handleManualEntry,
-                      icon: const Icon(Ionicons.search_outline),
-                      label: const Text('Look Up Book'),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else if (_currentMode == ScanMode.textSearch)
-            // Text Search Mode
-            Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      TextField(
-                        controller: _textSearchController,
-                        decoration: const InputDecoration(
-                          labelText: 'Book Title or Author',
-                          hintText: 'e.g., "1984 Orwell" or "Harry Potter"',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Ionicons.search_outline),
-                        ),
-                        autofocus: true,
-                        onSubmitted: (_) => _performTextSearch(),
-                      ),
-                      const SizedBox(height: 12),
-                      FilledButton.icon(
-                        onPressed: _isSearching ? null : _performTextSearch,
-                        icon: const Icon(Ionicons.search_outline),
-                        label: const Text('Search Books'),
-                      ),
-                    ],
-                  ),
-                ),
-                if (_isSearching)
-                  const Expanded(
-                    child: Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  )
-                else if (_searchResults.isEmpty)
-                  Expanded(
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Ionicons.book_outline,
-                            size: 80,
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Enter a book title or author to search',
-                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                  color: Theme.of(context).colorScheme.outline,
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                else
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: _searchResults.length,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemBuilder: (context, index) {
-                        final book = _searchResults[index];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            leading: book.thumbnailUrl != null
-                                ? Image.network(
-                                    book.thumbnailUrl!,
-                                    width: 50,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const Icon(Ionicons.book_outline),
-                                  )
-                                : const Icon(Ionicons.book_outline),
-                            title: Text(book.title ?? 'Unknown Title'),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (book.authors.isNotEmpty)
-                                  Text(book.authors.join(', ')),
-                                if (book.publishedDate != null)
-                                  Text(book.publishedDate!,
-                                      style: Theme.of(context).textTheme.bodySmall),
-                              ],
-                            ),
-                            isThreeLine: true,
-                            trailing: const Icon(Ionicons.arrow_forward_outline),
-                            onTap: () => _handleSearchResultTap(book),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-              ],
-            )
-          else
-            // Photo Search Mode (OCR)
-            Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Ionicons.camera_outline,
-                        size: 100,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'Photo Search',
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Take a photo of a book cover or spine.\nWe\'ll extract text and search for matches.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      const SizedBox(height: 24),
-                      FilledButton.icon(
-                        onPressed: _isSearching ? null : _captureAndRecognizeText,
-                        icon: const Icon(Ionicons.camera_outline),
-                        label: const Text('Take Photo'),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                        ),
-                      ),
-                      if (_extractedText != null) ...[
-                        const SizedBox(height: 24),
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Ionicons.text_outline,
-                                      size: 20,
-                                      color: Theme.of(context).colorScheme.primary,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Extracted Text:',
-                                      style: Theme.of(context).textTheme.titleSmall,
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  _extractedText!,
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                if (_isSearching)
-                  const Expanded(
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircularProgressIndicator(),
-                          SizedBox(height: 16),
-                          Text('Recognizing text and searching...'),
-                        ],
-                      ),
-                    ),
-                  )
-                else if (_searchResults.isEmpty && _extractedText != null)
-                  Expanded(
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Ionicons.close_circle_outline,
-                            size: 80,
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No books found',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Try taking another photo or use text search',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.outline,
-                                ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                else if (_searchResults.isNotEmpty)
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: _searchResults.length,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemBuilder: (context, index) {
-                        final book = _searchResults[index];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            leading: book.thumbnailUrl != null
-                                ? Image.network(
-                                    book.thumbnailUrl!,
-                                    width: 50,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const Icon(Ionicons.book_outline),
-                                  )
-                                : const Icon(Ionicons.book_outline),
-                            title: Text(book.title ?? 'Unknown Title'),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (book.authors.isNotEmpty)
-                                  Text(book.authors.join(', ')),
-                                if (book.publishedDate != null)
-                                  Text(book.publishedDate!,
-                                      style: Theme.of(context).textTheme.bodySmall),
-                              ],
-                            ),
-                            isThreeLine: true,
-                            trailing: const Icon(Ionicons.arrow_forward_outline),
-                            onTap: () => _handleSearchResultTap(book),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-              ],
-            ),
-          if (_isProcessing)
-            Container(
-              color: Colors.black54,
-              child: const Center(
-                child: Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('Looking up book...'),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
+      body: _buildBody(),
     );
   }
 }

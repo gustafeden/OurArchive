@@ -2,6 +2,7 @@ import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:our_archive/ui/screens/book_scan_screen.dart';
 import 'package:our_archive/ui/screens/add_book_screen.dart';
+import 'package:our_archive/ui/screens/common/scan_modes.dart';
 
 class AddBookFlowScreen extends StatelessWidget {
   final String householdId;
@@ -55,7 +56,7 @@ class AddBookFlowScreen extends StatelessWidget {
                           MaterialPageRoute(
                             builder: (context) => BookScanScreen(
                               householdId: householdId,
-                              initialMode: BookScanMode.camera,
+                              initialMode: ScanMode.camera,
                               preSelectedContainerId: preSelectedContainerId,
                             ),
                           ),
@@ -74,7 +75,7 @@ class AddBookFlowScreen extends StatelessWidget {
                           MaterialPageRoute(
                             builder: (context) => BookScanScreen(
                               householdId: householdId,
-                              initialMode: BookScanMode.photoOcr,
+                              initialMode: ScanMode.photoOcr,
                               preSelectedContainerId: preSelectedContainerId,
                             ),
                           ),
@@ -93,7 +94,7 @@ class AddBookFlowScreen extends StatelessWidget {
                           MaterialPageRoute(
                             builder: (context) => BookScanScreen(
                               householdId: householdId,
-                              initialMode: BookScanMode.textSearch,
+                              initialMode: ScanMode.textSearch,
                               preSelectedContainerId: preSelectedContainerId,
                             ),
                           ),

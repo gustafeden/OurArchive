@@ -10,6 +10,7 @@ import 'book_scan_screen.dart';
 import 'vinyl_scan_screen.dart';
 import 'container_screen.dart';
 import 'manage_types_screen.dart';
+import 'common/scan_modes.dart';
 import '../../utils/icon_helper.dart';
 import '../widgets/common/category_tabs_builder.dart';
 import '../widgets/common/item_card_widget.dart';
@@ -344,7 +345,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                   MaterialPageRoute(
                     builder: (context) => BookScanScreen(
                       householdId: widget.household.id,
-                      initialMode: BookScanMode.camera,
+                      initialMode: ScanMode.camera,
                     ),
                   ),
                 );
@@ -368,7 +369,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                   MaterialPageRoute(
                     builder: (context) => VinylScanScreen(
                       householdId: widget.household.id,
-                      initialMode: VinylScanMode.camera,
+                      initialMode: ScanMode.camera,
                     ),
                   ),
                 );

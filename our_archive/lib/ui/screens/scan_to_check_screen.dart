@@ -8,6 +8,7 @@ import '../../data/models/item.dart';
 import '../../providers/providers.dart';
 import '../../services/vinyl_lookup_service.dart';
 import '../widgets/common/item_found_dialog.dart';
+import '../widgets/scanner/item_not_found_dialog.dart';
 import 'add_item_screen.dart';
 import 'add_vinyl_screen.dart';
 
@@ -146,7 +147,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
 
         if (!mounted) return;
 
-        if (action == 'addBook') {
+        if (action == 'add') {
           // Navigate to AddItemScreen
           await Navigator.push(
             context,
@@ -252,7 +253,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
 
         if (!mounted) return;
 
-        if (action == 'addVinyl') {
+        if (action == 'add') {
           // Navigate to AddVinylScreen
           await Navigator.push(
             context,
@@ -332,77 +333,28 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
   }
 
   Future<String?> _showBookNotFoundDialog(BookMetadata book) async {
-    return showDialog<String>(
+    return showItemNotFoundDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Ionicons.information_circle_outline, color: Colors.orange, size: 28),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text('Not in Your Collection'),
-            ),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (book.thumbnailUrl != null)
-                Center(
-                  child: Image.network(
-                    book.thumbnailUrl!,
-                    height: 200,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Ionicons.book_outline, size: 100),
-                  ),
-                ),
-              const SizedBox(height: 16),
-              Text(
-                book.title ?? 'Unknown Title',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              if (book.authors.isNotEmpty)
-                Text(
-                  'By ${book.authorsDisplay}',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-              const SizedBox(height: 8),
-              if (book.publisher != null)
-                Text('Publisher: ${book.publisher}'),
-              if (book.publishedDate != null)
-                Text('Published: ${book.publishedDate}'),
-              if (book.pageCount != null) Text('Pages: ${book.pageCount}'),
-              if (book.description != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  book.description!,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ],
+      imageUrl: book.thumbnailUrl,
+      fallbackIcon: Ionicons.book_outline,
+      itemTitle: book.title ?? 'Unknown Title',
+      creator: book.authors.isNotEmpty ? book.authorsDisplay : null,
+      metadataFields: [
+        if (book.publisher != null)
+          ItemNotFoundField(label: 'Publisher', value: book.publisher!),
+        if (book.publishedDate != null)
+          ItemNotFoundField(label: 'Published', value: book.publishedDate!),
+        if (book.pageCount != null)
+          ItemNotFoundField(label: 'Pages', value: book.pageCount.toString()),
+        if (book.description != null)
+          ItemNotFoundField(
+            label: '',
+            value: book.description!,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'scanNext'),
-            child: const Text('Scan Next'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'close'),
-            child: const Text('Close'),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.pop(context, 'addBook'),
-            icon: const Icon(Ionicons.add_outline),
-            label: const Text('Add to Collection'),
-          ),
-        ],
-      ),
+      ],
+      addActionLabel: 'Add to Collection',
     );
   }
 
@@ -419,69 +371,21 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
   }
 
   Future<String?> _showVinylNotFoundDialog(VinylMetadata vinyl) async {
-    return showDialog<String>(
+    return showItemNotFoundDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Ionicons.information_circle_outline, color: Colors.orange, size: 28),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text('Not in Your Collection'),
-            ),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (vinyl.coverUrl != null && vinyl.coverUrl!.isNotEmpty)
-                Center(
-                  child: Image.network(
-                    vinyl.coverUrl!,
-                    height: 200,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Ionicons.disc_outline, size: 100),
-                  ),
-                ),
-              const SizedBox(height: 16),
-              Text(
-                vinyl.title,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              if (vinyl.artist.isNotEmpty)
-                Text(
-                  'By ${vinyl.artist}',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-              const SizedBox(height: 8),
-              if (vinyl.label != null && vinyl.label!.isNotEmpty)
-                Text('Label: ${vinyl.label}'),
-              if (vinyl.year != null)
-                Text('Year: ${vinyl.year}'),
-              if (vinyl.format != null && vinyl.format!.isNotEmpty)
-                Text('Format: ${vinyl.format!.join(', ')}'),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'scanNext'),
-            child: const Text('Scan Next'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'close'),
-            child: const Text('Close'),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.pop(context, 'addVinyl'),
-            icon: const Icon(Ionicons.add_outline),
-            label: const Text('Add to Collection'),
-          ),
-        ],
-      ),
+      imageUrl: vinyl.coverUrl,
+      fallbackIcon: Ionicons.disc_outline,
+      itemTitle: vinyl.title,
+      creator: vinyl.artist.isNotEmpty ? vinyl.artist : null,
+      metadataFields: [
+        if (vinyl.label != null && vinyl.label!.isNotEmpty)
+          ItemNotFoundField(label: 'Label', value: vinyl.label!),
+        if (vinyl.year != null)
+          ItemNotFoundField(label: 'Year', value: vinyl.year.toString()),
+        if (vinyl.format != null && vinyl.format!.isNotEmpty)
+          ItemNotFoundField(label: 'Format', value: vinyl.format!.join(', ')),
+      ],
+      addActionLabel: 'Add to Collection',
     );
   }
 

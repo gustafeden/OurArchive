@@ -13,6 +13,7 @@ import 'item_list_screen.dart';
 import 'book_scan_screen.dart';
 import 'vinyl_scan_screen.dart';
 import 'manage_types_screen.dart';
+import 'common/scan_modes.dart';
 import '../../utils/icon_helper.dart';
 import '../../../data/models/container_type.dart';
 import '../widgets/common/category_tabs_builder.dart';
@@ -574,10 +575,40 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
     }
   }
 
-  void _showAddContainerDialog(BuildContext context, WidgetRef ref) {
+  /// Shows a modal bottom sheet to select image source (camera or gallery)
+  /// Returns the selected ImageSource or null if cancelled
+  Future<ImageSource?> _showImageSourcePicker(BuildContext context) {
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Ionicons.camera_outline),
+              title: const Text('Take Photo'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Ionicons.images_outline),
+              title: const Text('Choose from Gallery'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showAddContainerDialog(BuildContext context, WidgetRef ref) async {
+    // Load container types first to avoid stuck loading state in dialog
+    final containerTypes = await ref.read(containerTypesProvider(widget.householdId).future);
+
+    if (!context.mounted) return;
+
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
-    final containerTypesAsync = ref.watch(containerTypesProvider(widget.householdId));
 
     String selectedType = widget.breadcrumb.isEmpty ? 'room' : 'shelf';
     String? selectedIcon;
@@ -587,24 +618,21 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: Text(widget.breadcrumb.isEmpty ? 'Add Room' : 'Add Container'),
-          content: containerTypesAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stack) => Text('Error loading types: $error'),
-            data: (containerTypes) {
-              // Show all container types
-              final availableTypes = containerTypes;
+        builder: (context, setState) {
+          // Show all container types
+          final availableTypes = containerTypes;
 
-              // Ensure selectedType exists in available types
-              if (!availableTypes.any((t) => t.name == selectedType)) {
-                selectedType = availableTypes.isNotEmpty ? availableTypes.first.name : 'room';
-              }
+          // Ensure selectedType exists in available types
+          if (!availableTypes.any((t) => t.name == selectedType)) {
+            selectedType = availableTypes.isNotEmpty ? availableTypes.first.name : 'room';
+          }
 
-              return SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+          return AlertDialog(
+            title: Text(widget.breadcrumb.isEmpty ? 'Add Room' : 'Add Container'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                     TextField(
                       controller: nameController,
                       decoration: const InputDecoration(
@@ -646,27 +674,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                     const SizedBox(height: 16),
                     OutlinedButton.icon(
                       onPressed: () async {
-                        final ImageSource? source = await showModalBottomSheet<ImageSource>(
-                          context: context,
-                          builder: (context) => SafeArea(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                ListTile(
-                                  leading: const Icon(Ionicons.camera_outline),
-                                  title: const Text('Take Photo'),
-                                  onTap: () => Navigator.pop(context, ImageSource.camera),
-                                ),
-                                ListTile(
-                                  leading: const Icon(Ionicons.images_outline),
-                                  title: const Text('Choose from Gallery'),
-                                  onTap: () => Navigator.pop(context, ImageSource.gallery),
-                                ),
-                                const SizedBox(height: 8),
-                              ],
-                            ),
-                          ),
-                        );
+                        final ImageSource? source = await _showImageSourcePicker(context);
 
                         if (source != null) {
                           final XFile? image = await picker.pickImage(
@@ -767,20 +775,10 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                         ],
                       ),
                     ],
-                  ],
-                ),
-              );
-            },
-          ),
-          actions: containerTypesAsync.when(
-            loading: () => [],
-            error: (_, __) => [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Close'),
+                ],
               ),
-            ],
-            data: (containerTypes) => [
+            ),
+            actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Cancel'),
@@ -857,23 +855,20 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                 child: const Text('Create'),
               ),
             ],
-          ),
-        ),
+          );
+        },
       ),
     );
   }
 
-  List<String> _getContainerTypes(bool isTopLevel) {
-    if (isTopLevel) {
-      return ['room'];
-    }
-    return ['shelf', 'box', 'fridge', 'drawer', 'cabinet', 'closet', 'bin'];
-  }
+  Future<void> _showEditContainerDialog(BuildContext context, WidgetRef ref, model.Container container) async {
+    // Load container types first to avoid stuck loading state in dialog
+    final containerTypes = await ref.read(containerTypesProvider(widget.householdId).future);
 
-  void _showEditContainerDialog(BuildContext context, WidgetRef ref, model.Container container) {
+    if (!context.mounted) return;
+
     final nameController = TextEditingController(text: container.name);
     final descriptionController = TextEditingController(text: container.description);
-    final containerTypesAsync = ref.watch(containerTypesProvider(widget.householdId));
 
     String selectedType = container.containerType;
     String? selectedIcon = container.icon;
@@ -883,24 +878,21 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Edit Container'),
-          content: containerTypesAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stack) => Text('Error loading types: $error'),
-            data: (containerTypes) {
-              // Show all container types
-              final availableTypes = containerTypes;
+        builder: (context, setState) {
+          // Show all container types
+          final availableTypes = containerTypes;
 
-              // Ensure selectedType exists in available types
-              if (!availableTypes.any((t) => t.name == selectedType)) {
-                selectedType = availableTypes.isNotEmpty ? availableTypes.first.name : 'room';
-              }
+          // Ensure selectedType exists in available types
+          if (!availableTypes.any((t) => t.name == selectedType)) {
+            selectedType = availableTypes.isNotEmpty ? availableTypes.first.name : 'room';
+          }
 
-              return SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+          return AlertDialog(
+            title: const Text('Edit Container'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                     TextField(
                       controller: nameController,
                       decoration: const InputDecoration(labelText: 'Name'),
@@ -937,27 +929,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                     const SizedBox(height: 16),
                     OutlinedButton.icon(
                       onPressed: () async {
-                        final ImageSource? source = await showModalBottomSheet<ImageSource>(
-                          context: context,
-                          builder: (context) => SafeArea(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                ListTile(
-                                  leading: const Icon(Ionicons.camera_outline),
-                                  title: const Text('Take Photo'),
-                                  onTap: () => Navigator.pop(context, ImageSource.camera),
-                                ),
-                                ListTile(
-                                  leading: const Icon(Ionicons.images_outline),
-                                  title: const Text('Choose from Gallery'),
-                                  onTap: () => Navigator.pop(context, ImageSource.gallery),
-                                ),
-                                const SizedBox(height: 8),
-                              ],
-                            ),
-                          ),
-                        );
+                        final ImageSource? source = await _showImageSourcePicker(context);
 
                         if (source != null) {
                           final XFile? image = await picker.pickImage(
@@ -1002,20 +974,10 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                         label: const Text('Remove New Photo'),
                       ),
                     ],
-                  ],
-                ),
-              );
-            },
-          ),
-          actions: containerTypesAsync.when(
-            loading: () => [],
-            error: (_, __) => [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Close'),
+                ],
               ),
-            ],
-            data: (containerTypes) => [
+            ),
+            actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Cancel'),
@@ -1073,8 +1035,8 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                 child: const Text('Save'),
               ),
             ],
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -1320,7 +1282,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                   MaterialPageRoute(
                     builder: (context) => BookScanScreen(
                       householdId: widget.householdId,
-                      initialMode: BookScanMode.camera,
+                      initialMode: ScanMode.camera,
                       preSelectedContainerId: widget.parentContainerId,
                     ),
                   ),
@@ -1345,7 +1307,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                   MaterialPageRoute(
                     builder: (context) => VinylScanScreen(
                       householdId: widget.householdId,
-                      initialMode: VinylScanMode.camera,
+                      initialMode: ScanMode.camera,
                       preSelectedContainerId: widget.parentContainerId,
                     ),
                   ),

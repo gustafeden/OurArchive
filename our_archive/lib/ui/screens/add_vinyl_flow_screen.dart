@@ -2,6 +2,7 @@ import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:our_archive/ui/screens/vinyl_scan_screen.dart';
 import 'package:our_archive/ui/screens/add_vinyl_screen.dart';
+import 'package:our_archive/ui/screens/common/scan_modes.dart';
 
 class AddVinylFlowScreen extends StatelessWidget {
   final String householdId;
@@ -55,7 +56,7 @@ class AddVinylFlowScreen extends StatelessWidget {
                           MaterialPageRoute(
                             builder: (context) => VinylScanScreen(
                               householdId: householdId,
-                              initialMode: VinylScanMode.camera,
+                              initialMode: ScanMode.camera,
                               preSelectedContainerId: preSelectedContainerId,
                             ),
                           ),
@@ -74,7 +75,7 @@ class AddVinylFlowScreen extends StatelessWidget {
                           MaterialPageRoute(
                             builder: (context) => VinylScanScreen(
                               householdId: householdId,
-                              initialMode: VinylScanMode.textSearch,
+                              initialMode: ScanMode.textSearch,
                               preSelectedContainerId: preSelectedContainerId,
                             ),
                           ),
