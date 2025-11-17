@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -353,7 +354,7 @@ class _BookScanScreenState extends ConsumerState<BookScanScreen> {
               NetworkImageWithFallback(
                 imageUrl: book.thumbnailUrl,
                 height: 200,
-                fallbackIcon: Icons.book,
+                fallbackIcon: Ionicons.book_outline,
               ),
               const SizedBox(height: 16),
               Text(book.title ?? 'Unknown Title', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
@@ -393,7 +394,7 @@ class _BookScanScreenState extends ConsumerState<BookScanScreen> {
       item: existingItem,
       householdId: widget.householdId,
       itemTypeName: 'Book',
-      fallbackIcon: Icons.book,
+      fallbackIcon: Ionicons.book_outline,
       showAddCopyOption: true,
     );
   }
@@ -405,7 +406,7 @@ class _BookScanScreenState extends ConsumerState<BookScanScreen> {
         title: const Text('Scan Book'),
         actions: [
           PopupMenuButton<BookScanMode>(
-            icon: const Icon(Icons.more_vert),
+            icon: const Icon(Ionicons.ellipsis_vertical_outline),
             onSelected: (mode) {
               setState(() {
                 _currentMode = mode;
@@ -415,7 +416,7 @@ class _BookScanScreenState extends ConsumerState<BookScanScreen> {
               const PopupMenuItem(
                 value: BookScanMode.camera,
                 child: ListTile(
-                  leading: Icon(Icons.qr_code_scanner),
+                  leading: Icon(Ionicons.qr_code_outline),
                   title: Text('Camera Scan'),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -423,7 +424,7 @@ class _BookScanScreenState extends ConsumerState<BookScanScreen> {
               const PopupMenuItem(
                 value: BookScanMode.photoOcr,
                 child: ListTile(
-                  leading: Icon(Icons.photo_camera),
+                  leading: Icon(Ionicons.camera_outline),
                   title: Text('Photo Search'),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -431,7 +432,7 @@ class _BookScanScreenState extends ConsumerState<BookScanScreen> {
               const PopupMenuItem(
                 value: BookScanMode.textSearch,
                 child: ListTile(
-                  leading: Icon(Icons.search),
+                  leading: Icon(Ionicons.search_outline),
                   title: Text('Text Search'),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -439,7 +440,7 @@ class _BookScanScreenState extends ConsumerState<BookScanScreen> {
               const PopupMenuItem(
                 value: BookScanMode.manualIsbn,
                 child: ListTile(
-                  leading: Icon(Icons.keyboard),
+                  leading: Icon(Ionicons.keypad_outline),
                   title: Text('Manual ISBN'),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -550,7 +551,7 @@ class _BookScanScreenState extends ConsumerState<BookScanScreen> {
       resultBuilder: (context, book) => ListTile(
         leading: book.thumbnailUrl != null && book.thumbnailUrl!.isNotEmpty
             ? Image.network(book.thumbnailUrl!, width: 40, fit: BoxFit.cover)
-            : const Icon(Icons.book),
+            : const Icon(Ionicons.book_outline),
         title: Text(book.title ?? 'Unknown Title'),
         subtitle: book.authors.isNotEmpty ? Text(book.authors.join(', ')) : null,
         onTap: () => _handleSearchResultTap(book),
@@ -576,7 +577,7 @@ class _BookScanScreenState extends ConsumerState<BookScanScreen> {
           const SizedBox(height: 24),
           FilledButton.icon(
             onPressed: _isSearching ? null : _captureAndRecognizeText,
-            icon: const Icon(Icons.photo_camera),
+            icon: const Icon(Ionicons.camera_outline),
             label: const Text('Take Photo'),
           ),
           if (_extractedText != null) ...[
@@ -598,7 +599,7 @@ class _BookScanScreenState extends ConsumerState<BookScanScreen> {
                   return ListTile(
                     leading: book.thumbnailUrl != null && book.thumbnailUrl!.isNotEmpty
                         ? Image.network(book.thumbnailUrl!, width: 40, fit: BoxFit.cover)
-                        : const Icon(Icons.book),
+                        : const Icon(Ionicons.book_outline),
                     title: Text(book.title ?? 'Unknown Title'),
                     subtitle: book.authors.isNotEmpty ? Text(book.authors.join(', ')) : null,
                     onTap: () => _handleSearchResultTap(book),

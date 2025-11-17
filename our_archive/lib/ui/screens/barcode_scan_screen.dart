@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -519,7 +520,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                   child: Image.network(
                     book.thumbnailUrl!,
                     height: 200,
-                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.book, size: 100),
+                    errorBuilder: (context, error, stackTrace) => const Icon(Ionicons.book_outline, size: 100),
                   ),
                 ),
               const SizedBox(height: 16),
@@ -578,7 +579,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                   child: Image.network(
                     vinyl.coverUrl!,
                     height: 200,
-                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.album, size: 100),
+                    errorBuilder: (context, error, stackTrace) => const Icon(Ionicons.disc_outline, size: 100),
                   ),
                 ),
               const SizedBox(height: 16),
@@ -620,13 +621,13 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
   Future<String?> _showDuplicateFoundDialog(Item item, BookMetadata? bookMetadata,
       {VinylMetadata? vinylMetadata}) async {
     // Determine fallback icon based on item type
-    IconData fallbackIcon = Icons.inventory_2;
+    IconData fallbackIcon = Ionicons.cube_outline;
     if (bookMetadata != null || item.type == 'book') {
-      fallbackIcon = Icons.book;
+      fallbackIcon = Ionicons.book_outline;
     } else if (vinylMetadata != null || item.type == 'vinyl') {
-      fallbackIcon = Icons.album;
+      fallbackIcon = Ionicons.disc_outline;
     } else if (item.type == 'game') {
-      fallbackIcon = Icons.sports_esports;
+      fallbackIcon = Ionicons.game_controller_outline;
     }
 
     return showItemFoundDialog(
@@ -654,18 +655,18 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
         actions: [
           if (_currentMode == ScanMode.camera)
             IconButton(
-              icon: Icon(_scannerController.torchEnabled ? Icons.flash_on : Icons.flash_off),
+              icon: Icon(_scannerController.torchEnabled ? Ionicons.flash_outline : Ionicons.flash_off_outline),
               onPressed: () => _scannerController.toggleTorch(),
               tooltip: 'Toggle Flashlight',
             ),
           PopupMenuButton<ScanMode>(
             icon: Icon(_currentMode == ScanMode.camera
-                ? Icons.qr_code_scanner
+                ? Ionicons.qr_code_outline
                 : _currentMode == ScanMode.manualIsbn
-                    ? Icons.keyboard
+                    ? Ionicons.keypad_outline
                     : _currentMode == ScanMode.textSearch
-                        ? Icons.search
-                        : Icons.photo_camera),
+                        ? Ionicons.search_outline
+                        : Ionicons.camera_outline),
             tooltip: 'Switch Mode',
             onSelected: (mode) {
               setState(() {
@@ -678,7 +679,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
               const PopupMenuItem(
                 value: ScanMode.camera,
                 child: ListTile(
-                  leading: Icon(Icons.qr_code_scanner),
+                  leading: Icon(Ionicons.qr_code_outline),
                   title: Text('Scan Barcode'),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -686,7 +687,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
               const PopupMenuItem(
                 value: ScanMode.manualIsbn,
                 child: ListTile(
-                  leading: Icon(Icons.keyboard),
+                  leading: Icon(Ionicons.keypad_outline),
                   title: Text('Enter ISBN'),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -694,7 +695,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
               const PopupMenuItem(
                 value: ScanMode.textSearch,
                 child: ListTile(
-                  leading: Icon(Icons.search),
+                  leading: Icon(Ionicons.search_outline),
                   title: Text('Search by Title/Author'),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -702,7 +703,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
               const PopupMenuItem(
                 value: ScanMode.photoSearch,
                 child: ListTile(
-                  leading: Icon(Icons.photo_camera),
+                  leading: Icon(Ionicons.camera_outline),
                   title: Text('Photo Search (OCR)'),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -734,7 +735,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.book, size: 100),
+                    const Icon(Ionicons.book_outline, size: 100),
                     const SizedBox(height: 24),
                     TextField(
                       controller: _manualIsbnController,
@@ -742,7 +743,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                         labelText: 'Enter ISBN',
                         hintText: '9780143127796',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.numbers),
+                        prefixIcon: Icon(Ionicons.keypad_outline),
                       ),
                       keyboardType: TextInputType.number,
                       autofocus: true,
@@ -751,7 +752,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                     const SizedBox(height: 16),
                     FilledButton.icon(
                       onPressed: _isProcessing ? null : _handleManualEntry,
-                      icon: const Icon(Icons.search),
+                      icon: const Icon(Ionicons.search_outline),
                       label: const Text('Look Up Book'),
                     ),
                   ],
@@ -772,7 +773,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                           labelText: 'Book Title or Author',
                           hintText: 'e.g., "1984 Orwell" or "Harry Potter"',
                           border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.search),
+                          prefixIcon: Icon(Ionicons.search_outline),
                         ),
                         autofocus: true,
                         onSubmitted: (_) => _performTextSearch(),
@@ -780,7 +781,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                       const SizedBox(height: 12),
                       FilledButton.icon(
                         onPressed: _isSearching ? null : _performTextSearch,
-                        icon: const Icon(Icons.search),
+                        icon: const Icon(Ionicons.search_outline),
                         label: const Text('Search Books'),
                       ),
                     ],
@@ -799,7 +800,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.menu_book,
+                            Ionicons.book_outline,
                             size: 80,
                             color: Theme.of(context).colorScheme.outline,
                           ),
@@ -829,9 +830,9 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                                     book.thumbnailUrl!,
                                     width: 50,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const Icon(Icons.book),
+                                    errorBuilder: (_, __, ___) => const Icon(Ionicons.book_outline),
                                   )
-                                : const Icon(Icons.book),
+                                : const Icon(Ionicons.book_outline),
                             title: Text(book.title ?? 'Unknown Title'),
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -844,7 +845,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                               ],
                             ),
                             isThreeLine: true,
-                            trailing: const Icon(Icons.arrow_forward),
+                            trailing: const Icon(Ionicons.arrow_forward_outline),
                             onTap: () => _handleSearchResultTap(book),
                           ),
                         );
@@ -862,7 +863,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                   child: Column(
                     children: [
                       Icon(
-                        Icons.photo_camera,
+                        Ionicons.camera_outline,
                         size: 100,
                         color: Theme.of(context).colorScheme.primary,
                       ),
@@ -880,7 +881,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                       const SizedBox(height: 24),
                       FilledButton.icon(
                         onPressed: _isSearching ? null : _captureAndRecognizeText,
-                        icon: const Icon(Icons.photo_camera),
+                        icon: const Icon(Ionicons.camera_outline),
                         label: const Text('Take Photo'),
                         style: FilledButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
@@ -897,7 +898,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                                 Row(
                                   children: [
                                     Icon(
-                                      Icons.text_fields,
+                                      Ionicons.text_outline,
                                       size: 20,
                                       color: Theme.of(context).colorScheme.primary,
                                     ),
@@ -943,7 +944,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.search_off,
+                            Ionicons.close_circle_outline,
                             size: 80,
                             color: Theme.of(context).colorScheme.outline,
                           ),
@@ -979,9 +980,9 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                                     book.thumbnailUrl!,
                                     width: 50,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const Icon(Icons.book),
+                                    errorBuilder: (_, __, ___) => const Icon(Ionicons.book_outline),
                                   )
-                                : const Icon(Icons.book),
+                                : const Icon(Ionicons.book_outline),
                             title: Text(book.title ?? 'Unknown Title'),
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -994,7 +995,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen> {
                               ],
                             ),
                             isThreeLine: true,
-                            trailing: const Icon(Icons.arrow_forward),
+                            trailing: const Icon(Ionicons.arrow_forward_outline),
                             onTap: () => _handleSearchResultTap(book),
                           ),
                         );

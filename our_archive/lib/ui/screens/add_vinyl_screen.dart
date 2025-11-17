@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -216,20 +217,20 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
             PhotoPickerWidget(
               photo: _photo,
               onPhotoChanged: (photo) => setState(() => _photo = photo),
-              placeholderIcon: Icons.album,
+              placeholderIcon: Ionicons.disc_outline,
               placeholderText: 'Tap to add cover photo',
             ),
             const SizedBox(height: 24),
-            TextFormField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder(), prefixIcon: Icon(Icons.title)), validator: (v) => v?.trim().isEmpty ?? true ? 'Title is required' : null, textCapitalization: TextCapitalization.words),
+            TextFormField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder(), prefixIcon: Icon(Ionicons.text_outline)), validator: (v) => v?.trim().isEmpty ?? true ? 'Title is required' : null, textCapitalization: TextCapitalization.words),
             const SizedBox(height: 16),
-            TextFormField(controller: _artistController, decoration: const InputDecoration(labelText: 'Artist', border: OutlineInputBorder(), prefixIcon: Icon(Icons.person)), textCapitalization: TextCapitalization.words),
+            TextFormField(controller: _artistController, decoration: const InputDecoration(labelText: 'Artist', border: OutlineInputBorder(), prefixIcon: Icon(Ionicons.person_outline)), textCapitalization: TextCapitalization.words),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               value: _selectedFormat,
               decoration: const InputDecoration(
                 labelText: 'Format',
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.album),
+                prefixIcon: Icon(Ionicons.disc_outline),
               ),
               items: _formats.map((format) {
                 return DropdownMenuItem(
@@ -245,13 +246,13 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
             ),
             const SizedBox(height: 16),
             Row(children: [
-              Expanded(flex: 2, child: TextFormField(controller: _labelController, decoration: const InputDecoration(labelText: 'Label', border: OutlineInputBorder(), prefixIcon: Icon(Icons.business)), textCapitalization: TextCapitalization.words)),
+              Expanded(flex: 2, child: TextFormField(controller: _labelController, decoration: const InputDecoration(labelText: 'Label', border: OutlineInputBorder(), prefixIcon: Icon(Ionicons.business_outline)), textCapitalization: TextCapitalization.words)),
               const SizedBox(width: 12),
               Expanded(child: YearField(controller: _yearController)),
             ]),
             const SizedBox(height: 16),
             Row(children: [
-              Expanded(child: TextFormField(controller: _genreController, decoration: const InputDecoration(labelText: 'Genre', border: OutlineInputBorder(), prefixIcon: Icon(Icons.music_note)), textCapitalization: TextCapitalization.words)),
+              Expanded(child: TextFormField(controller: _genreController, decoration: const InputDecoration(labelText: 'Genre', border: OutlineInputBorder(), prefixIcon: Icon(Ionicons.musical_note_outline)), textCapitalization: TextCapitalization.words)),
               const SizedBox(width: 12),
               Expanded(child: TextFormField(controller: _catalogController, decoration: const InputDecoration(labelText: 'Catalog #', border: OutlineInputBorder()))),
             ]),

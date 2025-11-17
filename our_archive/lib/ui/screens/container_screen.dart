@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -90,7 +91,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
         actions: [
           // Search button
           IconButton(
-            icon: Icon(_isSearching ? Icons.close : Icons.search),
+            icon: Icon(_isSearching ? Ionicons.close_outline : Ionicons.search_outline),
             onPressed: () {
               setState(() {
                 _isSearching = !_isSearching;
@@ -124,7 +125,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                 value: 'edit',
                 child: Row(
                   children: [
-                    Icon(_isEditMode ? Icons.done : Icons.edit, size: 20),
+                    Icon(_isEditMode ? Ionicons.checkmark_done_outline : Ionicons.create_outline, size: 20),
                     const SizedBox(width: 8),
                     Text(_isEditMode ? 'Done Editing' : 'Edit Mode'),
                   ],
@@ -135,7 +136,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                 value: 'manage_types',
                 child: Row(
                   children: [
-                    Icon(Icons.category, size: 20),
+                    Icon(Ionicons.apps_outline, size: 20),
                     SizedBox(width: 8),
                     Text('Manage Types'),
                   ],
@@ -163,7 +164,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        Icons.inventory_2_outlined,
+                        Ionicons.cube_outline,
                         size: 80,
                         color: Colors.grey[400],
                       ),
@@ -289,7 +290,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
             child: FloatingActionButton.extended(
               heroTag: 'add_item',
               onPressed: () => _navigateToAddItem(context, ref),
-              icon: const Icon(Icons.inventory_2),
+              icon: const Icon(Ionicons.cube_outline),
               label: const Text('Add Item'),
             ),
           ),
@@ -297,7 +298,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
           FloatingActionButton.extended(
             heroTag: 'add_container',
             onPressed: () => _showAddContainerDialog(context, ref),
-            icon: const Icon(Icons.add),
+            icon: const Icon(Ionicons.add_outline),
             label: Text(widget.breadcrumb.isEmpty ? 'Add Room' : 'Add Container'),
           ),
         ],
@@ -319,11 +320,11 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: Colors.orange,
-          child: Icon(Icons.inventory_2, color: Colors.white),
+          child: Icon(Ionicons.cube_outline, color: Colors.white),
         ),
         title: Text('Unorganized Items (${items.length})'),
         subtitle: const Text('Items not in any room yet'),
-        trailing: const Icon(Icons.arrow_forward_ios),
+        trailing: const Icon(Ionicons.chevron_forward_outline),
         onTap: () async {
           // Navigate to ItemListScreen with unorganized filter
           // Get household info from providers
@@ -519,7 +520,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.white),
+                        icon: const Icon(Ionicons.create_outline, color: Colors.white),
                         style: IconButton.styleFrom(
                           backgroundColor: Colors.black.withOpacity(0.5),
                         ),
@@ -527,7 +528,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                       ),
                       const SizedBox(width: 4),
                       IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.white),
+                        icon: const Icon(Ionicons.trash_outline, color: Colors.white),
                         style: IconButton.styleFrom(
                           backgroundColor: Colors.red.withOpacity(0.7),
                         ),
@@ -555,21 +556,21 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
   IconData _getIconFromName(String iconName) {
     switch (iconName) {
       case 'kitchen':
-        return Icons.kitchen;
+        return Ionicons.restaurant_outline;
       case 'bedroom':
-        return Icons.bed;
+        return Ionicons.bed_outline;
       case 'living_room':
-        return Icons.weekend;
+        return Ionicons.tv_outline;
       case 'bathroom':
-        return Icons.bathroom;
+        return Ionicons.water_outline;
       case 'garage':
-        return Icons.garage;
+        return Ionicons.car_outline;
       case 'office':
-        return Icons.computer;
+        return Ionicons.desktop_outline;
       case 'storage':
-        return Icons.inventory_2;
+        return Ionicons.cube_outline;
       default:
-        return Icons.inventory_2;
+        return Ionicons.cube_outline;
     }
   }
 
@@ -652,12 +653,12 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 ListTile(
-                                  leading: const Icon(Icons.camera_alt),
+                                  leading: const Icon(Ionicons.camera_outline),
                                   title: const Text('Take Photo'),
                                   onTap: () => Navigator.pop(context, ImageSource.camera),
                                 ),
                                 ListTile(
-                                  leading: const Icon(Icons.photo_library),
+                                  leading: const Icon(Ionicons.images_outline),
                                   title: const Text('Choose from Gallery'),
                                   onTap: () => Navigator.pop(context, ImageSource.gallery),
                                 ),
@@ -681,7 +682,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                           }
                         }
                       },
-                      icon: const Icon(Icons.add_a_photo),
+                      icon: const Icon(Ionicons.camera_outline),
                       label: Text(selectedPhoto == null ? 'Add Photo (Optional)' : 'Photo Selected'),
                     ),
                     if (selectedPhoto != null) ...[
@@ -702,7 +703,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                             selectedPhoto = null;
                           });
                         },
-                        icon: const Icon(Icons.delete, size: 18),
+                        icon: const Icon(Ionicons.trash_outline, size: 18),
                         label: const Text('Remove Photo'),
                       ),
                     ],
@@ -715,49 +716,49 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                         runSpacing: 8,
                         children: [
                           _IconOption(
-                            icon: Icons.kitchen,
+                            icon: Ionicons.restaurant_outline,
                             label: 'Kitchen',
                             value: 'kitchen',
                             selected: selectedIcon == 'kitchen',
                             onTap: () => setState(() => selectedIcon = 'kitchen'),
                           ),
                           _IconOption(
-                            icon: Icons.bed,
+                            icon: Ionicons.bed_outline,
                             label: 'Bedroom',
                             value: 'bedroom',
                             selected: selectedIcon == 'bedroom',
                             onTap: () => setState(() => selectedIcon = 'bedroom'),
                           ),
                           _IconOption(
-                            icon: Icons.weekend,
+                            icon: Ionicons.tv_outline,
                             label: 'Living Room',
                             value: 'living_room',
                             selected: selectedIcon == 'living_room',
                             onTap: () => setState(() => selectedIcon = 'living_room'),
                           ),
                           _IconOption(
-                            icon: Icons.bathroom,
+                            icon: Ionicons.water_outline,
                             label: 'Bathroom',
                             value: 'bathroom',
                             selected: selectedIcon == 'bathroom',
                             onTap: () => setState(() => selectedIcon = 'bathroom'),
                           ),
                           _IconOption(
-                            icon: Icons.garage,
+                            icon: Ionicons.car_outline,
                             label: 'Garage',
                             value: 'garage',
                             selected: selectedIcon == 'garage',
                             onTap: () => setState(() => selectedIcon = 'garage'),
                           ),
                           _IconOption(
-                            icon: Icons.computer,
+                            icon: Ionicons.desktop_outline,
                             label: 'Office',
                             value: 'office',
                             selected: selectedIcon == 'office',
                             onTap: () => setState(() => selectedIcon = 'office'),
                           ),
                           _IconOption(
-                            icon: Icons.inventory_2,
+                            icon: Ionicons.cube_outline,
                             label: 'Storage',
                             value: 'storage',
                             selected: selectedIcon == 'storage',
@@ -943,12 +944,12 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 ListTile(
-                                  leading: const Icon(Icons.camera_alt),
+                                  leading: const Icon(Ionicons.camera_outline),
                                   title: const Text('Take Photo'),
                                   onTap: () => Navigator.pop(context, ImageSource.camera),
                                 ),
                                 ListTile(
-                                  leading: const Icon(Icons.photo_library),
+                                  leading: const Icon(Ionicons.images_outline),
                                   title: const Text('Choose from Gallery'),
                                   onTap: () => Navigator.pop(context, ImageSource.gallery),
                                 ),
@@ -972,7 +973,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                           }
                         }
                       },
-                      icon: const Icon(Icons.add_a_photo),
+                      icon: const Icon(Ionicons.camera_outline),
                       label: Text(
                         selectedPhoto == null
                           ? (container.photoPath == null ? 'Add Photo (Optional)' : 'Change Photo (Optional)')
@@ -997,7 +998,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                             selectedPhoto = null;
                           });
                         },
-                        icon: const Icon(Icons.delete, size: 18),
+                        icon: const Icon(Ionicons.trash_outline, size: 18),
                         label: const Text('Remove New Photo'),
                       ),
                     ],
@@ -1108,7 +1109,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                   if (itemCount > 0)
                     Row(
                       children: [
-                        const Icon(Icons.inventory_2, size: 20, color: Colors.orange),
+                        const Icon(Ionicons.cube_outline, size: 20, color: Colors.orange),
                         const SizedBox(width: 8),
                         Text('Contains $itemCount ${itemCount == 1 ? 'item' : 'items'}'),
                       ],
@@ -1116,7 +1117,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                   if (childCount > 0)
                     Row(
                       children: [
-                        const Icon(Icons.folder, size: 20, color: Colors.orange),
+                        const Icon(Ionicons.folder_outline, size: 20, color: Colors.orange),
                         const SizedBox(width: 8),
                         Text('Contains $childCount sub-${childCount == 1 ? 'container' : 'containers'}'),
                       ],
@@ -1216,7 +1217,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.inbox),
+                leading: const Icon(Ionicons.mail_outline),
                 title: const Text('Unorganized'),
                 subtitle: const Text('Remove from container'),
                 onTap: () async {
@@ -1240,7 +1241,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                     ),
                   ),
                   subtitle: Text(model.Container.getTypeDisplayName(container.containerType)),
-                  trailing: isCurrent ? const Icon(Icons.check, color: Colors.blue) : null,
+                  trailing: isCurrent ? const Icon(Ionicons.checkmark_outline, color: Colors.blue) : null,
                   onTap: isCurrent
                       ? null
                       : () async {
@@ -1308,7 +1309,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                   color: Colors.blue.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.qr_code_scanner, color: Colors.blue),
+                child: const Icon(Ionicons.qr_code_outline, color: Colors.blue),
               ),
               title: const Text('Scan Book'),
               subtitle: const Text('Quick scan ISBN barcode'),
@@ -1333,7 +1334,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                   color: Colors.purple.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.album, color: Colors.purple),
+                child: const Icon(Ionicons.disc_outline, color: Colors.purple),
               ),
               title: const Text('Scan Music'),
               subtitle: const Text('Quick scan music barcode'),
@@ -1353,7 +1354,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
             ),
             const Divider(),
             ListTile(
-              leading: const Icon(Icons.add_circle_outline),
+              leading: const Icon(Ionicons.add_circle_outline),
               title: const Text('Show All Options'),
               onTap: () {
                 Navigator.pop(context);

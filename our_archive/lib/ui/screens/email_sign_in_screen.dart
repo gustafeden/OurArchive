@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/providers.dart';
@@ -105,7 +106,7 @@ class _EmailSignInScreenState extends ConsumerState<EmailSignInScreen> {
                     labelText: 'Email',
                     hintText: 'you@example.com',
                     border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.email),
+                    prefixIcon: Icon(Ionicons.mail_outline),
                   ),
                   keyboardType: TextInputType.emailAddress,
                   autocorrect: false,
@@ -130,10 +131,10 @@ class _EmailSignInScreenState extends ConsumerState<EmailSignInScreen> {
                   decoration: InputDecoration(
                     labelText: 'Password',
                     border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.lock),
+                    prefixIcon: const Icon(Ionicons.lock_closed_outline),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                        _obscurePassword ? Ionicons.eye_outline : Ionicons.eye_off_outline,
                       ),
                       onPressed: () {
                         setState(() => _obscurePassword = !_obscurePassword);
@@ -166,7 +167,7 @@ class _EmailSignInScreenState extends ConsumerState<EmailSignInScreen> {
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.login),
+                      : const Icon(Ionicons.log_in_outline),
                   label: Text(_isLoading ? 'Signing in...' : 'Sign In'),
                 ),
 
@@ -201,7 +202,7 @@ class _EmailSignInScreenState extends ConsumerState<EmailSignInScreen> {
                             ),
                           );
                         },
-                  icon: const Icon(Icons.person_add),
+                  icon: const Icon(Ionicons.person_add_outline),
                   label: const Text('Create New Account'),
                 ),
 
@@ -217,7 +218,7 @@ class _EmailSignInScreenState extends ConsumerState<EmailSignInScreen> {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.info_outline, color: Colors.blue[700]),
+                            Icon(Ionicons.information_circle_outline, color: Colors.blue[700]),
                             const SizedBox(width: 8),
                             Text(
                               'Account Benefits',

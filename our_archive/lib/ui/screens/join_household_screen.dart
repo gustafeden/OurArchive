@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/providers.dart';
@@ -131,7 +132,7 @@ class _JoinHouseholdScreenState extends ConsumerState<JoinHouseholdScreen> {
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.login),
+                      : const Icon(Ionicons.log_in_outline),
                   label: Text(_isLoading ? 'Joining...' : 'Request to Join'),
                 ),
                 const SizedBox(height: 16),
@@ -143,7 +144,7 @@ class _JoinHouseholdScreenState extends ConsumerState<JoinHouseholdScreen> {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.info_outline, color: Colors.blue[700]),
+                            Icon(Ionicons.information_circle_outline, color: Colors.blue[700]),
                             const SizedBox(width: 8),
                             Text(
                               'How it works',

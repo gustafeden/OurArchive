@@ -172,124 +172,127 @@ class _IconPickerDialogState extends State<IconPickerDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      child: Container(
+      child: SizedBox(
         width: 400,
-        height: 500,
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header
-            Row(
-              children: [
-                const Text(
-                  'Select Icon',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Search bar
-            TextField(
-              decoration: InputDecoration(
-                hintText: 'Search icons...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header
+              Row(
+                children: [
+                  const Text(
+                    'Select Icon',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Ionicons.close_outline),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
               ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
-            // Icon grid
-            Expanded(
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 5,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
+              // Search bar
+              TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search icons...',
+                  prefixIcon: const Icon(Ionicons.search_outline),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-                itemCount: filteredIcons.length,
-                itemBuilder: (context, index) {
-                  final iconData = filteredIcons[index];
-                  final iconName = iconData['name'] as String;
-                  final icon = iconData['icon'] as IconData;
-                  final isSelected = _selectedIcon == iconName;
-
-                  return InkWell(
-                    onTap: () {
-                      setState(() {
-                        _selectedIcon = iconName;
-                      });
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.primaryContainer
-                            : Colors.transparent,
-                        border: Border.all(
-                          color: isSelected
-                              ? Theme.of(context).colorScheme.primary
-                              : Colors.grey.shade300,
-                          width: 2,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            icon,
-                            size: 32,
-                            color: isSelected
-                                ? Theme.of(context).colorScheme.primary
-                                : null,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            iconName.split('_').first,
-                            style: const TextStyle(fontSize: 10),
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
                 },
               ),
-            ),
+              const SizedBox(height: 12),
 
-            // Actions
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
+              // Icon grid
+              SizedBox(
+                height: 360,
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 5,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                  ),
+                  itemCount: filteredIcons.length,
+                  itemBuilder: (context, index) {
+                    final iconData = filteredIcons[index];
+                    final iconName = iconData['name'] as String;
+                    final icon = iconData['icon'] as IconData;
+                    final isSelected = _selectedIcon == iconName;
+
+                    return InkWell(
+                      onTap: () {
+                        setState(() {
+                          _selectedIcon = iconName;
+                        });
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? Theme.of(context).colorScheme.primaryContainer
+                              : Colors.transparent,
+                          border: Border.all(
+                            color: isSelected
+                                ? Theme.of(context).colorScheme.primary
+                                : Colors.grey.shade300,
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              icon,
+                              size: 32,
+                              color: isSelected
+                                  ? Theme.of(context).colorScheme.primary
+                                  : null,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              iconName.split('_').first,
+                              style: const TextStyle(fontSize: 10),
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: _selectedIcon != null
-                      ? () => Navigator.pop(context, _selectedIcon)
-                      : null,
-                  child: const Text('Select'),
-                ),
-              ],
-            ),
-          ],
+              ),
+
+              // Actions
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: _selectedIcon != null
+                        ? () => Navigator.pop(context, _selectedIcon)
+                        : null,
+                    child: const Text('Select'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

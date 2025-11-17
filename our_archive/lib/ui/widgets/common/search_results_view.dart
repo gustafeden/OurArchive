@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 
 /// A reusable widget for displaying text search UI with results list.
@@ -75,7 +76,7 @@ class SearchResultsView<T> extends StatelessWidget {
               const SizedBox(width: 8),
               FilledButton(
                 onPressed: isSearching ? null : onSearch,
-                child: const Icon(Icons.search),
+                child: const Icon(Ionicons.search_outline),
               ),
             ],
           ),

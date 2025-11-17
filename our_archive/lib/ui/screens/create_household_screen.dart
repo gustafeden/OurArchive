@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -73,7 +74,7 @@ class _CreateHouseholdScreenState extends ConsumerState<CreateHouseholdScreen> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.copy),
+                        icon: const Icon(Ionicons.copy_outline),
                         onPressed: () {
                           Clipboard.setData(ClipboardData(text: newHousehold.code));
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -153,7 +154,7 @@ class _CreateHouseholdScreenState extends ConsumerState<CreateHouseholdScreen> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.add),
+                    : const Icon(Ionicons.add_outline),
                 label: Text(_isLoading ? 'Creating...' : 'Create Household'),
               ),
             ],

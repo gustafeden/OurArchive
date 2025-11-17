@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 
 /// A button that shows a loading indicator when isLoading is true,
@@ -12,7 +13,7 @@ class LoadingButton extends StatelessWidget {
     super.key,
     required this.isLoading,
     required this.onPressed,
-    this.icon = Icons.check,
+    this.icon = Ionicons.checkmark_outline,
     this.tooltip,
   });
 

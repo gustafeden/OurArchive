@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -58,8 +59,8 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
               radius: 16,
               child: Icon(
                 currentUser?.isAnonymous == true
-                    ? Icons.person_outline
-                    : Icons.person,
+                    ? Ionicons.person_outline
+                    : Ionicons.person_outline,
                 size: 20,
                 color: Theme.of(context).colorScheme.primary,
               ),
@@ -91,7 +92,7 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.home_outlined,
+                    Ionicons.home_outline,
                     size: 80,
                     color: Colors.grey[400],
                   ),
@@ -149,7 +150,7 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                                   child: Padding(
                                     padding: const EdgeInsets.all(4.0),
                                     child: Icon(
-                                      Icons.copy,
+                                      Ionicons.copy_outline,
                                       size: 16,
                                       color: Theme.of(context).colorScheme.primary,
                                     ),
@@ -219,7 +220,7 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                                   ),
                                 );
                               },
-                              icon: const Icon(Icons.list),
+                              icon: const Icon(Ionicons.list_outline),
                               label: const Text('View Items'),
                             ),
                           ),
@@ -239,7 +240,7 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                                   ),
                                 );
                               },
-                              icon: const Icon(Icons.inventory_2),
+                              icon: const Icon(Ionicons.cube_outline),
                               label: const Text('Organize'),
                             ),
                           ),
@@ -262,7 +263,7 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                             ),
                           );
                         },
-                        icon: const Icon(Icons.qr_code_scanner),
+                        icon: const Icon(Ionicons.qr_code_outline),
                         label: const Text('Scan to Check if We Have It'),
                         style: FilledButton.styleFrom(
                           minimumSize: const Size(double.infinity, 40),
@@ -289,7 +290,7 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                 ),
               );
             },
-            icon: const Icon(Icons.login),
+            icon: const Icon(Ionicons.log_in_outline),
             label: const Text('Join'),
           ),
           const SizedBox(height: 16),
@@ -303,7 +304,7 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                 ),
               );
             },
-            icon: const Icon(Icons.add),
+            icon: const Icon(Ionicons.add_outline),
             label: const Text('Create'),
           ),
         ],
@@ -340,7 +341,7 @@ class _PendingMembersSection extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.people_outline, color: Colors.orange[700]),
+              Icon(Ionicons.people_outline, color: Colors.orange[700]),
               const SizedBox(width: 8),
               Text(
                 'Pending Approval',
@@ -611,7 +612,7 @@ class _PendingMemberRow extends ConsumerWidget {
         // Approve button
         FilledButton.icon(
           onPressed: onApprove,
-          icon: const Icon(Icons.check, size: 16),
+          icon: const Icon(Ionicons.checkmark_outline, size: 16),
           label: const Text('Approve'),
           style: FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(
@@ -630,7 +631,7 @@ class _PendingMemberRow extends ConsumerWidget {
               vertical: 8,
             ),
           ),
-          child: const Icon(Icons.close, size: 16),
+          child: const Icon(Ionicons.close_outline, size: 16),
         ),
       ],
     );
@@ -752,7 +753,7 @@ class _MemberCard extends ConsumerWidget {
       ),
       trailing: isOwner && userId != currentUserId && role != 'owner'
           ? IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
+              icon: const Icon(Ionicons.trash_outline, color: Colors.red),
               onPressed: () async {
                 final confirm = await showDialog<bool>(
                   context: context,
@@ -894,7 +895,7 @@ void _showAddExistingUserDialog(
                         ),
                         title: Text('User ${userId.substring(0, 8)}...'),
                         trailing: IconButton(
-                          icon: const Icon(Icons.add),
+                          icon: const Icon(Ionicons.add_outline),
                           onPressed: () async {
                             await _addUserToHousehold(
                               context,
@@ -920,7 +921,7 @@ void _showAddExistingUserDialog(
                           title: Text(title),
                           subtitle: subtitle != null ? Text(subtitle) : null,
                           trailing: IconButton(
-                            icon: const Icon(Icons.add),
+                            icon: const Icon(Ionicons.add_outline),
                             onPressed: () async {
                               await _addUserToHousehold(
                                 context,
@@ -1069,7 +1070,7 @@ void _showEditHouseholdDialog(BuildContext context, WidgetRef ref, Household hou
                                   currentUserId,
                                 );
                               },
-                              icon: const Icon(Icons.person_add, size: 18),
+                              icon: const Icon(Ionicons.person_add_outline, size: 18),
                               label: const Text('Add Existing User'),
                             ),
                         ],

@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -251,7 +252,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
           // Only show scan button if we have full household object
           if (widget.household != null)
             IconButton(
-              icon: const Icon(Icons.qr_code_scanner),
+              icon: const Icon(Ionicons.qr_code_outline),
               tooltip: 'Scan Book',
               onPressed: _scanBook,
             ),
@@ -353,7 +354,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
                 labelText: 'Location (optional)',
                 hintText: 'e.g., Garage, Kitchen, Basement',
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.location_on),
+                prefixIcon: Icon(Ionicons.location_outline),
               ),
               enabled: !_isLoading,
             ),
@@ -388,7 +389,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
                 hintText: 'e.g., power tools, red, birthday gift',
                 helperText: 'Separate tags with commas',
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.label),
+                prefixIcon: Icon(Ionicons.pricetag_outline),
               ),
               enabled: !_isLoading,
             ),
@@ -404,7 +405,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.save),
+                  : const Icon(Ionicons.save_outline),
               label: Text(_isLoading ? 'Saving...' : 'Save Item'),
             ),
           ],
@@ -429,7 +430,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
             ),
             child: Row(
               children: [
-                Icon(Icons.info_outline, color: Colors.grey[600]),
+                Icon(Ionicons.information_circle_outline, color: Colors.grey[600]),
                 const SizedBox(width: 12),
                 const Expanded(
                   child: Text(
@@ -451,7 +452,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
             labelText: 'Container (optional)',
             hintText: 'Select a room or container',
             border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.inventory_2),
+            prefixIcon: Icon(Ionicons.cube_outline),
           ),
           items: [
             const DropdownMenuItem<String?>(
@@ -538,23 +539,23 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
   IconData _getContainerIconForType(String type) {
     switch (type) {
       case 'room':
-        return Icons.meeting_room;
+        return Ionicons.business_outline;
       case 'shelf':
-        return Icons.shelves;
+        return Ionicons.albums_outline;
       case 'box':
-        return Icons.inventory_2;
+        return Ionicons.cube_outline;
       case 'fridge':
-        return Icons.kitchen;
+        return Ionicons.restaurant_outline;
       case 'drawer':
-        return Icons.kitchen_outlined;
+        return Ionicons.restaurant_outline;
       case 'cabinet':
-        return Icons.door_sliding;
+        return Ionicons.exit_outline;
       case 'closet':
-        return Icons.checkroom;
+        return Ionicons.shirt_outline;
       case 'bin':
-        return Icons.delete_outline;
+        return Ionicons.trash_outline;
       default:
-        return Icons.inventory_2;
+        return Ionicons.cube_outline;
     }
   }
 }

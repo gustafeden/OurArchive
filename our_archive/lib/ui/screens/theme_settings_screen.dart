@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/theme_provider.dart';
@@ -64,7 +65,7 @@ class _ThemeModeSelector extends ConsumerWidget {
             Expanded(
               child: _ThemeModeOption(
                 mode: ThemeMode.light,
-                icon: Icons.light_mode,
+                icon: Ionicons.sunny_outline,
                 label: 'Light',
                 isSelected: currentMode == ThemeMode.light,
                 onTap: () => ref.setThemeMode(ThemeMode.light),
@@ -74,7 +75,7 @@ class _ThemeModeSelector extends ConsumerWidget {
             Expanded(
               child: _ThemeModeOption(
                 mode: ThemeMode.dark,
-                icon: Icons.dark_mode,
+                icon: Ionicons.moon_outline,
                 label: 'Dark',
                 isSelected: currentMode == ThemeMode.dark,
                 onTap: () => ref.setThemeMode(ThemeMode.dark),
@@ -84,7 +85,7 @@ class _ThemeModeSelector extends ConsumerWidget {
             Expanded(
               child: _ThemeModeOption(
                 mode: ThemeMode.system,
-                icon: Icons.brightness_auto,
+                icon: Ionicons.contrast_outline,
                 label: 'System',
                 isSelected: currentMode == ThemeMode.system,
                 onTap: () => ref.setThemeMode(ThemeMode.system),
@@ -254,7 +255,7 @@ class _ThemePresetCard extends StatelessWidget {
                   ),
                   if (isSelected)
                     Icon(
-                      Icons.check_circle,
+                      Ionicons.checkmark_circle_outline,
                       color: colorScheme.primary,
                       size: 32,
                     ),

@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/item.dart';
@@ -21,7 +22,7 @@ import 'network_image_with_fallback.dart';
 ///   item: existingItem,
 ///   householdId: householdId,
 ///   itemTypeName: 'Book',
-///   fallbackIcon: Icons.book,
+///   fallbackIcon: Ionicons.book_outline,
 /// );
 /// ```
 Future<String?> showItemFoundDialog({
@@ -30,7 +31,7 @@ Future<String?> showItemFoundDialog({
   required Item item,
   required String householdId,
   String itemTypeName = 'Item',
-  IconData fallbackIcon = Icons.inventory_2,
+  IconData fallbackIcon = Ionicons.cube_outline,
   bool showAddCopyOption = false,
 }) async {
   // Get container name if item has one
@@ -68,7 +69,7 @@ Future<String?> showItemFoundDialog({
     builder: (dialogContext) => AlertDialog(
       title: Row(
         children: [
-          const Icon(Icons.check_circle, color: Colors.green, size: 28),
+          const Icon(Ionicons.checkmark_circle_outline, color: Colors.green, size: 28),
           const SizedBox(width: 8),
           const Expanded(
             child: Text('You Already Have This!'),
@@ -118,7 +119,7 @@ Future<String?> showItemFoundDialog({
               child: Row(
                 children: [
                   Icon(
-                    Icons.location_on,
+                    Ionicons.location_outline,
                     color: Theme.of(dialogContext).colorScheme.onPrimaryContainer,
                   ),
                   const SizedBox(width: 8),

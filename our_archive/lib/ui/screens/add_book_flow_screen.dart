@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:our_archive/ui/screens/book_scan_screen.dart';
 import 'package:our_archive/ui/screens/add_book_screen.dart';
@@ -44,7 +45,7 @@ class AddBookFlowScreen extends StatelessWidget {
                 child: ListView(
                   children: [
                     _EntryMethodCard(
-                      icon: Icons.qr_code_scanner_rounded,
+                      icon: Ionicons.qr_code_outline,
                       title: 'Scan Barcode',
                       description: 'Use your camera to scan the ISBN barcode',
                       color: Colors.blue,
@@ -63,7 +64,7 @@ class AddBookFlowScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     _EntryMethodCard(
-                      icon: Icons.photo_camera_rounded,
+                      icon: Ionicons.camera_outline,
                       title: 'Photo Search',
                       description: 'Take a photo of the book cover or spine to search',
                       color: Colors.purple,
@@ -82,7 +83,7 @@ class AddBookFlowScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     _EntryMethodCard(
-                      icon: Icons.search_rounded,
+                      icon: Ionicons.search_outline,
                       title: 'Search by Title',
                       description: 'Search for your book by title or author',
                       color: Colors.green,
@@ -101,7 +102,7 @@ class AddBookFlowScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     _EntryMethodCard(
-                      icon: Icons.edit_rounded,
+                      icon: Ionicons.create_outline,
                       title: 'Manual Entry',
                       description: 'Enter book details manually',
                       color: Colors.orange,
@@ -191,7 +192,7 @@ class _EntryMethodCard extends StatelessWidget {
                 ),
               ),
               Icon(
-                Icons.chevron_right_rounded,
+                Ionicons.chevron_forward_outline,
                 color: Colors.grey[400],
               ),
             ],

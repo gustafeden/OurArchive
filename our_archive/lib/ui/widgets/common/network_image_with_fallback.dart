@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 /// NetworkImageWithFallback(
 ///   imageUrl: book.thumbnailUrl,
 ///   height: 200,
-///   fallbackIcon: Icons.book,
+///   fallbackIcon: Ionicons.book_outline,
 /// )
 /// ```
 class NetworkImageWithFallback extends StatelessWidget {

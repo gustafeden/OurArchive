@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/providers.dart';
@@ -331,7 +332,7 @@ class _ManageTypesScreenState extends ConsumerState<ManageTypesScreen>
                 ),
                 FilledButton.icon(
                   onPressed: _addContainerType,
-                  icon: const Icon(Icons.add, size: 18),
+                  icon: const Icon(Ionicons.add_outline, size: 18),
                   label: const Text('Add Type'),
                 ),
               ],
@@ -392,12 +393,12 @@ class _ManageTypesScreenState extends ConsumerState<ManageTypesScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.edit, size: 20),
+                    icon: const Icon(Ionicons.create_outline, size: 20),
                     onPressed: () => _editContainerType(type),
                     tooltip: 'Edit',
                   ),
                   IconButton(
-                    icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+                    icon: const Icon(Ionicons.trash_outline, size: 20, color: Colors.red),
                     onPressed: () => _deleteContainerType(type),
                     tooltip: 'Delete',
                   ),
@@ -439,7 +440,7 @@ class _ManageTypesScreenState extends ConsumerState<ManageTypesScreen>
                 ),
                 FilledButton.icon(
                   onPressed: _addItemType,
-                  icon: const Icon(Icons.add, size: 18),
+                  icon: const Icon(Ionicons.add_outline, size: 18),
                   label: const Text('Add Type'),
                 ),
               ],
@@ -504,12 +505,12 @@ class _ManageTypesScreenState extends ConsumerState<ManageTypesScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.edit, size: 20),
+                    icon: const Icon(Ionicons.create_outline, size: 20),
                     onPressed: () => _editItemType(type),
                     tooltip: 'Edit',
                   ),
                   IconButton(
-                    icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+                    icon: const Icon(Ionicons.trash_outline, size: 20, color: Colors.red),
                     onPressed: () => _deleteItemType(type),
                     tooltip: 'Delete',
                   ),

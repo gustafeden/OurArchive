@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import '../widgets/icon_picker_dialog.dart';
 import '../../data/models/container_type.dart';
@@ -139,7 +140,7 @@ class _TypeEditDialogState extends State<TypeEditDialog> {
                       const SizedBox(width: 12),
                       Text(_selectedIcon),
                       const Spacer(),
-                      const Icon(Icons.edit, size: 20),
+                      const Icon(Ionicons.create_outline, size: 20),
                     ],
                   ),
                 ),

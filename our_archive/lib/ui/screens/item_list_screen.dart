@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -88,7 +89,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
         actions: [
           // Search button
           IconButton(
-            icon: Icon(_isSearching ? Icons.close : Icons.search),
+            icon: Icon(_isSearching ? Ionicons.close_outline : Ionicons.search_outline),
             onPressed: () {
               setState(() {
                 _isSearching = !_isSearching;
@@ -153,7 +154,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                                 ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.copy),
+                                icon: const Icon(Ionicons.copy_outline),
                                 onPressed: () {
                                   Clipboard.setData(
                                     ClipboardData(text: widget.household.code),
@@ -184,7 +185,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                 child: Row(
                   children: [
                     Icon(
-                      viewMode == ViewMode.list ? Icons.dashboard_outlined : Icons.list,
+                      viewMode == ViewMode.list ? Ionicons.grid_outline : Ionicons.list_outline,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
@@ -196,7 +197,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                 value: 'organize',
                 child: Row(
                   children: [
-                    Icon(Icons.inventory_2, size: 20),
+                    Icon(Ionicons.cube_outline, size: 20),
                     SizedBox(width: 8),
                     Text('Organize'),
                   ],
@@ -207,7 +208,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                 value: 'manage_types',
                 child: Row(
                   children: [
-                    Icon(Icons.category, size: 20),
+                    Icon(Ionicons.apps_outline, size: 20),
                     SizedBox(width: 8),
                     Text('Manage Types'),
                   ],
@@ -219,7 +220,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                   value: 'household_code',
                   child: Row(
                     children: [
-                      Icon(Icons.qr_code, size: 20),
+                      Icon(Ionicons.qr_code_outline, size: 20),
                       SizedBox(width: 8),
                       Text('Household Code'),
                     ],
@@ -261,7 +262,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                 // Use the filtered items from filteredItemsProvider
                 if (filteredItems.isEmpty) {
                   return EmptyStateWidget(
-                    icon: searchQuery.isNotEmpty ? Icons.search_off : Icons.inventory_outlined,
+                    icon: searchQuery.isNotEmpty ? Ionicons.close_circle_outline : Ionicons.cube_outline,
                     title: searchQuery.isNotEmpty ? 'No items found' : 'No items yet',
                     subtitle: searchQuery.isNotEmpty
                         ? 'Try a different search term'
@@ -311,7 +312,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
               ),
             );
           },
-          icon: const Icon(Icons.add),
+          icon: const Icon(Ionicons.add_outline),
           label: const Text('Add Item'),
         ),
       ),
@@ -332,7 +333,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                   color: Colors.blue.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.qr_code_scanner, color: Colors.blue),
+                child: const Icon(Ionicons.qr_code_outline, color: Colors.blue),
               ),
               title: const Text('Scan Book'),
               subtitle: const Text('Quick scan ISBN barcode'),
@@ -356,7 +357,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                   color: Colors.purple.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.album, color: Colors.purple),
+                child: const Icon(Ionicons.disc_outline, color: Colors.purple),
               ),
               title: const Text('Scan Music'),
               subtitle: const Text('Quick scan music barcode'),
@@ -375,7 +376,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
             ),
             const Divider(),
             ListTile(
-              leading: const Icon(Icons.add_circle_outline),
+              leading: const Icon(Ionicons.add_circle_outline),
               title: const Text('Show All Options'),
               onTap: () {
                 Navigator.pop(context);
@@ -658,19 +659,19 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
         child: Row(
           children: [
             _FilterButton(
-              icon: Icons.category,
+              icon: Ionicons.apps_outline,
               label: 'Type',
               onPressed: () => _showTypeFilter(ref),
             ),
             const SizedBox(width: 8),
             _FilterButton(
-              icon: Icons.inventory_2,
+              icon: Ionicons.cube_outline,
               label: 'Container',
               onPressed: () => _showContainerFilter(ref, allContainers),
             ),
             const SizedBox(width: 8),
             _FilterButton(
-              icon: Icons.label,
+              icon: Ionicons.pricetag_outline,
               label: 'Tag',
               onPressed: () => _showTagFilter(ref, allTags),
             ),
@@ -693,7 +694,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
               onSelected: (value) => ref.read(selectedTypeProvider.notifier).state = null,
               selected: true,
               onDeleted: () => ref.read(selectedTypeProvider.notifier).state = null,
-              avatar: const Icon(Icons.category, size: 18),
+              avatar: const Icon(Ionicons.apps_outline, size: 18),
             ),
           if (selectedContainer != null)
             FilterChip(
@@ -701,7 +702,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
               onSelected: (value) => ref.read(selectedContainerFilterProvider.notifier).state = null,
               selected: true,
               onDeleted: () => ref.read(selectedContainerFilterProvider.notifier).state = null,
-              avatar: const Icon(Icons.inventory_2, size: 18),
+              avatar: const Icon(Ionicons.cube_outline, size: 18),
             ),
           if (selectedTag != null)
             FilterChip(
@@ -709,7 +710,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
               onSelected: (value) => ref.read(selectedTagFilterProvider.notifier).state = null,
               selected: true,
               onDeleted: () => ref.read(selectedTagFilterProvider.notifier).state = null,
-              avatar: const Icon(Icons.label, size: 18),
+              avatar: const Icon(Ionicons.pricetag_outline, size: 18),
             ),
           // Clear all button
           ActionChip(
@@ -797,7 +798,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ListTile(
-                    leading: const Icon(Icons.inbox),
+                    leading: const Icon(Ionicons.mail_outline),
                     title: const Text('Unorganized Items'),
                     onTap: () {
                       ref.read(selectedContainerFilterProvider.notifier).state = 'unorganized';
@@ -816,7 +817,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                     });
 
                     return ListTile(
-                      leading: const Icon(Icons.inventory_2),
+                      leading: const Icon(Ionicons.cube_outline),
                       title: Text(container.name),
                       subtitle: Text(typeDisplayName),
                       onTap: () {
@@ -857,7 +858,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
             mainAxisSize: MainAxisSize.min,
             children: tags.map((tag) {
               return ListTile(
-                leading: const Icon(Icons.label),
+                leading: const Icon(Ionicons.pricetag_outline),
                 title: Text(tag),
                 onTap: () {
                   ref.read(selectedTagFilterProvider.notifier).state = tag;
@@ -983,7 +984,7 @@ class _CollapsibleCategorySection extends StatelessWidget {
                     ),
                   ),
                   Icon(
-                    isExpanded ? Icons.expand_less : Icons.expand_more,
+                    isExpanded ? Ionicons.chevron_up_outline : Ionicons.chevron_down_outline,
                     size: 24,
                   ),
                 ],

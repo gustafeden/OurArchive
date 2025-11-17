@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 
 /// A reusable widget for displaying empty states with consistent styling.
@@ -9,7 +10,7 @@ import 'package:flutter/material.dart';
 /// ```dart
 /// if (items.isEmpty) {
 ///   return EmptyStateWidget(
-///     icon: Icons.inbox_outlined,
+///     icon: Ionicons.mail_outline,
 ///     title: 'No items yet',
 ///     subtitle: 'Tap + to add your first item',
 ///   );
@@ -33,7 +34,7 @@ class EmptyStateWidget extends StatelessWidget {
 
   const EmptyStateWidget({
     super.key,
-    this.icon = Icons.inbox_outlined,
+    this.icon = Ionicons.mail_outline,
     required this.title,
     this.subtitle,
     this.iconSize = 80,

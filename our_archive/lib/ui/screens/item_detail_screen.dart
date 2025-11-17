@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -259,7 +260,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
         actions: [
           if (!_isEditMode) ...[
             IconButton(
-              icon: const Icon(Icons.edit),
+              icon: const Icon(Ionicons.create_outline),
               onPressed: () {
                 setState(() {
                   _isEditMode = true;
@@ -278,7 +279,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                   value: 'delete',
                   child: Row(
                     children: [
-                      Icon(Icons.delete, color: Colors.red),
+                      Icon(Ionicons.trash_outline, color: Colors.red),
                       SizedBox(width: 8),
                       Text('Delete', style: TextStyle(color: Colors.red)),
                     ],
@@ -408,7 +409,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                                 decoration: const InputDecoration(
                                   labelText: 'Container',
                                   border: OutlineInputBorder(),
-                                  suffixIcon: Icon(Icons.arrow_drop_down),
+                                  suffixIcon: Icon(Ionicons.chevron_down_outline),
                                 ),
                                 child: Text(selectedName),
                               ),
@@ -503,7 +504,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Icon(
-                        Icons.fullscreen,
+                        Ionicons.expand_outline,
                         color: Colors.white,
                         size: 20,
                       ),
@@ -516,7 +517,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
           const SizedBox(height: 8),
           ElevatedButton.icon(
             onPressed: _pickImage,
-            icon: const Icon(Icons.camera_alt),
+            icon: const Icon(Ionicons.camera_outline),
             label: const Text('Change Photo'),
           ),
         ],
@@ -543,7 +544,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                     errorWidget: (context, url, error) => Container(
                       height: 250,
                       color: Colors.grey[300],
-                      child: const Icon(Icons.error, size: 50),
+                      child: const Icon(Ionicons.alert_circle_outline, size: 50),
                     ),
                   ),
                   Positioned(
@@ -556,7 +557,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Icon(
-                        Icons.fullscreen,
+                        Ionicons.expand_outline,
                         color: Colors.white,
                         size: 20,
                       ),
@@ -570,7 +571,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
             const SizedBox(height: 8),
             ElevatedButton.icon(
               onPressed: _pickImage,
-              icon: const Icon(Icons.camera_alt),
+              icon: const Icon(Ionicons.camera_outline),
               label: const Text('Change Photo'),
             ),
           ],
@@ -579,7 +580,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     } else if (_isEditMode) {
       return ElevatedButton.icon(
         onPressed: _pickImage,
-        icon: const Icon(Icons.camera_alt),
+        icon: const Icon(Ionicons.camera_outline),
         label: const Text('Add Photo'),
       );
     }
@@ -634,7 +635,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
             ),
             if (_isEditMode)
               IconButton(
-                icon: const Icon(Icons.add),
+                icon: const Icon(Ionicons.add_outline),
                 onPressed: () async {
                   final tag = await showDialog<String>(
                     context: context,
@@ -701,7 +702,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.book, size: 20),
+                const Icon(Ionicons.book_outline, size: 20),
                 const SizedBox(width: 8),
                 Text(
                   'Book Information',
@@ -893,7 +894,7 @@ class _FullScreenPhotoViewerState extends State<_FullScreenPhotoViewer> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.error, color: Colors.white, size: 50),
+                            Icon(Ionicons.alert_circle_outline, color: Colors.white, size: 50),
                             SizedBox(height: 16),
                             Text(
                               'Failed to load image',
@@ -999,7 +1000,7 @@ class _HierarchicalContainerPickerDialogState
           children: [
             // Unorganized option
             ListTile(
-              leading: const Icon(Icons.inbox, color: Colors.orange),
+              leading: const Icon(Ionicons.mail_outline, color: Colors.orange),
               title: const Text('Unorganized'),
               subtitle: const Text('Not in any container'),
               selected: widget.currentContainerId == null,
@@ -1055,8 +1056,8 @@ class _HierarchicalContainerPickerDialogState
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (isSelected)
-                  const Icon(Icons.check_circle, color: Colors.green, size: 20),
-                const Icon(Icons.expand_more),
+                  const Icon(Ionicons.checkmark_circle_outline, color: Colors.green, size: 20),
+                const Icon(Ionicons.chevron_down_outline),
               ],
             ),
             onExpansionChanged: (expanded) {
@@ -1101,7 +1102,7 @@ class _HierarchicalContainerPickerDialogState
             selected: isSelected,
             selectedTileColor: Theme.of(context).primaryColor.withOpacity(0.1),
             trailing: isSelected
-                ? const Icon(Icons.check_circle, color: Colors.green, size: 20)
+                ? const Icon(Ionicons.checkmark_circle_outline, color: Colors.green, size: 20)
                 : null,
             onTap: () => Navigator.pop(context, container.id),
           ),
@@ -1115,19 +1116,19 @@ class _HierarchicalContainerPickerDialogState
   IconData _getContainerIcon(model.Container container) {
     switch (container.containerType.toLowerCase()) {
       case 'room':
-        return Icons.meeting_room;
+        return Ionicons.business_outline;
       case 'shelf':
-        return Icons.shelves;
+        return Ionicons.albums_outline;
       case 'box':
-        return Icons.inventory_2;
+        return Ionicons.cube_outline;
       case 'cabinet':
-        return Icons.kitchen;
+        return Ionicons.restaurant_outline;
       case 'drawer':
-        return Icons.widgets;
+        return Ionicons.apps_outline;
       case 'closet':
-        return Icons.checkroom;
+        return Ionicons.shirt_outline;
       default:
-        return Icons.inventory_2;
+        return Ionicons.cube_outline;
     }
   }
 }

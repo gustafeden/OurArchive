@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -223,7 +224,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
             PhotoPickerWidget(
               photo: _photo,
               onPhotoChanged: (photo) => setState(() => _photo = photo),
-              placeholderIcon: Icons.book,
+              placeholderIcon: Ionicons.book_outline,
               placeholderText: 'Tap to add cover photo',
             ),
             const SizedBox(height: 24),
@@ -234,7 +235,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
               decoration: const InputDecoration(
                 labelText: 'Title',
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.title),
+                prefixIcon: Icon(Ionicons.text_outline),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -262,10 +263,10 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
                         decoration: InputDecoration(
                           hintText: 'Author name',
                           border: const OutlineInputBorder(),
-                          prefixIcon: const Icon(Icons.person),
+                          prefixIcon: const Icon(Ionicons.person_outline),
                           suffixIcon: _authorControllers.length > 1
                               ? IconButton(
-                                  icon: const Icon(Icons.remove_circle_outline),
+                                  icon: const Icon(Ionicons.remove_circle_outline),
                                   onPressed: () => _removeAuthorField(index),
                                 )
                               : null,
@@ -279,7 +280,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
             }),
             OutlinedButton.icon(
               onPressed: _addAuthorField,
-              icon: const Icon(Icons.add),
+              icon: const Icon(Ionicons.add_outline),
               label: const Text('Add Another Author'),
             ),
             const SizedBox(height: 16),
@@ -290,7 +291,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
               decoration: const InputDecoration(
                 labelText: 'ISBN (optional)',
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.numbers),
+                prefixIcon: Icon(Ionicons.keypad_outline),
               ),
               keyboardType: TextInputType.number,
             ),
@@ -306,7 +307,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Publisher',
                       border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.business),
+                      prefixIcon: Icon(Ionicons.business_outline),
                     ),
                     textCapitalization: TextCapitalization.words,
                   ),

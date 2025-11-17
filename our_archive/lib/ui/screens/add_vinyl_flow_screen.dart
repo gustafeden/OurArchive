@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:our_archive/ui/screens/vinyl_scan_screen.dart';
 import 'package:our_archive/ui/screens/add_vinyl_screen.dart';
@@ -44,7 +45,7 @@ class AddVinylFlowScreen extends StatelessWidget {
                 child: ListView(
                   children: [
                     _EntryMethodCard(
-                      icon: Icons.qr_code_scanner_rounded,
+                      icon: Ionicons.qr_code_outline,
                       title: 'Scan Barcode',
                       description: 'Scan the barcode to find on Discogs',
                       color: Colors.purple,
@@ -63,7 +64,7 @@ class AddVinylFlowScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     _EntryMethodCard(
-                      icon: Icons.search_rounded,
+                      icon: Ionicons.search_outline,
                       title: 'Search Discogs',
                       description: 'Search by artist, album, or catalog number',
                       color: Colors.green,
@@ -82,7 +83,7 @@ class AddVinylFlowScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     _EntryMethodCard(
-                      icon: Icons.edit_rounded,
+                      icon: Ionicons.create_outline,
                       title: 'Manual Entry',
                       description: 'Enter vinyl details manually',
                       color: Colors.orange,
@@ -172,7 +173,7 @@ class _EntryMethodCard extends StatelessWidget {
                 ),
               ),
               Icon(
-                Icons.chevron_right_rounded,
+                Ionicons.chevron_forward_outline,
                 color: Colors.grey[400],
               ),
             ],

@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/providers.dart';
@@ -25,7 +26,7 @@ class ContainerSelectorField extends ConsumerWidget {
         decoration: InputDecoration(
           labelText: labelText,
           border: const OutlineInputBorder(),
-          prefixIcon: const Icon(Icons.place),
+          prefixIcon: const Icon(Ionicons.location_outline),
         ),
         items: [
           const DropdownMenuItem<String>(

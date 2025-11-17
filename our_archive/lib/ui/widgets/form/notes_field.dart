@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 
 /// Standardized notes/description multiline text field
@@ -22,7 +23,7 @@ class NotesField extends StatelessWidget {
       decoration: InputDecoration(
         labelText: labelText,
         border: const OutlineInputBorder(),
-        prefixIcon: const Icon(Icons.note),
+        prefixIcon: const Icon(Ionicons.document_text_outline),
         alignLabelWithHint: true,
       ),
       maxLines: maxLines,

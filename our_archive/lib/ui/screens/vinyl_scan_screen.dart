@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -261,7 +262,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
               NetworkImageWithFallback(
                 imageUrl: vinyl.coverUrl,
                 height: 200,
-                fallbackIcon: Icons.album,
+                fallbackIcon: Ionicons.disc_outline,
               ),
               const SizedBox(height: 16),
               Text(vinyl.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
@@ -309,7 +310,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
       item: existingItem,
       householdId: widget.householdId,
       itemTypeName: 'Music',
-      fallbackIcon: Icons.album,
+      fallbackIcon: Ionicons.disc_outline,
       showAddCopyOption: true,
     );
   }
@@ -321,7 +322,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
         title: const Text('Scan Music'),
         actions: [
           PopupMenuButton<VinylScanMode>(
-            icon: const Icon(Icons.more_vert),
+            icon: const Icon(Ionicons.ellipsis_vertical_outline),
             onSelected: (mode) {
               setState(() {
                 _currentMode = mode;
@@ -331,7 +332,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
               const PopupMenuItem(
                 value: VinylScanMode.camera,
                 child: ListTile(
-                  leading: Icon(Icons.qr_code_scanner),
+                  leading: Icon(Ionicons.qr_code_outline),
                   title: Text('Camera Scan'),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -339,7 +340,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
               const PopupMenuItem(
                 value: VinylScanMode.textSearch,
                 child: ListTile(
-                  leading: Icon(Icons.search),
+                  leading: Icon(Ionicons.search_outline),
                   title: Text('Search Discogs'),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -414,7 +415,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen> {
       resultBuilder: (context, vinyl) => ListTile(
         leading: vinyl.coverUrl != null && vinyl.coverUrl!.isNotEmpty
             ? Image.network(vinyl.coverUrl!, width: 40, fit: BoxFit.cover)
-            : const Icon(Icons.album),
+            : const Icon(Ionicons.disc_outline),
         title: Text(vinyl.title),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

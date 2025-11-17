@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:our_archive/ui/screens/add_book_flow_screen.dart';
@@ -69,7 +70,7 @@ class ItemTypeSelectionScreen extends ConsumerWidget {
                           ),
                         );
                       },
-                      icon: const Icon(Icons.qr_code_scanner, size: 20),
+                      icon: const Icon(Ionicons.qr_code_outline, size: 20),
                       label: const Text('Scan Book'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.blue,
@@ -93,7 +94,7 @@ class ItemTypeSelectionScreen extends ConsumerWidget {
                           ),
                         );
                       },
-                      icon: const Icon(Icons.qr_code_scanner, size: 20),
+                      icon: const Icon(Ionicons.qr_code_outline, size: 20),
                       label: const Text('Scan Music'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.purple,

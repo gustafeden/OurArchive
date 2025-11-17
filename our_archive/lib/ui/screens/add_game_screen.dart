@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -166,29 +167,29 @@ class _AddGameScreenState extends ConsumerState<AddGameScreen> {
             PhotoPickerWidget(
               photo: _photo,
               onPhotoChanged: (photo) => setState(() => _photo = photo),
-              placeholderIcon: Icons.sports_esports,
+              placeholderIcon: Ionicons.game_controller_outline,
               placeholderText: 'Tap to add cover photo',
             ),
             const SizedBox(height: 24),
-            TextFormField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder(), prefixIcon: Icon(Icons.title)), validator: (v) => v?.trim().isEmpty ?? true ? 'Title is required' : null, textCapitalization: TextCapitalization.words),
+            TextFormField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder(), prefixIcon: Icon(Ionicons.text_outline)), validator: (v) => v?.trim().isEmpty ?? true ? 'Title is required' : null, textCapitalization: TextCapitalization.words),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               value: _selectedPlatform,
-              decoration: const InputDecoration(labelText: 'Platform', border: OutlineInputBorder(), prefixIcon: Icon(Icons.videogame_asset)),
+              decoration: const InputDecoration(labelText: 'Platform', border: OutlineInputBorder(), prefixIcon: Icon(Ionicons.game_controller_outline)),
               items: _platforms.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
               onChanged: (v) => setState(() => _selectedPlatform = v),
             ),
             const SizedBox(height: 16),
             Row(children: [
-              Expanded(flex: 2, child: TextFormField(controller: _publisherController, decoration: const InputDecoration(labelText: 'Publisher', border: OutlineInputBorder(), prefixIcon: Icon(Icons.business)), textCapitalization: TextCapitalization.words)),
+              Expanded(flex: 2, child: TextFormField(controller: _publisherController, decoration: const InputDecoration(labelText: 'Publisher', border: OutlineInputBorder(), prefixIcon: Icon(Ionicons.business_outline)), textCapitalization: TextCapitalization.words)),
               const SizedBox(width: 12),
               Expanded(child: YearField(controller: _yearController)),
             ]),
             const SizedBox(height: 16),
             Row(children: [
-              Expanded(child: TextFormField(controller: _genreController, decoration: const InputDecoration(labelText: 'Genre', border: OutlineInputBorder(), prefixIcon: Icon(Icons.category)), textCapitalization: TextCapitalization.words)),
+              Expanded(child: TextFormField(controller: _genreController, decoration: const InputDecoration(labelText: 'Genre', border: OutlineInputBorder(), prefixIcon: Icon(Ionicons.apps_outline)), textCapitalization: TextCapitalization.words)),
               const SizedBox(width: 12),
-              Expanded(child: TextFormField(controller: _playersController, decoration: const InputDecoration(labelText: 'Players', border: OutlineInputBorder(), prefixIcon: Icon(Icons.people), hintText: '1-4'))),
+              Expanded(child: TextFormField(controller: _playersController, decoration: const InputDecoration(labelText: 'Players', border: OutlineInputBorder(), prefixIcon: Icon(Ionicons.people_outline), hintText: '1-4'))),
             ]),
             const SizedBox(height: 16),
             ContainerSelectorField(

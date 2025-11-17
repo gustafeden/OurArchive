@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/providers.dart';
@@ -49,7 +50,7 @@ class ProfileScreen extends ConsumerWidget {
                   radius: 50,
                   backgroundColor: Theme.of(context).colorScheme.primary,
                   child: Icon(
-                    isAnonymous ? Icons.person_outline : Icons.person,
+                    isAnonymous ? Ionicons.person_outline : Ionicons.person_outline,
                     size: 50,
                     color: Colors.white,
                   ),
@@ -86,7 +87,7 @@ class ProfileScreen extends ConsumerWidget {
           _SectionHeader(title: 'Account Information'),
 
           _InfoTile(
-            icon: Icons.email,
+            icon: Ionicons.mail_outline,
             title: 'Email',
             value: isAnonymous ? 'Not set' : email,
             subtitle: isAnonymous ? 'Sign up to secure your account' : null,
@@ -95,7 +96,7 @@ class ProfileScreen extends ConsumerWidget {
           _DisplayNameTile(userId: userId),
 
           _InfoTile(
-            icon: Icons.fingerprint,
+            icon: Ionicons.finger_print_outline,
             title: 'User ID',
             value: '${userId.substring(0, 8)}...',
             subtitle: 'Tap to copy full ID',
@@ -109,7 +110,7 @@ class ProfileScreen extends ConsumerWidget {
 
           if (createdAt != null)
             _InfoTile(
-              icon: Icons.calendar_today,
+              icon: Ionicons.calendar_outline,
               title: 'Member Since',
               value: _formatDate(createdAt),
             ),
@@ -119,7 +120,7 @@ class ProfileScreen extends ConsumerWidget {
             loading: () => const SizedBox.shrink(),
             error: (_, __) => const SizedBox.shrink(),
             data: (households) => _InfoTile(
-              icon: Icons.home,
+              icon: Ionicons.home_outline,
               title: 'Households',
               value: '${households.length}',
               subtitle: households.isEmpty
@@ -135,10 +136,10 @@ class ProfileScreen extends ConsumerWidget {
 
           if (isAnonymous)
             ListTile(
-              leading: const Icon(Icons.upgrade, color: Colors.blue),
+              leading: const Icon(Ionicons.arrow_up_circle_outline, color: Colors.blue),
               title: const Text('Upgrade Account'),
               subtitle: const Text('Create an account to secure your data'),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              trailing: const Icon(Ionicons.chevron_forward_outline, size: 16),
               onTap: () {
                 // Navigate back and show welcome screen which has sign-up
                 Navigator.pop(context);
@@ -151,10 +152,10 @@ class ProfileScreen extends ConsumerWidget {
             ),
 
           ListTile(
-            leading: const Icon(Icons.palette, color: Colors.purple),
+            leading: const Icon(Ionicons.color_palette_outline, color: Colors.purple),
             title: const Text('Theme Settings'),
             subtitle: const Text('Customize app colors and appearance'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            trailing: const Icon(Ionicons.chevron_forward_outline, size: 16),
             onTap: () {
               Navigator.push(
                 context,
@@ -166,15 +167,15 @@ class ProfileScreen extends ConsumerWidget {
           ),
 
           ListTile(
-            leading: const Icon(Icons.bug_report, color: Colors.orange),
+            leading: const Icon(Ionicons.bug_outline, color: Colors.orange),
             title: const Text('Send Debug Logs'),
             subtitle: const Text('Share logs to help diagnose issues'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            trailing: const Icon(Ionicons.chevron_forward_outline, size: 16),
             onTap: () => _sendLogs(context, ref),
           ),
 
           ListTile(
-            leading: Icon(Icons.logout, color: Colors.red[700]),
+            leading: Icon(Ionicons.log_out_outline, color: Colors.red[700]),
             title: const Text('Sign Out'),
             subtitle: const Text('Sign out of your account'),
             onTap: () => _showSignOutDialog(context, ref),
@@ -186,13 +187,13 @@ class ProfileScreen extends ConsumerWidget {
           _SectionHeader(title: 'About'),
 
           const _InfoTile(
-            icon: Icons.info_outline,
+            icon: Ionicons.information_circle_outline,
             title: 'Version',
             value: '1.0.0',
           ),
 
           const _InfoTile(
-            icon: Icons.inventory_2_outlined,
+            icon: Ionicons.cube_outline,
             title: 'OurArchive',
             value: 'Household Inventory',
             subtitle: 'Track and share your items',
@@ -298,7 +299,7 @@ class _DisplayNameTileState extends ConsumerState<_DisplayNameTile> {
 
     return userProfileAsync.when(
       loading: () => const ListTile(
-        leading: Icon(Icons.person),
+        leading: Icon(Ionicons.person_outline),
         title: Text('Display Name'),
         subtitle: LinearProgressIndicator(),
       ),
@@ -313,7 +314,7 @@ class _DisplayNameTileState extends ConsumerState<_DisplayNameTile> {
   Widget _buildTile(String displayValue, String? currentName) {
     if (_isEditing) {
       return ListTile(
-        leading: const Icon(Icons.person),
+        leading: const Icon(Ionicons.person_outline),
         title: TextField(
           controller: _controller,
           decoration: const InputDecoration(
@@ -326,11 +327,11 @@ class _DisplayNameTileState extends ConsumerState<_DisplayNameTile> {
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: const Icon(Icons.check, color: Colors.green),
+              icon: const Icon(Ionicons.checkmark_outline, color: Colors.green),
               onPressed: () => _saveName(),
             ),
             IconButton(
-              icon: const Icon(Icons.close, color: Colors.red),
+              icon: const Icon(Ionicons.close_outline, color: Colors.red),
               onPressed: () {
                 setState(() {
                   _isEditing = false;
@@ -344,7 +345,7 @@ class _DisplayNameTileState extends ConsumerState<_DisplayNameTile> {
     }
 
     return _InfoTile(
-      icon: Icons.person,
+      icon: Ionicons.person_outline,
       title: 'Display Name',
       value: displayValue,
       subtitle: 'Tap to edit',

@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/providers.dart';
@@ -144,7 +145,7 @@ class _EmailSignUpScreenState extends ConsumerState<EmailSignUpScreen> {
                     labelText: 'Email',
                     hintText: 'you@example.com',
                     border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.email),
+                    prefixIcon: Icon(Ionicons.mail_outline),
                   ),
                   keyboardType: TextInputType.emailAddress,
                   autocorrect: false,
@@ -170,10 +171,10 @@ class _EmailSignUpScreenState extends ConsumerState<EmailSignUpScreen> {
                     labelText: 'Password',
                     hintText: 'At least 6 characters',
                     border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.lock),
+                    prefixIcon: const Icon(Ionicons.lock_closed_outline),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                        _obscurePassword ? Ionicons.eye_outline : Ionicons.eye_off_outline,
                       ),
                       onPressed: () {
                         setState(() => _obscurePassword = !_obscurePassword);
@@ -202,12 +203,12 @@ class _EmailSignUpScreenState extends ConsumerState<EmailSignUpScreen> {
                   decoration: InputDecoration(
                     labelText: 'Confirm Password',
                     border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.lock_outline),
+                    prefixIcon: const Icon(Ionicons.lock_closed_outline),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscureConfirmPassword
-                            ? Icons.visibility
-                            : Icons.visibility_off,
+                            ? Ionicons.eye_outline
+                            : Ionicons.eye_off_outline,
                       ),
                       onPressed: () {
                         setState(
@@ -241,7 +242,7 @@ class _EmailSignUpScreenState extends ConsumerState<EmailSignUpScreen> {
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Icon(isUpgrading ? Icons.upgrade : Icons.person_add),
+                      : Icon(isUpgrading ? Ionicons.arrow_up_circle_outline : Ionicons.person_add_outline),
                   label: Text(_isLoading
                       ? 'Creating account...'
                       : isUpgrading
@@ -262,7 +263,7 @@ class _EmailSignUpScreenState extends ConsumerState<EmailSignUpScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.info_outline, color: Colors.amber[700]),
+                              Icon(Ionicons.information_circle_outline, color: Colors.amber[700]),
                               const SizedBox(width: 8),
                               Text(
                                 'Upgrading Your Account',
@@ -289,7 +290,7 @@ class _EmailSignUpScreenState extends ConsumerState<EmailSignUpScreen> {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.check_circle, color: Colors.green[700]),
+                              Icon(Ionicons.checkmark_circle_outline, color: Colors.green[700]),
                               const SizedBox(width: 8),
                               Text(
                                 'What You Get',

@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -16,7 +17,7 @@ class PhotoPickerWidget extends StatelessWidget {
     required this.photo,
     required this.onPhotoChanged,
     this.height = 200,
-    this.placeholderIcon = Icons.add_photo_alternate,
+    this.placeholderIcon = Ionicons.images_outline,
     this.placeholderText = 'Tap to add photo',
   });
 
@@ -35,7 +36,7 @@ class PhotoPickerWidget extends StatelessWidget {
         child: Wrap(
           children: [
             ListTile(
-              leading: const Icon(Icons.camera_alt),
+              leading: const Icon(Ionicons.camera_outline),
               title: const Text('Take Photo'),
               onTap: () {
                 Navigator.pop(context);
@@ -43,7 +44,7 @@ class PhotoPickerWidget extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library),
+              leading: const Icon(Ionicons.images_outline),
               title: const Text('Choose from Gallery'),
               onTap: () {
                 Navigator.pop(context);
@@ -52,7 +53,7 @@ class PhotoPickerWidget extends StatelessWidget {
             ),
             if (photo != null)
               ListTile(
-                leading: const Icon(Icons.delete),
+                leading: const Icon(Ionicons.trash_outline),
                 title: const Text('Remove Photo'),
                 onTap: () {
                   Navigator.pop(context);

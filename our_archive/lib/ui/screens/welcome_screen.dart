@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'email_sign_in_screen.dart';
@@ -15,7 +16,7 @@ class WelcomeScreen extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                Icons.inventory_2,
+                Ionicons.cube_outline,
                 size: 80,
                 color: Theme.of(context).primaryColor,
               ),
@@ -42,7 +43,7 @@ class WelcomeScreen extends ConsumerWidget {
                     ),
                   );
                 },
-                icon: const Icon(Icons.login),
+                icon: const Icon(Ionicons.log_in_outline),
                 label: const Text('Sign in with Email'),
               ),
             ],

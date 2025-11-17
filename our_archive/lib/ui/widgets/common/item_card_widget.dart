@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -153,20 +154,20 @@ class ItemCardWidget extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            icon: const Icon(Icons.drive_file_move),
+            icon: const Icon(Ionicons.folder_open_outline),
             onPressed: onMoveItem,
             tooltip: 'Move to another container',
           ),
           IconButton(
-            icon: const Icon(Icons.delete, color: Colors.red),
+            icon: const Icon(Ionicons.trash_outline, color: Colors.red),
             onPressed: onDeleteItem,
             tooltip: 'Delete item',
           ),
-          const Icon(Icons.arrow_forward_ios),
+          const Icon(Ionicons.chevron_forward_outline),
         ],
       );
     } else if (showSyncStatus && item.syncStatus != SyncStatus.synced) {
-      return const Icon(Icons.sync, size: 16);
+      return const Icon(Ionicons.sync_outline, size: 16);
     } else {
       return null;
     }

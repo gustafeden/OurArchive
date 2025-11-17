@@ -1,3 +1,4 @@
+import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -325,7 +326,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
       item: item,
       householdId: widget.householdId,
       itemTypeName: 'Book',
-      fallbackIcon: Icons.book,
+      fallbackIcon: Ionicons.book_outline,
       showAddCopyOption: false,
     );
   }
@@ -336,7 +337,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            const Icon(Icons.info_outline, color: Colors.orange, size: 28),
+            const Icon(Ionicons.information_circle_outline, color: Colors.orange, size: 28),
             const SizedBox(width: 8),
             Expanded(
               child: Text('Not in Your Collection'),
@@ -354,7 +355,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
                     book.thumbnailUrl!,
                     height: 200,
                     errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.book, size: 100),
+                        const Icon(Ionicons.book_outline, size: 100),
                   ),
                 ),
               const SizedBox(height: 16),
@@ -397,7 +398,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
           ),
           FilledButton.icon(
             onPressed: () => Navigator.pop(context, 'addBook'),
-            icon: const Icon(Icons.add),
+            icon: const Icon(Ionicons.add_outline),
             label: const Text('Add to Collection'),
           ),
         ],
@@ -412,7 +413,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
       item: item,
       householdId: widget.householdId,
       itemTypeName: 'Music',
-      fallbackIcon: Icons.album,
+      fallbackIcon: Ionicons.disc_outline,
       showAddCopyOption: false,
     );
   }
@@ -423,7 +424,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            const Icon(Icons.info_outline, color: Colors.orange, size: 28),
+            const Icon(Ionicons.information_circle_outline, color: Colors.orange, size: 28),
             const SizedBox(width: 8),
             Expanded(
               child: Text('Not in Your Collection'),
@@ -441,7 +442,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
                     vinyl.coverUrl!,
                     height: 200,
                     errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.album, size: 100),
+                        const Icon(Ionicons.disc_outline, size: 100),
                   ),
                 ),
               const SizedBox(height: 16),
@@ -476,7 +477,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
           ),
           FilledButton.icon(
             onPressed: () => Navigator.pop(context, 'addVinyl'),
-            icon: const Icon(Icons.add),
+            icon: const Icon(Ionicons.add_outline),
             label: const Text('Add to Collection'),
           ),
         ],
@@ -492,12 +493,12 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
         actions: [
           IconButton(
             icon: Icon(_scannerController.torchEnabled
-                ? Icons.flash_on
-                : Icons.flash_off),
+                ? Ionicons.flash_outline
+                : Ionicons.flash_off_outline),
             onPressed: () => _scannerController.toggleTorch(),
           ),
           IconButton(
-            icon: Icon(_showManualEntry ? Icons.qr_code_scanner : Icons.keyboard),
+            icon: Icon(_showManualEntry ? Ionicons.qr_code_outline : Ionicons.keypad_outline),
             onPressed: () {
               setState(() {
                 _showManualEntry = !_showManualEntry;
@@ -529,7 +530,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.qr_code, size: 100),
+                    const Icon(Ionicons.qr_code_outline, size: 100),
                     const SizedBox(height: 24),
                     TextField(
                       controller: _manualIsbnController,
@@ -537,7 +538,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
                         labelText: 'Enter ISBN or Barcode',
                         hintText: '9780143127796 or UPC',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.numbers),
+                        prefixIcon: Icon(Ionicons.keypad_outline),
                       ),
                       keyboardType: TextInputType.number,
                       autofocus: true,
@@ -546,7 +547,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
                     const SizedBox(height: 16),
                     FilledButton.icon(
                       onPressed: _isProcessing ? null : _handleManualEntry,
-                      icon: const Icon(Icons.search),
+                      icon: const Icon(Ionicons.search_outline),
                       label: const Text('Check Item'),
                     ),
                   ],
