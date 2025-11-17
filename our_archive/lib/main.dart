@@ -8,6 +8,7 @@ import 'dart:async';
 import 'firebase_options.dart';
 import 'ui/screens/auth_gate.dart';
 import 'data/services/logger_service.dart';
+import 'providers/theme_provider.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -47,17 +48,20 @@ void main() {
   });
 }
 
-class OurArchiveApp extends StatelessWidget {
+class OurArchiveApp extends ConsumerWidget {
   const OurArchiveApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lightTheme = ref.watch(lightThemeProvider);
+    final darkTheme = ref.watch(darkThemeProvider);
+    final themeMode = ref.watch(themeModeProvider);
+
     return MaterialApp(
       title: 'OurArchive',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-      ),
+      theme: lightTheme,
+      darkTheme: darkTheme,
+      themeMode: themeMode,
       home: const AuthGate(),
       debugShowCheckedModeBanner: false,
     );

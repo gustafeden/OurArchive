@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/providers.dart';
 import '../../data/services/log_export_service.dart';
+import 'theme_settings_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -148,6 +149,21 @@ class ProfileScreen extends ConsumerWidget {
                 );
               },
             ),
+
+          ListTile(
+            leading: const Icon(Icons.palette, color: Colors.purple),
+            title: const Text('Theme Settings'),
+            subtitle: const Text('Customize app colors and appearance'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ThemeSettingsScreen(),
+                ),
+              );
+            },
+          ),
 
           ListTile(
             leading: const Icon(Icons.bug_report, color: Colors.orange),
