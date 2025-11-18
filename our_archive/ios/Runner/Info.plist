@@ -32,6 +32,8 @@
 	<string>OurArchive needs access to save photos to your photo library</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>OurArchive needs access to your photo library to select photos of your items</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>OurArchive uses audio playback to preview music tracks from your vinyl collection</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

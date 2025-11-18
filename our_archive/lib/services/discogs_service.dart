@@ -15,8 +15,8 @@ class DiscogsService {
         "Authorization": "Discogs token=$_token",
       };
 
-  /// Lookup by barcode
-  static Future<Map<String, dynamic>?> searchByBarcode(String barcode) async {
+  /// Lookup by barcode - returns all matching results
+  static Future<List<Map<String, dynamic>>> searchByBarcode(String barcode) async {
     // Check cache first
     final cacheKey = 'barcode:$barcode';
     if (_cache.containsKey(cacheKey)) {
@@ -29,19 +29,19 @@ class DiscogsService {
           .get(Uri.parse(url), headers: _headers)
           .timeout(_timeout);
 
-      if (res.statusCode != 200) return null;
+      if (res.statusCode != 200) return [];
       final data = jsonDecode(res.body);
 
-      if (data["results"] == null || data["results"].isEmpty) return null;
+      if (data["results"] == null || data["results"].isEmpty) return [];
 
-      final result = data["results"][0];
+      final results = List<Map<String, dynamic>>.from(data["results"]);
 
-      // Cache the result
-      _cache[cacheKey] = result;
+      // Cache the results
+      _cache[cacheKey] = results;
 
-      return result;
+      return results;
     } catch (e) {
-      return null;
+      return [];
     }
   }
 

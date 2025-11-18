@@ -12,6 +12,7 @@ import '../../services/vinyl_lookup_service.dart';
 import '../widgets/common/item_found_dialog.dart';
 import '../widgets/scanner/item_not_found_dialog.dart';
 import '../widgets/scanner/track_preview_section.dart';
+import '../widgets/scanner/vinyl_selection_dialog.dart';
 import 'add_item_screen.dart';
 import 'add_vinyl_screen.dart';
 
@@ -219,7 +220,29 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
       if (!mounted) return;
 
       var existingItem = results[0] as Item?;
-      final vinylMetadata = results[1] as VinylMetadata?;
+      final vinylResults = results[1] as List<VinylMetadata>;
+
+      // If multiple results, show selection dialog
+      VinylMetadata? vinylMetadata;
+      if (vinylResults.length > 1) {
+        vinylMetadata = await showVinylSelectionDialog(
+          context: context,
+          results: vinylResults,
+        );
+
+        // User cancelled selection
+        if (vinylMetadata == null) {
+          setState(() {
+            _isProcessing = false;
+            _lastScannedCode = null;
+          });
+          return;
+        }
+      } else if (vinylResults.length == 1) {
+        // Only one result, use it directly
+        vinylMetadata = vinylResults.first;
+      }
+      // If vinylResults is empty, vinylMetadata stays null
 
       // If not found by barcode but we have discogsId from API, try searching by discogsId
       // This handles old items that were stored with discogsId in barcode field

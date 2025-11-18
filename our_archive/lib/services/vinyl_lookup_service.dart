@@ -2,12 +2,15 @@ import '../data/models/vinyl_metadata.dart';
 import 'discogs_service.dart';
 
 class VinylLookupService {
-  /// Lookup vinyl by barcode
-  static Future<VinylMetadata?> lookupByBarcode(String barcode) async {
+  /// Lookup vinyl by barcode - returns all matching results
+  static Future<List<VinylMetadata>> lookupByBarcode(String barcode) async {
     try {
-      final result = await DiscogsService.searchByBarcode(barcode);
+      final results = await DiscogsService.searchByBarcode(barcode);
 
-      if (result != null) {
+      if (results.isEmpty) return [];
+
+      // Convert all results to VinylMetadata with barcode included
+      return results.map((result) {
         final metadata = VinylMetadata.fromDiscogsJson(result);
         // Create a new instance with the barcode included
         return VinylMetadata(
@@ -25,11 +28,9 @@ class VinylLookupService {
           resourceUrl: metadata.resourceUrl,
           barcode: barcode, // Store the actual scanned barcode
         );
-      }
-
-      return null;
+      }).toList();
     } catch (e) {
-      return null;
+      return [];
     }
   }
 

@@ -9,10 +9,10 @@ import '../../providers/music_providers.dart';
 import '../../services/vinyl_lookup_service.dart';
 import '../../utils/text_search_helper.dart';
 import '../widgets/common/search_results_view.dart';
-import '../widgets/scanner/item_preview_dialog.dart';
 import '../widgets/scanner/camera_scanner_view.dart';
 import '../widgets/scanner/scan_mode_selector.dart';
 import '../widgets/scanner/track_preview_section.dart';
+import '../widgets/scanner/vinyl_selection_dialog.dart';
 import 'mixins/base_scanner_mixin.dart';
 import 'mixins/duplicate_check_mixin.dart';
 import 'mixins/post_scan_navigation_mixin.dart';
@@ -108,14 +108,39 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen>
 
       if (!mounted) return;
 
-      final vinylMetadata = results[0] as VinylMetadata?;
+      final vinylResults = results[0] as List<VinylMetadata>;
       var existingItem = results[1] as Item?;
 
+      // If no results found, show error
+      if (vinylResults.isEmpty) {
+        showError('Music not found for barcode: $barcode');
+        resetScanning();
+        return;
+      }
+
+      // If multiple results, show selection dialog
+      VinylMetadata? vinylMetadata;
+      if (vinylResults.length > 1) {
+        vinylMetadata = await showVinylSelectionDialog(
+          context: context,
+          results: vinylResults,
+        );
+
+        // User cancelled selection
+        if (vinylMetadata == null) {
+          resetScanning();
+          return;
+        }
+      } else {
+        // Only one result, use it directly
+        vinylMetadata = vinylResults.first;
+      }
+
       // Check for old items stored with discogsId in barcode field
-      if (existingItem == null && vinylMetadata?.discogsId != null) {
+      if (existingItem == null && vinylMetadata.discogsId != null) {
         existingItem = await itemRepository.findItemByDiscogsId(
           householdId,
-          vinylMetadata!.discogsId!,
+          vinylMetadata.discogsId!,
         );
       }
 
@@ -129,42 +154,10 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen>
         );
 
         if (action == 'addCopy') {
-          // If we don't have metadata from API, use existing item data
-          if (vinylMetadata == null) {
-            final vinylData = VinylMetadata(
-              title: existingItem.title,
-              artist: existingItem.artist ?? '',
-              label: existingItem.label,
-              year: existingItem.releaseYear,
-              genre: existingItem.genre,
-              coverUrl: existingItem.coverUrl,
-              discogsId: existingItem.discogsId,
-              barcode: barcode,
-            );
-
-            await handlePostScanNavigation(
-              action: 'scanNext', // Always scan next when adding copy
-              addScreen: AddVinylScreen(
-                householdId: householdId,
-                vinylData: vinylData,
-                preSelectedContainerId: widget.preSelectedContainerId,
-              ),
-              successMessage: 'Music added! Scan next record',
-              itemLabel: 'Music',
-            );
-            return;
-          }
-          // Otherwise continue with API metadata
+          // Continue with the selected metadata
         } else {
           return; // User chose to scan next or cancelled
         }
-      }
-
-      // If no metadata found and not a duplicate, show error
-      if (vinylMetadata == null) {
-        showError('Music not found for barcode: $barcode');
-        resetScanning();
-        return;
       }
 
       if (!mounted) return;

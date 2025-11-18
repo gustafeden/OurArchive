@@ -29,8 +29,58 @@ class _TrackPreviewSectionState extends ConsumerState<TrackPreviewSection> {
   bool _isExpanded = false;
   String? _loadingTrackId; // Track which track is loading a preview
   final Map<String, Track> _enrichedTracks = {}; // Cache enriched tracks
+  bool _hasEnrichedTracks = false; // Whether we've already enriched the tracks
 
   String _getTrackId(Track track) => '${track.position}_${track.title}';
+
+  @override
+  void initState() {
+    super.initState();
+    // Enrich tracks on first load if available
+    _enrichAllTracksInBackground();
+  }
+
+  @override
+  void didUpdateWidget(TrackPreviewSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If tracks changed, re-enrich
+    if (widget.tracks != oldWidget.tracks && widget.tracks != null) {
+      _hasEnrichedTracks = false;
+      _enrichAllTracksInBackground();
+    }
+  }
+
+  /// Enrich all tracks in the background with preview URLs
+  Future<void> _enrichAllTracksInBackground() async {
+    if (_hasEnrichedTracks ||
+        widget.item == null ||
+        widget.tracks == null ||
+        widget.tracks!.isEmpty) {
+      return;
+    }
+
+    _hasEnrichedTracks = true;
+
+    try {
+      final trackService = ref.read(trackServiceProvider);
+      final enrichedTracks = await trackService.fetchPreviewsForAllTracks(
+        widget.tracks!,
+        widget.item!,
+      );
+
+      // Update local cache with enriched tracks
+      if (mounted) {
+        setState(() {
+          for (final track in enrichedTracks) {
+            final trackId = _getTrackId(track);
+            _enrichedTracks[trackId] = track;
+          }
+        });
+      }
+    } catch (e) {
+      print('[TrackPreview] Error enriching tracks: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -221,6 +271,18 @@ class _TrackPreviewSectionState extends ConsumerState<TrackPreviewSection> {
       onTap: widget.item == null
           ? null
           : () async {
+              // If currently playing, allow pause (even if still loading)
+              if (isCurrentTrack && isPlaying) {
+                await ref.read(playbackStateProvider.notifier).pause();
+                return;
+              }
+
+              // If current track but paused, allow play
+              if (isCurrentTrack && !isPlaying) {
+                await ref.read(playbackStateProvider.notifier).play();
+                return;
+              }
+
               // If already has preview, just toggle play/pause
               if (hasPreview) {
                 await ref.read(playbackStateProvider.notifier).togglePlayPause(displayTrack);
@@ -278,7 +340,7 @@ class _TrackPreviewSectionState extends ConsumerState<TrackPreviewSection> {
               SizedBox(
                 width: 32,
                 height: 32,
-                child: isLoadingPreview
+                child: (isLoadingPreview && !isPlaying)
                     ? SizedBox(
                         width: 20,
                         height: 20,
@@ -290,11 +352,11 @@ class _TrackPreviewSectionState extends ConsumerState<TrackPreviewSection> {
                         ),
                       )
                     : Icon(
-                        hasPreview
+                        (hasPreview || isCurrentTrack)
                             ? (isPlaying ? Ionicons.pause_circle : Ionicons.play_circle)
                             : Ionicons.play_circle_outline,
                         size: 28,
-                        color: hasPreview
+                        color: (hasPreview || isCurrentTrack)
                             ? (isCurrentTrack
                                 ? Theme.of(context).colorScheme.primary
                                 : Colors.grey[700])
@@ -331,7 +393,7 @@ class _TrackPreviewSectionState extends ConsumerState<TrackPreviewSection> {
                     ),
                   ],
                   // Show "tap to preview" hint for tracks without preview
-                  if (widget.item != null && !hasPreview && !isLoadingPreview)
+                  if (widget.item != null && !hasPreview && !isCurrentTrack && !isLoadingPreview)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(

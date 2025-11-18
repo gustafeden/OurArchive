@@ -36,7 +36,56 @@ class _TrackOverlayPanelState extends ConsumerState<TrackOverlayPanel> {
   // Local cache of enriched tracks
   final Map<String, Track> _enrichedTracks = {};
 
+  // Whether we've already enriched the tracks
+  bool _hasEnrichedTracks = false;
+
   String _getTrackId(Track track) => '${track.position}_${track.title}';
+
+  @override
+  void initState() {
+    super.initState();
+    // Enrich tracks on first load
+    _enrichAllTracksInBackground();
+  }
+
+  @override
+  void didUpdateWidget(TrackOverlayPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If tracks changed, re-enrich
+    if (widget.tracks != oldWidget.tracks && widget.tracks != null) {
+      _hasEnrichedTracks = false;
+      _enrichAllTracksInBackground();
+    }
+  }
+
+  /// Enrich all tracks in the background with preview URLs
+  Future<void> _enrichAllTracksInBackground() async {
+    if (_hasEnrichedTracks || widget.tracks == null || widget.tracks!.isEmpty) {
+      return;
+    }
+
+    _hasEnrichedTracks = true;
+
+    try {
+      final trackService = ref.read(trackServiceProvider);
+      final enrichedTracks = await trackService.fetchPreviewsForAllTracks(
+        widget.tracks!,
+        widget.item,
+      );
+
+      // Update local cache with enriched tracks
+      if (mounted) {
+        setState(() {
+          for (final track in enrichedTracks) {
+            final trackId = _getTrackId(track);
+            _enrichedTracks[trackId] = track;
+          }
+        });
+      }
+    } catch (e) {
+      print('[TrackOverlay] Error enriching tracks: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -290,6 +339,18 @@ class _TrackOverlayPanelState extends ConsumerState<TrackOverlayPanel> {
 
     return InkWell(
       onTap: () async {
+        // If currently playing, allow pause (even if still loading)
+        if (isCurrentTrack && isPlaying) {
+          await ref.read(playbackStateProvider.notifier).pause();
+          return;
+        }
+
+        // If current track but paused, allow play
+        if (isCurrentTrack && !isPlaying) {
+          await ref.read(playbackStateProvider.notifier).play();
+          return;
+        }
+
         // If already has preview, just toggle play/pause
         if (hasPreview) {
           await ref.read(playbackStateProvider.notifier).togglePlayPause(displayTrack);
@@ -350,7 +411,7 @@ class _TrackOverlayPanelState extends ConsumerState<TrackOverlayPanel> {
             SizedBox(
               width: 20,
               height: 20,
-              child: isLoadingPreview
+              child: (isLoadingPreview && !isPlaying)
                   ? SizedBox(
                       width: 16,
                       height: 16,
@@ -362,11 +423,11 @@ class _TrackOverlayPanelState extends ConsumerState<TrackOverlayPanel> {
                       ),
                     )
                   : Icon(
-                      hasPreview
+                      (hasPreview || isCurrentTrack)
                           ? (isPlaying ? Ionicons.pause_circle : Ionicons.play_circle)
                           : Ionicons.play_circle_outline,
                       size: 20,
-                      color: hasPreview
+                      color: (hasPreview || isCurrentTrack)
                           ? (isCurrentTrack
                               ? Theme.of(context).colorScheme.primary
                               : Colors.white.withValues(alpha: 0.7))
@@ -403,7 +464,7 @@ class _TrackOverlayPanelState extends ConsumerState<TrackOverlayPanel> {
                       ),
                     ),
                   // Show loading or "tap to load" hint
-                  if (isLoadingPreview)
+                  if (isLoadingPreview && !isPlaying)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
@@ -415,7 +476,7 @@ class _TrackOverlayPanelState extends ConsumerState<TrackOverlayPanel> {
                             ),
                       ),
                     )
-                  else if (!hasPreview)
+                  else if (!hasPreview && !isCurrentTrack)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(

@@ -8,6 +8,10 @@ import 'itunes_search_service.dart';
 class TrackService {
   final ItemRepository _itemRepository;
 
+  // Cache for iTunes preview URLs by album
+  // Key: "${albumName}_${artistName}", Value: Map of track names to preview URLs
+  final Map<String, Map<String, String>> _previewCache = {};
+
   TrackService(this._itemRepository);
 
   /// Get tracks for an item, fetching from Discogs if needed
@@ -93,8 +97,45 @@ class TrackService {
     }
   }
 
+  /// Fetch preview URLs for all tracks on an album at once
+  /// Returns enriched tracks with preview URLs where available
+  /// Uses caching to avoid repeated iTunes API calls for the same album
+  Future<List<Track>> fetchPreviewsForAllTracks(List<Track> tracks, Item item) async {
+    if (tracks.isEmpty) return tracks;
+
+    try {
+      // Create cache key from album and artist
+      final cacheKey = '${item.title}_${item.artist ?? ""}';
+
+      // Check if we already have preview data for this album
+      Map<String, String> previewMap;
+      if (_previewCache.containsKey(cacheKey)) {
+        print('[TrackService] ✅ Using cached preview data for "${item.title}"');
+        previewMap = _previewCache[cacheKey]!;
+      } else {
+        // Not cached - fetch from iTunes
+        print('[TrackService] 🔍 Fetching preview data from iTunes for "${item.title}"');
+        previewMap = await ITunesSearchService.searchAlbumPreviews(
+          albumName: item.title,
+          artistName: item.artist,
+        );
+
+        // Cache the results for future use
+        _previewCache[cacheKey] = previewMap;
+        print('[TrackService] 💾 Cached ${previewMap.length} preview URLs for "${item.title}"');
+      }
+
+      // Match all tracks with their previews
+      return ITunesSearchService.matchTracksWithPreviews(tracks, previewMap);
+    } catch (e) {
+      print('[TrackService] Error fetching previews: $e');
+      return tracks; // Return original tracks on error
+    }
+  }
+
   /// Fetch preview URL for a specific track on-demand
   /// Returns the track with preview URL if found, otherwise returns original track
+  /// Uses caching to avoid repeated iTunes API calls for the same album
   Future<Track> fetchPreviewForTrack(Track track, Item item) async {
     // If track already has a preview URL, return it
     if (track.previewUrl != null && track.previewUrl!.isNotEmpty) {
@@ -102,11 +143,26 @@ class TrackService {
     }
 
     try {
-      // Search iTunes for preview URLs for the entire album
-      final previewMap = await ITunesSearchService.searchAlbumPreviews(
-        albumName: item.title,
-        artistName: item.artist,
-      );
+      // Create cache key from album and artist
+      final cacheKey = '${item.title}_${item.artist ?? ""}';
+
+      // Check if we already have preview data for this album
+      Map<String, String> previewMap;
+      if (_previewCache.containsKey(cacheKey)) {
+        print('[TrackService] ✅ Using cached preview data for "${item.title}"');
+        previewMap = _previewCache[cacheKey]!;
+      } else {
+        // Not cached - fetch from iTunes
+        print('[TrackService] 🔍 Fetching preview data from iTunes for "${item.title}"');
+        previewMap = await ITunesSearchService.searchAlbumPreviews(
+          albumName: item.title,
+          artistName: item.artist,
+        );
+
+        // Cache the results for future tracks on this album
+        _previewCache[cacheKey] = previewMap;
+        print('[TrackService] 💾 Cached ${previewMap.length} preview URLs for "${item.title}"');
+      }
 
       // Match this specific track
       final enrichedTrack = ITunesSearchService.matchTracksWithPreviews(
