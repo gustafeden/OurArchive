@@ -182,8 +182,14 @@ class _AddMusicScreenState extends ConsumerState<AddMusicScreen> {
       );
 
       if (mounted) {
-        // Pop with success result
-        Navigator.pop(context, true);
+        // Pop all screens and return to the main list/container screen
+        Navigator.popUntil(
+          context,
+          (route) =>
+              route.settings.name == '/item_list' ||
+              route.settings.name == '/container' ||
+              route.isFirst,
+        );
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Music added successfully!')),
         );
