@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/item.dart';
+import '../../../providers/theme_provider.dart';
 import 'coverflow_controller.dart';
 import 'coverflow_album_card.dart';
 
 /// Viewport that renders visible CoverFlow items with proper z-sorting
-class CoverFlowViewport extends StatefulWidget {
+class CoverFlowViewport extends ConsumerStatefulWidget {
   final List<Item> items;
   final CoverFlowController controller;
   final double coverSize;
@@ -21,10 +23,10 @@ class CoverFlowViewport extends StatefulWidget {
   });
 
   @override
-  State<CoverFlowViewport> createState() => _CoverFlowViewportState();
+  ConsumerState<CoverFlowViewport> createState() => _CoverFlowViewportState();
 }
 
-class _CoverFlowViewportState extends State<CoverFlowViewport> {
+class _CoverFlowViewportState extends ConsumerState<CoverFlowViewport> {
   @override
   void initState() {
     super.initState();
@@ -87,9 +89,13 @@ class _CoverFlowViewportState extends State<CoverFlowViewport> {
   List<Widget> _buildVisibleCards() {
     final position = widget.controller.position;
     final centerIndex = position.round();
+    final useDenseMode = ref.watch(denseCoverFlowProvider);
 
-    // Determine visible range (center ± 4 items)
-    const visibleRange = 4;
+    // Determine visible range based on orientation and mode
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final visibleRange = isLandscape
+        ? (useDenseMode ? 6 : 4)  // Dense: ±6, Classic: ±4 in landscape
+        : 4;                       // Portrait: always ±4
     final startIndex = (centerIndex - visibleRange).clamp(0, widget.items.length - 1);
     final endIndex = (centerIndex + visibleRange).clamp(0, widget.items.length - 1);
 

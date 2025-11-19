@@ -64,6 +64,26 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   }
 }
 
+/// Notifier for managing CoverFlow view mode with persistence.
+class DenseCoverFlowNotifier extends StateNotifier<bool> {
+  DenseCoverFlowNotifier() : super(true) {
+    _loadSavedMode();
+  }
+
+  Future<void> _loadSavedMode() async {
+    state = await ThemePersistence.loadUseDenseCoverFlow();
+  }
+
+  Future<void> setMode(bool useDense) async {
+    state = useDense;
+    await ThemePersistence.saveUseDenseCoverFlow(useDense);
+  }
+
+  Future<void> toggle() async {
+    await setMode(!state);
+  }
+}
+
 /// Provider for the current base color palette.
 /// Change this to instantly update the entire app's theme.
 final baseColorsProvider =
@@ -75,6 +95,12 @@ final baseColorsProvider =
 final themeModeProvider =
     StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
   return ThemeModeNotifier();
+});
+
+/// Provider for the CoverFlow view mode (dense/classic).
+final denseCoverFlowProvider =
+    StateNotifierProvider<DenseCoverFlowNotifier, bool>((ref) {
+  return DenseCoverFlowNotifier();
 });
 
 /// Provider that builds the light theme from the current base colors.
@@ -139,5 +165,15 @@ extension ThemeExtensions on WidgetRef {
   /// Set a specific theme mode.
   Future<void> setThemeMode(ThemeMode mode) async {
     await read(themeModeProvider.notifier).setMode(mode);
+  }
+
+  /// Toggle CoverFlow view mode (dense/classic).
+  Future<void> toggleDenseCoverFlow() async {
+    await read(denseCoverFlowProvider.notifier).toggle();
+  }
+
+  /// Set CoverFlow view mode.
+  Future<void> setDenseCoverFlow(bool useDense) async {
+    await read(denseCoverFlowProvider.notifier).setMode(useDense);
   }
 }

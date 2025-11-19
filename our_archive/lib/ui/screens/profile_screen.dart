@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/providers.dart';
 import '../../data/services/log_export_service.dart';
 import 'theme_settings_screen.dart';
+import 'general_settings_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -161,6 +162,21 @@ class ProfileScreen extends ConsumerWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const ThemeSettingsScreen(),
+                ),
+              );
+            },
+          ),
+
+          ListTile(
+            leading: const Icon(Ionicons.settings_outline, color: Colors.teal),
+            title: const Text('General Settings'),
+            subtitle: const Text('Configure app preferences'),
+            trailing: const Icon(Ionicons.chevron_forward_outline, size: 16),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const GeneralSettingsScreen(),
                 ),
               );
             },

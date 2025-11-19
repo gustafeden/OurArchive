@@ -12,6 +12,7 @@ class ThemePersistence {
   static const String _keyCustomNeutral = 'custom_neutral';
   static const String _keyCustomAccent = 'custom_accent';
   static const String _keyIsCustomTheme = 'is_custom_theme';
+  static const String _keyUseDenseCoverFlow = 'use_dense_coverflow';
 
   /// Loads the saved theme preset name.
   /// Returns 'defaultTheme' if no preference is saved.
@@ -116,6 +117,19 @@ class ThemePersistence {
     await prefs.setBool(_keyIsCustomTheme, false);
   }
 
+  /// Loads the CoverFlow view mode preference.
+  /// Returns true (dense mode) if no preference is saved.
+  static Future<bool> loadUseDenseCoverFlow() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyUseDenseCoverFlow) ?? true; // Default to dense
+  }
+
+  /// Saves the CoverFlow view mode preference.
+  static Future<void> saveUseDenseCoverFlow(bool useDense) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyUseDenseCoverFlow, useDense);
+  }
+
   /// Clears all theme preferences (reset to defaults).
   static Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
@@ -127,5 +141,6 @@ class ThemePersistence {
     await prefs.remove(_keyCustomNeutral);
     await prefs.remove(_keyCustomAccent);
     await prefs.remove(_keyIsCustomTheme);
+    await prefs.remove(_keyUseDenseCoverFlow);
   }
 }

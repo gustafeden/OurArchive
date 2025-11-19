@@ -1,16 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:ionicons/ionicons.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/item.dart';
+import '../../../providers/theme_provider.dart';
 
 /// Individual album card in the CoverFlow with 3D transforms
-class CoverFlowAlbumCard extends StatelessWidget {
-  // === ROTATION TUNING CONSTANTS ===
-  // Adjust these to change how much albums twist toward center
-  static const double _landscapeBaseAngle = 0.20; // ~32° (current)
-  static const double _landscapeMaxAngle = 0.70; // ~40° max
-  static const double _portraitBaseAngle = 0.99; // ~40° (stronger twist)
-  static const double _portraitMaxAngle = 0.99; // ~52° max
+class CoverFlowAlbumCard extends ConsumerWidget {
+  // === DENSE MODE CONSTANTS (DEFAULT) ===
+  // Rotation angles for dense mode
+  static const double _denseLandscapeBaseAngle = 0.20;
+  static const double _denseLandscapeMaxAngle = 0.70;
+  // Spacing for dense mode
+  static const double _denseLandscapeBaseSpacing = 100.0;
+  static const double _denseLandscapeExtraSpacing = 0.0;
+  static const double _denseCenterSpacingBoost = 80.0;
+
+  // === CLASSIC MODE CONSTANTS (ORIGINAL) ===
+  // Rotation angles for classic mode
+  static const double _classicLandscapeBaseAngle = 0.55;
+  static const double _classicLandscapeMaxAngle = 0.70;
+  // Spacing for classic mode
+  static const double _classicLandscapeBaseSpacing = 140.0;
+  static const double _classicLandscapeExtraSpacing = 12.0;
+  static const double _classicCenterSpacingBoost = 0.0;
+
+  // === PORTRAIT MODE CONSTANTS (UNCHANGED) ===
+  static const double _portraitBaseAngle = 0.99;
+  static const double _portraitMaxAngle = 0.99;
+  static const double _portraitBaseSpacing = 140.0;
+  static const double _portraitExtraSpacing = 12.0;
 
   final Item item;
   final double delta; // Distance from center (index - position)
@@ -28,15 +47,16 @@ class CoverFlowAlbumCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final absDelta = delta.abs();
+    final useDenseMode = ref.watch(denseCoverFlowProvider);
 
     // Transform math based on delta
     final scale = _computeScale(absDelta);
-    final rotationY = _computeRotation(delta, context);
-    final translationX = _computeTranslationX(delta, absDelta);
+    final rotationY = _computeRotation(delta, context, useDenseMode);
+    final translationX = _computeTranslationX(delta, absDelta, context, useDenseMode);
     final translationZ = _computeTranslationZ(absDelta);
-    final opacity = _computeOpacity(absDelta);
+    final opacity = _computeOpacity(absDelta, useDenseMode);
 
     // Build transform matrix
     final matrix = Matrix4.identity()
@@ -57,7 +77,6 @@ class CoverFlowAlbumCard extends StatelessWidget {
             width: coverSize,
             height: coverSize * 1.5, // Include reflection and text height
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               children: [
                 // Main album cover
                 _buildAlbumCover(context, absDelta),
@@ -66,10 +85,16 @@ class CoverFlowAlbumCard extends StatelessWidget {
                 if (absDelta < 2.0) _buildReflection(context),
 
                 // Album info (title and artist)
-                if (absDelta < 2.0) ...[
-                  const SizedBox(height: 12),
-                  _buildAlbumInfo(context),
-                ],
+                if (absDelta < 2.0)
+                  Flexible(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 12),
+                        _buildAlbumInfo(context),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
@@ -232,18 +257,44 @@ class CoverFlowAlbumCard extends StatelessWidget {
     return 1.0 - (scaleFactor * absDelta.clamp(0.0, maxDistance));
   }
 
-  double _computeRotation(double delta, BuildContext context) {
+  double _computeRotation(double delta, BuildContext context, bool useDenseMode) {
     final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
-    final baseAngle = isPortrait ? _portraitBaseAngle : _landscapeBaseAngle;
-    final maxAngle = isPortrait ? _portraitMaxAngle : _landscapeMaxAngle;
+
+    double baseAngle, maxAngle;
+    if (isPortrait) {
+      baseAngle = _portraitBaseAngle;
+      maxAngle = _portraitMaxAngle;
+    } else {
+      // Landscape: use dense or classic constants
+      baseAngle = useDenseMode ? _denseLandscapeBaseAngle : _classicLandscapeBaseAngle;
+      maxAngle = useDenseMode ? _denseLandscapeMaxAngle : _classicLandscapeMaxAngle;
+    }
+
     final angle = delta * baseAngle;
     return angle.clamp(-maxAngle, maxAngle);
   }
 
-  double _computeTranslationX(double delta, double absDelta) {
-    const itemSpacing = 140.0;
-    const extraSpacing = 12.0;
-    return delta * (itemSpacing + (extraSpacing * absDelta));
+  double _computeTranslationX(double delta, double absDelta, BuildContext context, bool useDenseMode) {
+    final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+
+    double baseSpacing, extraSpacing, spacingBoost;
+    if (isPortrait) {
+      baseSpacing = _portraitBaseSpacing;
+      extraSpacing = _portraitExtraSpacing;
+      spacingBoost = 0.0; // No boost in portrait
+    } else {
+      // Landscape: use dense or classic constants
+      baseSpacing = useDenseMode ? _denseLandscapeBaseSpacing : _classicLandscapeBaseSpacing;
+      extraSpacing = useDenseMode ? _denseLandscapeExtraSpacing : _classicLandscapeExtraSpacing;
+      spacingBoost = useDenseMode ? _denseCenterSpacingBoost : _classicCenterSpacingBoost;
+    }
+
+    // Center boost smoothly fades from max at center to 0 at delta=2
+    final centerBoost = absDelta < 2.0
+        ? spacingBoost * (1.0 - (absDelta / 2.0))
+        : 0.0;
+
+    return delta * (baseSpacing + (extraSpacing * absDelta) + centerBoost);
   }
 
   double _computeTranslationZ(double absDelta) {
@@ -252,9 +303,15 @@ class CoverFlowAlbumCard extends StatelessWidget {
     return -depthFactor * absDelta.clamp(0.0, maxDistance);
   }
 
-  double _computeOpacity(double absDelta) {
-    const minOpacity = 0.4;
-    const fadeFactor = 0.25;
-    return (1.0 - (fadeFactor * absDelta)).clamp(minOpacity, 1.0);
+  double _computeOpacity(double absDelta, bool useDenseMode) {
+    if (useDenseMode) {
+      // Dense mode: no opacity fade, cards fully overlap
+      return 1.0;
+    } else {
+      // Classic mode: opacity fade for depth effect
+      const minOpacity = 0.4;
+      const fadeFactor = 0.25;
+      return (1.0 - (fadeFactor * absDelta)).clamp(minOpacity, 1.0);
+    }
   }
 }
