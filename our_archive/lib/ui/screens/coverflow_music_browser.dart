@@ -42,11 +42,23 @@ class _CoverFlowMusicBrowserState extends ConsumerState<CoverFlowMusicBrowser>
 
     return musicItemsAsync.when(
       loading: () => Scaffold(
-        appBar: AppBar(title: const Text('Music')),
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          title: const Text('Music'),
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
         body: const Center(child: CircularProgressIndicator()),
       ),
       error: (error, stack) => Scaffold(
-        appBar: AppBar(title: const Text('Music')),
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          title: const Text('Music'),
+          backgroundColor: Colors.black,
+          foregroundColor: Colors.white,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
         body: Center(child: Text('Error: $error')),
       ),
       data: (allMusicItems) {
@@ -57,11 +69,15 @@ class _CoverFlowMusicBrowserState extends ConsumerState<CoverFlowMusicBrowser>
 
         if (musicItems.isEmpty) {
           return Scaffold(
+            backgroundColor: Colors.black,
             appBar: AppBar(
               title: Text(widget.householdId == null ? 'All Music' : 'Music'),
+              backgroundColor: Colors.black,
+              foregroundColor: Colors.white,
+              iconTheme: const IconThemeData(color: Colors.white),
             ),
             body: const Center(
-              child: Text('No music found'),
+              child: Text('No music found', style: TextStyle(color: Colors.white)),
             ),
           );
         }
@@ -81,6 +97,8 @@ class _CoverFlowMusicBrowserState extends ConsumerState<CoverFlowMusicBrowser>
           appBar: AppBar(
             title: Text(widget.householdId == null ? 'All Music' : 'Music'),
             backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+            iconTheme: const IconThemeData(color: Colors.white),
           ),
           body: _buildBody(musicItems),
         );

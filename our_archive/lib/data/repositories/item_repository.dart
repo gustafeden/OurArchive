@@ -308,6 +308,76 @@ class ItemRepository {
     return null;
   }
 
+  // Find ALL items by barcode in a household (returns all matches, not just first)
+  Future<List<Item>> findAllItemsByBarcode(String householdId, String barcode) async {
+    // Clean barcode for consistent matching
+    final cleanBarcode = barcode.replaceAll(RegExp(r'[^0-9X]'), '').toLowerCase();
+    final matchingItems = <Item>[];
+
+    // Get all items for the household
+    final snapshot = await _firestore
+        .collection('households')
+        .doc(householdId)
+        .collection('items')
+        .get();
+
+    // Search through items in memory
+    for (final doc in snapshot.docs) {
+      final item = Item.fromFirestore(doc);
+
+      // Skip deleted items
+      if (item.deletedAt != null) continue;
+
+      // Check if ISBN matches
+      if (item.isbn != null) {
+        final itemIsbn = item.isbn!.replaceAll(RegExp(r'[^0-9X]'), '').toLowerCase();
+        if (itemIsbn == cleanBarcode) {
+          matchingItems.add(item);
+          continue; // Don't check barcode field if ISBN matched
+        }
+      }
+
+      // Also check barcode field
+      if (item.barcode != null) {
+        final itemBarcode = item.barcode!.replaceAll(RegExp(r'[^0-9X]'), '').toLowerCase();
+        if (itemBarcode == cleanBarcode) {
+          matchingItems.add(item);
+        }
+      }
+    }
+
+    return matchingItems;
+  }
+
+  // Find ALL items by discogsId in a household (returns all matches, not just first)
+  Future<List<Item>> findAllItemsByDiscogsId(String householdId, String discogsId) async {
+    if (discogsId.isEmpty) return [];
+
+    final matchingItems = <Item>[];
+
+    // Get all items for the household
+    final snapshot = await _firestore
+        .collection('households')
+        .doc(householdId)
+        .collection('items')
+        .get();
+
+    // Search through items in memory
+    for (final doc in snapshot.docs) {
+      final item = Item.fromFirestore(doc);
+
+      // Skip deleted items
+      if (item.deletedAt != null) continue;
+
+      // Check if discogsId matches
+      if (item.discogsId != null && item.discogsId == discogsId) {
+        matchingItems.add(item);
+      }
+    }
+
+    return matchingItems;
+  }
+
   // Update item with conflict resolution
   Future<void> updateItem({
     required String householdId,

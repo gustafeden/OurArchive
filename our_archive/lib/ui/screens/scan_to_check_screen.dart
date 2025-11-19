@@ -6,6 +6,7 @@ import '../../data/models/book_metadata.dart';
 import '../../data/models/vinyl_metadata.dart';
 import '../../data/models/item.dart';
 import '../../data/models/track.dart';
+import '../../data/models/discogs_search_result.dart';
 import '../../providers/providers.dart';
 import '../../providers/music_providers.dart';
 import '../../services/vinyl_lookup_service.dart';
@@ -211,108 +212,51 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
     try {
       final itemRepository = ref.read(itemRepositoryProvider);
 
-      // Run collection check and API lookup in parallel for better performance
+      // Run collection check (ALL items) and API lookup with pagination in parallel
       final results = await Future.wait([
-        itemRepository.findItemByBarcode(widget.householdId, barcode),
-        VinylLookupService.lookupByBarcode(barcode),
+        itemRepository.findAllItemsByBarcode(widget.householdId, barcode),
+        VinylLookupService.lookupByBarcodeWithPagination(barcode),
       ]);
 
       if (!mounted) return;
 
-      var existingItem = results[0] as Item?;
-      final vinylResults = results[1] as List<VinylMetadata>;
+      final ownedItems = results[0] as List<Item>;
+      final searchResult = results[1] as DiscogsSearchResult;
 
-      // If multiple results, show selection dialog
-      VinylMetadata? vinylMetadata;
-      if (vinylResults.length > 1) {
-        vinylMetadata = await showVinylSelectionDialog(
-          context: context,
-          results: vinylResults,
+      // If no API results found, show error
+      if (searchResult.results.isEmpty) {
+        setState(() {
+          _isProcessing = false;
+          _lastScannedCode = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No music information found for barcode: $barcode'),
+            duration: const Duration(seconds: 2),
+          ),
         );
-
-        // User cancelled selection
-        if (vinylMetadata == null) {
-          setState(() {
-            _isProcessing = false;
-            _lastScannedCode = null;
-          });
-          return;
-        }
-      } else if (vinylResults.length == 1) {
-        // Only one result, use it directly
-        vinylMetadata = vinylResults.first;
-      }
-      // If vinylResults is empty, vinylMetadata stays null
-
-      // If not found by barcode but we have discogsId from API, try searching by discogsId
-      // This handles old items that were stored with discogsId in barcode field
-      if (existingItem == null && vinylMetadata?.discogsId != null) {
-        existingItem = await itemRepository.findItemByDiscogsId(
-          widget.householdId,
-          vinylMetadata!.discogsId!,
-        );
+        return;
       }
 
-      if (!mounted) return;
-
-      if (existingItem != null) {
-        // Vinyl found in collection
-        final action = await _showVinylFoundDialog(existingItem);
+      // Check if ANY version is owned
+      if (ownedItems.isNotEmpty) {
+        // User owns one or more versions - show found dialog with option to see all releases
+        final action = await _showMultipleVersionsFoundDialog(
+          ownedItems: ownedItems,
+          barcode: barcode,
+          searchResult: searchResult,
+        );
 
         if (!mounted) return;
 
         if (action == 'scanNext') {
-          // Reset for next scan
           setState(() {
             _isProcessing = false;
             _lastScannedCode = null;
           });
-        } else {
-          // Close scanner
-          if (mounted) {
-            Navigator.pop(context);
-          }
-        }
-      } else if (vinylMetadata != null) {
-        // Vinyl not found in collection but found in API
-        // Show "not found" dialog with option to add
-        final action = await _showVinylNotFoundDialog(vinylMetadata);
-
-        if (!mounted) return;
-
-        if (action == 'add') {
-          // Navigate to AddVinylScreen
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AddVinylScreen(
-                householdId: widget.householdId,
-                vinylData: vinylMetadata,
-                tracks: _loadedTracks, // Pass pre-loaded tracks
-              ),
-            ),
-          );
-
-          if (mounted) {
-            // Reset for next scan after adding
-            setState(() {
-              _isProcessing = false;
-              _lastScannedCode = null;
-            });
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Music added! Scan next item to check'),
-                duration: Duration(seconds: 2),
-              ),
-            );
-          }
-        } else if (action == 'scanNext') {
-          // Reset for next scan without adding
-          setState(() {
-            _isProcessing = false;
-            _lastScannedCode = null;
-          });
+        } else if (action == 'seeAllReleases') {
+          // Show selection dialog with all releases
+          await _showAllReleasesAndAdd(barcode, searchResult, ownedItems);
         } else {
           // Close scanner
           if (mounted) {
@@ -320,17 +264,8 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
           }
         }
       } else {
-        // Neither found in collection nor in API
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No music information found for barcode: $barcode'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-        setState(() {
-          _isProcessing = false;
-          _lastScannedCode = null;
-        });
+        // Not owned - show selection dialog to allow adding
+        await _showAllReleasesAndAdd(barcode, searchResult, ownedItems);
       }
     } catch (e) {
       if (!mounted) return;
@@ -727,6 +662,112 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
         ),
       ],
     );
+  }
+
+  // Show dialog when user owns one or more versions
+  Future<String?> _showMultipleVersionsFoundDialog({
+    required List<Item> ownedItems,
+    required String barcode,
+    required DiscogsSearchResult searchResult,
+  }) async {
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Ionicons.checkmark_circle_outline, color: Colors.green, size: 28),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text('You Own ${ownedItems.length} Version${ownedItems.length > 1 ? "s" : ""}!'),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: ownedItems.map((item) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title,
+                      style: Theme.of(dialogContext).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    if (item.artist != null && item.artist!.isNotEmpty)
+                      Text('By ${item.artist}'),
+                    if (item.quantity > 1)
+                      Text('Quantity: ${item.quantity}'),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, 'scanNext'),
+            child: const Text('Scan Next'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, 'seeAllReleases'),
+            child: const Text('See All Releases'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, 'close'),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Show all releases and allow adding a new one
+  Future<void> _showAllReleasesAndAdd(
+    String barcode,
+    DiscogsSearchResult searchResult,
+    List<Item> ownedItems,
+  ) async {
+    final selectedVinyl = await showVinylSelectionDialog(
+      context: context,
+      barcode: barcode,
+      initialResults: searchResult.results,
+      initialPagination: searchResult.pagination,
+      ownedItems: ownedItems,
+      householdId: widget.householdId,
+    );
+
+    if (selectedVinyl != null) {
+      // Navigate to Add screen
+      if (!mounted) return;
+
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AddVinylScreen(
+            householdId: widget.householdId,
+            vinylData: selectedVinyl,
+          ),
+        ),
+      );
+
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+          _lastScannedCode = null;
+        });
+      }
+    } else {
+      // User cancelled
+      setState(() {
+        _isProcessing = false;
+        _lastScannedCode = null;
+      });
+    }
   }
 
   @override

@@ -5,6 +5,13 @@ import '../../../data/models/item.dart';
 
 /// Individual album card in the CoverFlow with 3D transforms
 class CoverFlowAlbumCard extends StatelessWidget {
+  // === ROTATION TUNING CONSTANTS ===
+  // Adjust these to change how much albums twist toward center
+  static const double _landscapeBaseAngle = 0.20; // ~32° (current)
+  static const double _landscapeMaxAngle = 0.70; // ~40° max
+  static const double _portraitBaseAngle = 0.99; // ~40° (stronger twist)
+  static const double _portraitMaxAngle = 0.99; // ~52° max
+
   final Item item;
   final double delta; // Distance from center (index - position)
   final double coverSize;
@@ -26,7 +33,7 @@ class CoverFlowAlbumCard extends StatelessWidget {
 
     // Transform math based on delta
     final scale = _computeScale(absDelta);
-    final rotationY = _computeRotation(delta);
+    final rotationY = _computeRotation(delta, context);
     final translationX = _computeTranslationX(delta, absDelta);
     final translationZ = _computeTranslationZ(absDelta);
     final opacity = _computeOpacity(absDelta);
@@ -151,8 +158,7 @@ class CoverFlowAlbumCard extends StatelessWidget {
     return SizedBox(
       height: coverSize * 0.15, // Subtle reflection
       child: Transform(
-        transform: Matrix4.identity()
-          ..scale(1.0, -1.0, 1.0), // Flip vertically
+        transform: Matrix4.identity()..scale(1.0, -1.0, 1.0), // Flip vertically
         alignment: Alignment.topCenter,
         child: ShaderMask(
           shaderCallback: (bounds) {
@@ -226,9 +232,10 @@ class CoverFlowAlbumCard extends StatelessWidget {
     return 1.0 - (scaleFactor * absDelta.clamp(0.0, maxDistance));
   }
 
-  double _computeRotation(double delta) {
-    const baseAngle = 0.35; // ~20 degrees in radians
-    const maxAngle = 0.45;
+  double _computeRotation(double delta, BuildContext context) {
+    final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+    final baseAngle = isPortrait ? _portraitBaseAngle : _landscapeBaseAngle;
+    final maxAngle = isPortrait ? _portraitMaxAngle : _landscapeMaxAngle;
     final angle = delta * baseAngle;
     return angle.clamp(-maxAngle, maxAngle);
   }

@@ -61,6 +61,9 @@ class _CoverFlowViewportState extends State<CoverFlowViewport> {
 
         return GestureDetector(
           behavior: HitTestBehavior.opaque, // Ensure gestures are always captured
+          onTapUp: (details) {
+            _handleTapUp(details, constraints);
+          },
           onHorizontalDragUpdate: (details) {
             widget.controller.handlePanUpdate(details, widget.coverSize);
           },
@@ -125,6 +128,28 @@ class _CoverFlowViewportState extends State<CoverFlowViewport> {
         ),
       );
     }).toList();
+  }
+
+  /// Handle tap on viewport - determine which album was tapped
+  void _handleTapUp(TapUpDetails details, BoxConstraints constraints) {
+    final tapX = details.localPosition.dx;
+    final centerX = constraints.maxWidth / 2;
+
+    // Calculate approximate album index based on tap position
+    // Each album is roughly coverSize * 0.6 apart (accounting for rotation and spacing)
+    final relativeX = tapX - centerX;
+    final albumSpacing = widget.coverSize * 0.6;
+    final approximateOffset = relativeX / albumSpacing;
+
+    // Determine which album index was tapped
+    final currentCenter = widget.controller.position;
+    final tappedIndex = (currentCenter + approximateOffset).round();
+
+    // Clamp to valid range
+    final validIndex = tappedIndex.clamp(0, widget.items.length - 1);
+
+    // Handle the tap
+    widget.controller.handleTap(validIndex);
   }
 
   /// Update the center cover rect for overlay positioning

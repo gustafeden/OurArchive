@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/vinyl_metadata.dart';
 import '../../data/models/item.dart';
 import '../../data/models/track.dart';
+import '../../data/models/discogs_search_result.dart';
 import '../../providers/providers.dart';
 import '../../providers/music_providers.dart';
 import '../../services/vinyl_lookup_service.dart';
@@ -100,56 +101,52 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen>
     try {
       final itemRepository = ref.read(itemRepositoryProvider);
 
-      // Run API lookup and duplicate check in parallel
+      // Run API lookup with pagination and find ALL owned items in parallel
       final results = await Future.wait([
-        VinylLookupService.lookupByBarcode(barcode),
-        itemRepository.findItemByBarcode(householdId, barcode),
+        VinylLookupService.lookupByBarcodeWithPagination(barcode),
+        itemRepository.findAllItemsByBarcode(householdId, barcode),
       ]);
 
       if (!mounted) return;
 
-      final vinylResults = results[0] as List<VinylMetadata>;
-      var existingItem = results[1] as Item?;
+      final searchResult = results[0] as DiscogsSearchResult;
+      final ownedItems = results[1] as List<Item>;
 
       // If no results found, show error
-      if (vinylResults.isEmpty) {
+      if (searchResult.results.isEmpty) {
         showError('Music not found for barcode: $barcode');
         resetScanning();
         return;
       }
 
-      // If multiple results, show selection dialog
-      VinylMetadata? vinylMetadata;
-      if (vinylResults.length > 1) {
-        vinylMetadata = await showVinylSelectionDialog(
-          context: context,
-          results: vinylResults,
-        );
+      // Show selection dialog (always, even for single result, to show owned status)
+      final vinylMetadata = await showVinylSelectionDialog(
+        context: context,
+        barcode: barcode,
+        initialResults: searchResult.results,
+        initialPagination: searchResult.pagination,
+        ownedItems: ownedItems,
+        householdId: householdId,
+      );
 
-        // User cancelled selection
-        if (vinylMetadata == null) {
-          resetScanning();
-          return;
-        }
-      } else {
-        // Only one result, use it directly
-        vinylMetadata = vinylResults.first;
-      }
-
-      // Check for old items stored with discogsId in barcode field
-      if (existingItem == null && vinylMetadata.discogsId != null) {
-        existingItem = await itemRepository.findItemByDiscogsId(
-          householdId,
-          vinylMetadata.discogsId!,
-        );
+      // User cancelled selection
+      if (vinylMetadata == null) {
+        resetScanning();
+        return;
       }
 
       if (!mounted) return;
 
-      // Handle duplicate
-      if (existingItem != null) {
+      // Check if this specific release is owned
+      final ownedItem = ownedItems.cast<Item?>().firstWhere(
+        (item) => item?.discogsId == vinylMetadata.discogsId,
+        orElse: () => null,
+      );
+
+      // Handle duplicate (if this specific release is owned)
+      if (ownedItem != null) {
         final action = await handleDuplicateFlow(
-          existingItem: existingItem,
+          existingItem: ownedItem,
           itemTypeName: 'Music',
         );
 

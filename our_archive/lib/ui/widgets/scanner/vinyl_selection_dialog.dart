@@ -1,60 +1,251 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ionicons/ionicons.dart';
 import '../../../data/models/vinyl_metadata.dart';
+import '../../../data/models/item.dart';
+import '../../../data/models/discogs_search_result.dart';
+import '../../../services/vinyl_lookup_service.dart';
+import '../../../providers/providers.dart';
 import '../common/network_image_with_fallback.dart';
 
-/// Shows a selection dialog when multiple vinyl releases match a barcode.
+/// Shows an enhanced selection dialog when multiple vinyl releases match a barcode.
+///
+/// Features:
+/// - Visual indicators for owned releases (badge, color, location)
+/// - Pagination support with "Load More" button
+/// - Owned releases sorted to top of list
 ///
 /// Returns the selected VinylMetadata or null if cancelled.
-///
-/// Usage:
-/// ```dart
-/// final selected = await showVinylSelectionDialog(
-///   context: context,
-///   results: vinylList,
-/// );
-/// ```
 Future<VinylMetadata?> showVinylSelectionDialog({
   required BuildContext context,
-  required List<VinylMetadata> results,
+  required String barcode,
+  required List<VinylMetadata> initialResults,
+  required PaginationInfo initialPagination,
+  required List<Item> ownedItems,
+  required String householdId,
 }) async {
   return showDialog<VinylMetadata>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: Text(results.length == 1
-          ? 'Select Release'
-          : 'Select Release (${results.length} matches)'),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: ListView.separated(
-          shrinkWrap: true,
-          itemCount: results.length,
-          separatorBuilder: (context, index) => const Divider(),
-          itemBuilder: (context, index) {
-            final vinyl = results[index];
-            return _VinylSelectionItem(
-              vinyl: vinyl,
-              onTap: () => Navigator.pop(dialogContext, vinyl),
-            );
-          },
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext, null),
-          child: const Text('Cancel'),
-        ),
-      ],
+    builder: (dialogContext) => _VinylSelectionDialog(
+      barcode: barcode,
+      initialResults: initialResults,
+      initialPagination: initialPagination,
+      ownedItems: ownedItems,
+      householdId: householdId,
     ),
   );
 }
 
+class _VinylSelectionDialog extends ConsumerStatefulWidget {
+  final String barcode;
+  final List<VinylMetadata> initialResults;
+  final PaginationInfo initialPagination;
+  final List<Item> ownedItems;
+  final String householdId;
+
+  const _VinylSelectionDialog({
+    required this.barcode,
+    required this.initialResults,
+    required this.initialPagination,
+    required this.ownedItems,
+    required this.householdId,
+  });
+
+  @override
+  ConsumerState<_VinylSelectionDialog> createState() => _VinylSelectionDialogState();
+}
+
+class _VinylSelectionDialogState extends ConsumerState<_VinylSelectionDialog> {
+  late List<VinylMetadata> _results;
+  late PaginationInfo _pagination;
+  bool _isLoadingMore = false;
+  Map<String, String>? _containerNames; // Cache container names
+
+  @override
+  void initState() {
+    super.initState();
+    _results = _sortResults(widget.initialResults);
+    _pagination = widget.initialPagination;
+    _loadContainerNames();
+  }
+
+  /// Sort results to show owned items first
+  List<VinylMetadata> _sortResults(List<VinylMetadata> results) {
+    final owned = <VinylMetadata>[];
+    final notOwned = <VinylMetadata>[];
+
+    for (final vinyl in results) {
+      if (_isOwned(vinyl)) {
+        owned.add(vinyl);
+      } else {
+        notOwned.add(vinyl);
+      }
+    }
+
+    return [...owned, ...notOwned];
+  }
+
+  /// Check if a vinyl release is owned
+  bool _isOwned(VinylMetadata vinyl) {
+    return widget.ownedItems.any((item) =>
+      item.discogsId != null &&
+      item.discogsId == vinyl.discogsId
+    );
+  }
+
+  /// Get owned item for a vinyl release
+  Item? _getOwnedItem(VinylMetadata vinyl) {
+    try {
+      return widget.ownedItems.firstWhere((item) =>
+        item.discogsId != null &&
+        item.discogsId == vinyl.discogsId
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Load container names for owned items
+  Future<void> _loadContainerNames() async {
+    final names = <String, String>{};
+    final containerService = ref.read(containerServiceProvider);
+
+    try {
+      final containers = await containerService
+          .getAllContainers(widget.householdId)
+          .first;
+
+      for (final item in widget.ownedItems) {
+        if (item.containerId != null) {
+          try {
+            final container = containers.firstWhere(
+              (c) => c.id == item.containerId,
+            );
+            names[item.id] = container.name;
+          } catch (e) {
+            // Container not found
+          }
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _containerNames = names;
+        });
+      }
+    } catch (e) {
+      // Error loading containers
+    }
+  }
+
+  /// Load more results from next page
+  Future<void> _loadMore() async {
+    if (_isLoadingMore || !_pagination.hasMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final nextPage = _pagination.currentPage + 1;
+      final result = await VinylLookupService.lookupByBarcodeWithPagination(
+        widget.barcode,
+        page: nextPage,
+        perPage: _pagination.perPage,
+      );
+
+      if (mounted) {
+        setState(() {
+          _results.addAll(result.results);
+          _results = _sortResults(_results); // Re-sort with new results
+          _pagination = result.pagination;
+          _isLoadingMore = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingMore = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final showingText = _pagination.hasMore
+        ? 'showing ${_results.length} of ${_pagination.totalItems}'
+        : '${_results.length} matches';
+
+    return AlertDialog(
+      title: Text('Select Release ($showingText)'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: _results.length,
+                separatorBuilder: (context, index) => const Divider(),
+                itemBuilder: (context, index) {
+                  final vinyl = _results[index];
+                  final ownedItem = _getOwnedItem(vinyl);
+                  final isOwned = ownedItem != null;
+                  final containerName = ownedItem != null && _containerNames != null
+                      ? _containerNames![ownedItem.id]
+                      : null;
+
+                  return _VinylSelectionItem(
+                    vinyl: vinyl,
+                    isOwned: isOwned,
+                    ownedQuantity: ownedItem?.quantity ?? 0,
+                    containerName: containerName,
+                    onTap: () => Navigator.pop(context, vinyl),
+                  );
+                },
+              ),
+            ),
+            // Load More button
+            if (_pagination.hasMore) ...[
+              const SizedBox(height: 16),
+              if (_isLoadingMore)
+                const CircularProgressIndicator()
+              else
+                OutlinedButton.icon(
+                  onPressed: _loadMore,
+                  icon: const Icon(Ionicons.chevron_down_outline),
+                  label: Text(
+                    'Load More Results (${_pagination.totalItems - _results.length} remaining)'
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, null),
+          child: const Text('Cancel'),
+        ),
+      ],
+    );
+  }
+}
+
 class _VinylSelectionItem extends StatelessWidget {
   final VinylMetadata vinyl;
+  final bool isOwned;
+  final int ownedQuantity;
+  final String? containerName;
   final VoidCallback onTap;
 
   const _VinylSelectionItem({
     required this.vinyl,
+    required this.isOwned,
+    required this.ownedQuantity,
+    required this.containerName,
     required this.onTap,
   });
 
@@ -62,11 +253,25 @@ class _VinylSelectionItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isOwned ? Colors.green.withValues(alpha: 0.08) : null,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Owned checkmark
+            if (isOwned)
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0, top: 4.0),
+                child: Icon(
+                  Ionicons.checkmark_circle,
+                  color: Colors.green[700],
+                  size: 24,
+                ),
+              ),
             // Cover image thumbnail
             SizedBox(
               width: 80,
@@ -84,6 +289,25 @@ class _VinylSelectionItem extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Owned badge
+                  if (isOwned) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.green[700],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        ownedQuantity > 1 ? 'Owned (qty: $ownedQuantity)' : 'Owned',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                  ],
                   // Title
                   Text(
                     vinyl.title,
@@ -137,6 +361,32 @@ class _VinylSelectionItem extends StatelessWidget {
                           ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  // Container location (if owned)
+                  if (isOwned && containerName != null) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(
+                          Ionicons.location_outline,
+                          size: 14,
+                          color: Colors.green[700],
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            'In: $containerName',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.green[700],
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ],

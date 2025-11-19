@@ -8,6 +8,9 @@ import '../../providers/providers.dart';
 import '../../data/models/household.dart';
 import '../../data/models/vinyl_metadata.dart';
 import '../../data/models/track.dart';
+import '../../data/models/discogs_search_result.dart';
+import '../../services/vinyl_lookup_service.dart';
+import '../widgets/scanner/vinyl_selection_dialog.dart';
 import '../widgets/common/photo_picker_widget.dart';
 import '../widgets/common/loading_button.dart';
 import '../widgets/form/container_selector_field.dart';
@@ -201,12 +204,107 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
     }
   }
 
+  // Allow user to select a different release while preserving form inputs
+  Future<void> _selectDifferentRelease() async {
+    if (widget.vinylData?.barcode == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No barcode available to search for other releases')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Fetch all releases for this barcode
+      final itemRepository = ref.read(itemRepositoryProvider);
+      final results = await Future.wait([
+        VinylLookupService.lookupByBarcodeWithPagination(widget.vinylData!.barcode!),
+        itemRepository.findAllItemsByBarcode(_householdId, widget.vinylData!.barcode!),
+      ]);
+
+      final searchResult = results[0] as DiscogsSearchResult;
+      final ownedItems = results[1] as List;
+
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+
+      if (searchResult.results.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No other releases found')),
+          );
+        }
+        return;
+      }
+
+      // Show selection dialog
+      final selectedVinyl = await showVinylSelectionDialog(
+        context: context,
+        barcode: widget.vinylData!.barcode!,
+        initialResults: searchResult.results,
+        initialPagination: searchResult.pagination,
+        ownedItems: ownedItems.cast(),
+        householdId: _householdId,
+      );
+
+      if (selectedVinyl != null && mounted) {
+        // Update metadata fields while preserving user inputs
+        setState(() {
+          _titleController.text = selectedVinyl.title;
+          _artistController.text = selectedVinyl.artist;
+          _labelController.text = selectedVinyl.label ?? '';
+          _yearController.text = selectedVinyl.year ?? '';
+          _genreController.text = selectedVinyl.genre ?? '';
+          _catalogController.text = selectedVinyl.catalogNumber ?? '';
+
+          // Update format based on new release
+          if (selectedVinyl.format != null && selectedVinyl.format!.isNotEmpty) {
+            final formatLower = selectedVinyl.format!.join(' ').toLowerCase();
+            if (formatLower.contains('cd')) {
+              _selectedFormat = 'cd';
+            } else if (formatLower.contains('vinyl') || formatLower.contains('lp')) {
+              _selectedFormat = 'vinyl';
+            } else if (formatLower.contains('cassette')) {
+              _selectedFormat = 'cassette';
+            } else if (formatLower.contains('digital') || formatLower.contains('file')) {
+              _selectedFormat = 'digital';
+            }
+          }
+
+          // Download new cover
+          if (selectedVinyl.coverUrl != null) {
+            _downloadCover(selectedVinyl.coverUrl!);
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Switched to: ${selectedVinyl.title}')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading releases: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Music'),
         actions: [
+          if (widget.vinylData?.barcode != null)
+            TextButton.icon(
+              onPressed: _selectDifferentRelease,
+              icon: const Icon(Ionicons.swap_horizontal_outline),
+              label: const Text('Different Release'),
+            ),
           LoadingButton(
             isLoading: _isLoading,
             onPressed: _saveVinyl,
