@@ -2,11 +2,11 @@ import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:our_archive/ui/screens/add_book_flow_screen.dart';
-import 'package:our_archive/ui/screens/add_vinyl_flow_screen.dart';
+import 'package:our_archive/ui/screens/add_music_flow_screen.dart';
 import 'package:our_archive/ui/screens/add_game_screen.dart';
 import 'package:our_archive/ui/screens/add_item_screen.dart';
 import 'package:our_archive/ui/screens/book_scan_screen.dart';
-import 'package:our_archive/ui/screens/vinyl_scan_screen.dart';
+import 'package:our_archive/ui/screens/music_scan_screen.dart';
 import 'package:our_archive/ui/screens/common/scan_modes.dart';
 import '../../providers/providers.dart';
 import '../../data/models/item_type.dart';
@@ -87,7 +87,7 @@ class ItemTypeSelectionScreen extends ConsumerWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => VinylScanScreen(
+                            builder: (context) => MusicScanScreen(
                               householdId: householdId,
                               initialMode: ScanMode.camera,
                               preSelectedContainerId: preSelectedContainerId,
@@ -160,7 +160,7 @@ class ItemTypeSelectionScreen extends ConsumerWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => AddVinylFlowScreen(
+                  builder: (context) => AddMusicFlowScreen(
                     householdId: householdId,
                     preSelectedContainerId: preSelectedContainerId,
                   ),

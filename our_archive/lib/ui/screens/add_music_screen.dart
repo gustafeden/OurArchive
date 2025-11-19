@@ -6,25 +6,25 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import '../../providers/providers.dart';
 import '../../data/models/household.dart';
-import '../../data/models/vinyl_metadata.dart';
+import '../../data/models/music_metadata.dart';
 import '../../data/models/track.dart';
 import '../../data/models/discogs_search_result.dart';
-import '../../services/vinyl_lookup_service.dart';
-import '../widgets/scanner/vinyl_selection_dialog.dart';
+import '../../services/music_lookup_service.dart';
+import '../widgets/scanner/music_selection_dialog.dart';
 import '../widgets/common/photo_picker_widget.dart';
 import '../widgets/common/loading_button.dart';
 import '../widgets/form/container_selector_field.dart';
 import '../widgets/form/year_field.dart';
 import '../widgets/form/notes_field.dart';
 
-class AddVinylScreen extends ConsumerStatefulWidget {
+class AddMusicScreen extends ConsumerStatefulWidget {
   final Household? household;
   final String? householdId; // Alternative to household object
   final String? preSelectedContainerId;
-  final VinylMetadata? vinylData;
+  final MusicMetadata? vinylData;
   final List<Track>? tracks; // Pre-loaded tracks from scanner
 
-  const AddVinylScreen({
+  const AddMusicScreen({
     super.key,
     this.household,
     this.householdId,
@@ -35,10 +35,10 @@ class AddVinylScreen extends ConsumerStatefulWidget {
             'Either household or householdId must be provided');
 
   @override
-  ConsumerState<AddVinylScreen> createState() => _AddVinylScreenState();
+  ConsumerState<AddMusicScreen> createState() => _AddMusicScreenState();
 }
 
-class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
+class _AddMusicScreenState extends ConsumerState<AddMusicScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _artistController = TextEditingController();
@@ -118,7 +118,7 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
   }
 
 
-  Future<void> _saveVinyl() async {
+  Future<void> _saveMusic() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
 
@@ -213,7 +213,7 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
       // Fetch all releases for this barcode
       final itemRepository = ref.read(itemRepositoryProvider);
       final results = await Future.wait([
-        VinylLookupService.lookupByBarcodeWithPagination(widget.vinylData!.barcode!),
+        MusicLookupService.lookupByBarcodeWithPagination(widget.vinylData!.barcode!),
         itemRepository.findAllItemsByBarcode(_householdId, widget.vinylData!.barcode!),
       ]);
 
@@ -234,7 +234,7 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
       }
 
       // Show selection dialog
-      final selectionResult = await showVinylSelectionDialog(
+      final selectionResult = await showMusicSelectionDialog(
         context: context,
         barcode: widget.vinylData!.barcode!,
         initialResults: searchResult.results,
@@ -304,7 +304,7 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
             ),
           LoadingButton(
             isLoading: _isLoading,
-            onPressed: _saveVinyl,
+            onPressed: _saveMusic,
           ),
         ],
       ),

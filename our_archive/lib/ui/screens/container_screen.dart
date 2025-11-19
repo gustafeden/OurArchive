@@ -11,7 +11,7 @@ import '../../data/models/household.dart';
 import 'item_type_selection_screen.dart';
 import 'item_list_screen.dart';
 import 'book_scan_screen.dart';
-import 'vinyl_scan_screen.dart';
+import 'music_scan_screen.dart';
 import 'manage_types_screen.dart';
 import 'common/scan_modes.dart';
 import '../../utils/icon_helper.dart';
@@ -1434,7 +1434,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => VinylScanScreen(
+                    builder: (context) => MusicScanScreen(
                       householdId: widget.householdId,
                       initialMode: ScanMode.camera,
                       preSelectedContainerId: widget.parentContainerId,

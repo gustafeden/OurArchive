@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ionicons/ionicons.dart';
-import '../../../data/models/vinyl_metadata.dart';
+import '../../../data/models/music_metadata.dart';
 import '../../../data/models/item.dart';
 import '../../../data/models/discogs_search_result.dart';
-import '../../../services/vinyl_lookup_service.dart';
+import '../../../services/music_lookup_service.dart';
 import '../../../providers/providers.dart';
 import '../common/network_image_with_fallback.dart';
 
 /// Result from vinyl selection dialog
-class VinylSelectionResult {
-  final VinylMetadata vinyl;
+class MusicSelectionResult {
+  final MusicMetadata vinyl;
   final String action; // 'add' or 'preview'
 
-  VinylSelectionResult({
+  MusicSelectionResult({
     required this.vinyl,
     required this.action,
   });
@@ -26,18 +26,18 @@ class VinylSelectionResult {
 /// - Pagination support with "Load More" button
 /// - Owned releases sorted to top of list
 ///
-/// Returns the VinylSelectionResult or null if cancelled.
-Future<VinylSelectionResult?> showVinylSelectionDialog({
+/// Returns the MusicSelectionResult or null if cancelled.
+Future<MusicSelectionResult?> showMusicSelectionDialog({
   required BuildContext context,
   required String barcode,
-  required List<VinylMetadata> initialResults,
+  required List<MusicMetadata> initialResults,
   required PaginationInfo initialPagination,
   required List<Item> ownedItems,
   required String householdId,
 }) async {
-  return showDialog<VinylSelectionResult>(
+  return showDialog<MusicSelectionResult>(
     context: context,
-    builder: (dialogContext) => _VinylSelectionDialog(
+    builder: (dialogContext) => _MusicSelectionDialog(
       barcode: barcode,
       initialResults: initialResults,
       initialPagination: initialPagination,
@@ -47,14 +47,14 @@ Future<VinylSelectionResult?> showVinylSelectionDialog({
   );
 }
 
-class _VinylSelectionDialog extends ConsumerStatefulWidget {
+class _MusicSelectionDialog extends ConsumerStatefulWidget {
   final String barcode;
-  final List<VinylMetadata> initialResults;
+  final List<MusicMetadata> initialResults;
   final PaginationInfo initialPagination;
   final List<Item> ownedItems;
   final String householdId;
 
-  const _VinylSelectionDialog({
+  const _MusicSelectionDialog({
     required this.barcode,
     required this.initialResults,
     required this.initialPagination,
@@ -63,11 +63,11 @@ class _VinylSelectionDialog extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_VinylSelectionDialog> createState() => _VinylSelectionDialogState();
+  ConsumerState<_MusicSelectionDialog> createState() => _MusicSelectionDialogState();
 }
 
-class _VinylSelectionDialogState extends ConsumerState<_VinylSelectionDialog> {
-  late List<VinylMetadata> _results;
+class _MusicSelectionDialogState extends ConsumerState<_MusicSelectionDialog> {
+  late List<MusicMetadata> _results;
   late PaginationInfo _pagination;
   bool _isLoadingMore = false;
   Map<String, String>? _containerNames; // Cache container names
@@ -81,9 +81,9 @@ class _VinylSelectionDialogState extends ConsumerState<_VinylSelectionDialog> {
   }
 
   /// Sort results to show owned items first
-  List<VinylMetadata> _sortResults(List<VinylMetadata> results) {
-    final owned = <VinylMetadata>[];
-    final notOwned = <VinylMetadata>[];
+  List<MusicMetadata> _sortResults(List<MusicMetadata> results) {
+    final owned = <MusicMetadata>[];
+    final notOwned = <MusicMetadata>[];
 
     for (final vinyl in results) {
       if (_isOwned(vinyl)) {
@@ -97,12 +97,12 @@ class _VinylSelectionDialogState extends ConsumerState<_VinylSelectionDialog> {
   }
 
   /// Check if a vinyl release is owned
-  bool _isOwned(VinylMetadata vinyl) {
+  bool _isOwned(MusicMetadata vinyl) {
     return widget.ownedItems.any((item) => item.discogsId != null && item.discogsId == vinyl.discogsId);
   }
 
   /// Get owned item for a vinyl release
-  Item? _getOwnedItem(VinylMetadata vinyl) {
+  Item? _getOwnedItem(MusicMetadata vinyl) {
     try {
       return widget.ownedItems.firstWhere((item) => item.discogsId != null && item.discogsId == vinyl.discogsId);
     } catch (e) {
@@ -151,7 +151,7 @@ class _VinylSelectionDialogState extends ConsumerState<_VinylSelectionDialog> {
 
     try {
       final nextPage = _pagination.currentPage + 1;
-      final result = await VinylLookupService.lookupByBarcodeWithPagination(
+      final result = await MusicLookupService.lookupByBarcodeWithPagination(
         widget.barcode,
         page: nextPage,
         perPage: _pagination.perPage,
@@ -198,18 +198,18 @@ class _VinylSelectionDialogState extends ConsumerState<_VinylSelectionDialog> {
                   final containerName =
                       ownedItem != null && _containerNames != null ? _containerNames![ownedItem.id] : null;
 
-                  return _VinylSelectionItem(
+                  return _MusicSelectionItem(
                     vinyl: vinyl,
                     isOwned: isOwned,
                     ownedQuantity: ownedItem?.quantity ?? 0,
                     containerName: containerName,
                     onTap: () => Navigator.pop(
                       context,
-                      VinylSelectionResult(vinyl: vinyl, action: 'add'),
+                      MusicSelectionResult(vinyl: vinyl, action: 'add'),
                     ),
                     onPreview: () => Navigator.pop(
                       context,
-                      VinylSelectionResult(vinyl: vinyl, action: 'preview'),
+                      MusicSelectionResult(vinyl: vinyl, action: 'preview'),
                     ),
                   );
                 },
@@ -240,15 +240,15 @@ class _VinylSelectionDialogState extends ConsumerState<_VinylSelectionDialog> {
   }
 }
 
-class _VinylSelectionItem extends StatelessWidget {
-  final VinylMetadata vinyl;
+class _MusicSelectionItem extends StatelessWidget {
+  final MusicMetadata vinyl;
   final bool isOwned;
   final int ownedQuantity;
   final String? containerName;
   final VoidCallback onTap;
   final VoidCallback? onPreview;
 
-  const _VinylSelectionItem({
+  const _MusicSelectionItem({
     required this.vinyl,
     required this.isOwned,
     required this.ownedQuantity,

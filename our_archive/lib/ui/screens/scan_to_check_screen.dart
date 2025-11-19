@@ -3,19 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../data/models/book_metadata.dart';
-import '../../data/models/vinyl_metadata.dart';
+import '../../data/models/music_metadata.dart';
 import '../../data/models/item.dart';
 import '../../data/models/track.dart';
 import '../../data/models/discogs_search_result.dart';
 import '../../providers/providers.dart';
 import '../../providers/music_providers.dart';
-import '../../services/vinyl_lookup_service.dart';
+import '../../services/music_lookup_service.dart';
 import '../widgets/common/item_found_dialog.dart';
 import '../widgets/scanner/item_not_found_dialog.dart';
 import '../widgets/scanner/track_preview_section.dart';
-import '../widgets/scanner/vinyl_selection_dialog.dart';
+import '../widgets/scanner/music_selection_dialog.dart';
 import 'add_item_screen.dart';
-import 'add_vinyl_screen.dart';
+import 'add_music_screen.dart';
 
 class ScanToCheckScreen extends ConsumerStatefulWidget {
   final String householdId;
@@ -215,7 +215,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
       // Run collection check (ALL items) and API lookup with pagination in parallel
       final results = await Future.wait([
         itemRepository.findAllItemsByBarcode(widget.householdId, barcode),
-        VinylLookupService.lookupByBarcodeWithPagination(barcode),
+        MusicLookupService.lookupByBarcodeWithPagination(barcode),
       ]);
 
       if (!mounted) return;
@@ -493,7 +493,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
     }
   }
 
-  Future<String?> _showVinylNotFoundDialog(VinylMetadata vinyl) async {
+  Future<String?> _showVinylNotFoundDialog(MusicMetadata vinyl) async {
     List<Track>? tracks;
     bool loadingTracks = true;
 
@@ -524,7 +524,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
         final fetchedTracks = await trackService.getTracksForItem(tempItem, widget.householdId);
         if (mounted) {
           tracks = fetchedTracks;
-          _loadedTracks = fetchedTracks; // Store for passing to AddVinylScreen
+          _loadedTracks = fetchedTracks; // Store for passing to AddMusicScreen
           loadingTracks = false;
         }
       } catch (e) {
@@ -563,7 +563,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
 
   AlertDialog _buildVinylNotFoundDialog({
     required BuildContext context,
-    required VinylMetadata vinyl,
+    required MusicMetadata vinyl,
     required Item tempItem,
     List<Track>? tracks,
     bool isLoadingTracks = false,
@@ -665,7 +665,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
   }
 
   /// Show preview dialog for a vinyl release (tracks + audio preview)
-  Future<String?> _showVinylPreviewDialog(VinylMetadata vinyl) async {
+  Future<String?> _showVinylPreviewDialog(MusicMetadata vinyl) async {
     List<Track>? tracks;
     bool loadingTracks = true;
 
@@ -901,7 +901,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
   ) async {
     // Keep showing selection dialog until user is done
     while (true) {
-      final result = await showVinylSelectionDialog(
+      final result = await showMusicSelectionDialog(
         context: context,
         barcode: barcode,
         initialResults: searchResult.results,
@@ -932,7 +932,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
           final addResult = await Navigator.push<bool>(
             context,
             MaterialPageRoute(
-              builder: (context) => AddVinylScreen(
+              builder: (context) => AddMusicScreen(
                 householdId: widget.householdId,
                 vinylData: result.vinyl,
               ),
@@ -966,7 +966,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
         final addResult = await Navigator.push<bool>(
           context,
           MaterialPageRoute(
-            builder: (context) => AddVinylScreen(
+            builder: (context) => AddMusicScreen(
               householdId: widget.householdId,
               vinylData: result.vinyl,
             ),

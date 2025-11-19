@@ -7,7 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../providers/providers.dart';
 import '../../data/models/household.dart';
 import '../../data/models/book_metadata.dart';
-import '../../data/models/vinyl_metadata.dart';
+import '../../data/models/music_metadata.dart';
 import '../../utils/icon_helper.dart';
 import 'barcode_scan_screen.dart';
 import '../widgets/common/photo_picker_widget.dart';
@@ -17,7 +17,7 @@ class AddItemScreen extends ConsumerStatefulWidget {
   final String? householdId; // Alternative to household object
   final String? preSelectedContainerId;
   final BookMetadata? bookData;
-  final VinylMetadata? vinylData;
+  final MusicMetadata? vinylData;
 
   const AddItemScreen({
     super.key,

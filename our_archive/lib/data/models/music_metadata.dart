@@ -1,4 +1,4 @@
-class VinylMetadata {
+class MusicMetadata {
   final String title;
   final String artist;
   final String? label;
@@ -13,7 +13,7 @@ class VinylMetadata {
   final String? resourceUrl;
   final String? barcode; // The actual UPC/EAN barcode scanned
 
-  VinylMetadata({
+  MusicMetadata({
     required this.title,
     required this.artist,
     this.label,
@@ -29,7 +29,7 @@ class VinylMetadata {
     this.barcode,
   });
 
-  factory VinylMetadata.fromDiscogsJson(Map<String, dynamic> json) {
+  factory MusicMetadata.fromDiscogsJson(Map<String, dynamic> json) {
     // Parse artist from either 'artist' field or extract from 'title'
     String artist = '';
     String title = json['title'] ?? '';
@@ -40,7 +40,7 @@ class VinylMetadata {
       title = parts.length > 1 ? parts.sublist(1).join(' - ').trim() : title;
     }
 
-    return VinylMetadata(
+    return MusicMetadata(
       title: title,
       artist: artist,
       label: json['label'] != null && (json['label'] as List).isNotEmpty
@@ -84,6 +84,6 @@ class VinylMetadata {
 
   @override
   String toString() {
-    return 'VinylMetadata(title: $title, artist: $artist, year: $year, label: $label)';
+    return 'MusicMetadata(title: $title, artist: $artist, year: $year, label: $label)';
   }
 }

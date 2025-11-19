@@ -2,13 +2,13 @@ import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/book_metadata.dart';
-import '../../data/models/vinyl_metadata.dart';
+import '../../data/models/music_metadata.dart';
 import '../../data/models/household.dart';
 import '../../data/models/item.dart';
 import '../../providers/providers.dart';
-import '../../services/vinyl_lookup_service.dart';
+import '../../services/music_lookup_service.dart';
 import 'add_book_screen.dart';
-import 'add_vinyl_screen.dart';
+import 'add_music_screen.dart';
 import '../../utils/text_search_helper.dart';
 import '../widgets/common/search_results_view.dart';
 import '../widgets/scanner/item_preview_dialog.dart';
@@ -191,13 +191,13 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen>
 
       // Try vinyl lookup and duplicate check in parallel
       final results = await Future.wait([
-        VinylLookupService.lookupByBarcode(code),
+        MusicLookupService.lookupByBarcode(code),
         itemRepository.findItemByBarcode(householdId, code),
       ]);
 
       if (!mounted) return;
 
-      final vinylMetadata = results[0] as VinylMetadata?;
+      final vinylMetadata = results[0] as MusicMetadata?;
       var existingItem = results[1] as Item?;
 
       // Check for old items stored with discogsId in barcode field
@@ -225,7 +225,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen>
   // Handle vinyl found
   Future<void> _handleVinylFound(
     String barcode,
-    VinylMetadata vinylMetadata,
+    MusicMetadata vinylMetadata,
     Item? existingItem,
   ) async {
     try {
@@ -254,7 +254,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen>
 
       await handlePostScanNavigation(
         action: action,
-        addScreen: AddVinylScreen(
+        addScreen: AddMusicScreen(
           householdId: householdId,
           vinylData: vinylMetadata,
           preSelectedContainerId: widget.preSelectedContainerId,
@@ -358,7 +358,7 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen>
   }
 
   // Show vinyl preview dialog
-  Future<String?> _showVinylPreview(VinylMetadata vinyl) async {
+  Future<String?> _showVinylPreview(MusicMetadata vinyl) async {
     return showItemPreviewDialog(
       context: context,
       title: 'Vinyl Record Found',

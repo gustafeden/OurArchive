@@ -8,7 +8,7 @@ import '../../data/models/item.dart';
 import '../../data/models/item_type.dart';
 import 'item_type_selection_screen.dart';
 import 'book_scan_screen.dart';
-import 'vinyl_scan_screen.dart';
+import 'music_scan_screen.dart';
 import 'container_screen.dart';
 import 'manage_types_screen.dart';
 import 'common/scan_modes.dart';
@@ -371,7 +371,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => VinylScanScreen(
+                    builder: (context) => MusicScanScreen(
                       householdId: widget.household.id,
                       initialMode: ScanMode.camera,
                     ),

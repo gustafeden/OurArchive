@@ -1,4 +1,4 @@
-import 'vinyl_metadata.dart';
+import 'music_metadata.dart';
 
 /// Pagination information from Discogs API responses
 class PaginationInfo {
@@ -47,7 +47,7 @@ class PaginationInfo {
 
 /// Search result from Discogs API with pagination info
 class DiscogsSearchResult {
-  final List<VinylMetadata> results;
+  final List<MusicMetadata> results;
   final PaginationInfo pagination;
 
   const DiscogsSearchResult({

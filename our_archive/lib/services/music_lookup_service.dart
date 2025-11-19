@@ -1,9 +1,9 @@
-import '../data/models/vinyl_metadata.dart';
+import '../data/models/music_metadata.dart';
 import '../data/models/discogs_search_result.dart';
 import 'discogs_service.dart';
 
-class VinylLookupService {
-  /// Lookup vinyl by barcode with pagination support
+class MusicLookupService {
+  /// Lookup music by barcode with pagination support
   static Future<DiscogsSearchResult> lookupByBarcodeWithPagination(
     String barcode, {
     int page = 1,
@@ -19,10 +19,10 @@ class VinylLookupService {
       final results = response['results'] as List;
       final paginationData = response['pagination'] as Map<String, dynamic>;
 
-      // Convert all results to VinylMetadata with barcode included
-      final vinylList = results.map((result) {
-        final metadata = VinylMetadata.fromDiscogsJson(result);
-        return VinylMetadata(
+      // Convert all results to MusicMetadata with barcode included
+      final musicList = results.map((result) {
+        final metadata = MusicMetadata.fromDiscogsJson(result);
+        return MusicMetadata(
           title: metadata.title,
           artist: metadata.artist,
           label: metadata.label,
@@ -44,7 +44,7 @@ class VinylLookupService {
           : PaginationInfo.empty();
 
       return DiscogsSearchResult(
-        results: vinylList,
+        results: musicList,
         pagination: pagination,
       );
     } catch (e) {
@@ -52,33 +52,33 @@ class VinylLookupService {
     }
   }
 
-  /// Lookup vinyl by barcode - returns all matching results (backward compatible)
+  /// Lookup music by barcode - returns all matching results (backward compatible)
   /// For new code, use lookupByBarcodeWithPagination instead
-  static Future<List<VinylMetadata>> lookupByBarcode(String barcode) async {
+  static Future<List<MusicMetadata>> lookupByBarcode(String barcode) async {
     final result = await lookupByBarcodeWithPagination(barcode, page: 1, perPage: 5);
     return result.results;
   }
 
-  /// Search for vinyl by text query (title or artist)
-  static Future<List<VinylMetadata>> searchByText(String query) async {
+  /// Search for music by text query (title or artist)
+  static Future<List<MusicMetadata>> searchByText(String query) async {
     try {
       final results = await DiscogsService.searchByText(query);
 
       return results
-          .map((json) => VinylMetadata.fromDiscogsJson(json))
+          .map((json) => MusicMetadata.fromDiscogsJson(json))
           .toList();
     } catch (e) {
       return [];
     }
   }
 
-  /// Get detailed vinyl information by Discogs release ID
-  static Future<VinylMetadata?> getDetailedInfo(String releaseId) async {
+  /// Get detailed music information by Discogs release ID
+  static Future<MusicMetadata?> getDetailedInfo(String releaseId) async {
     try {
       final result = await DiscogsService.getReleaseDetails(releaseId);
 
       if (result != null) {
-        return VinylMetadata.fromDiscogsJson(result);
+        return MusicMetadata.fromDiscogsJson(result);
       }
 
       return null;

@@ -1,14 +1,14 @@
 import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
-import 'package:our_archive/ui/screens/vinyl_scan_screen.dart';
-import 'package:our_archive/ui/screens/add_vinyl_screen.dart';
+import 'package:our_archive/ui/screens/music_scan_screen.dart';
+import 'package:our_archive/ui/screens/add_music_screen.dart';
 import 'package:our_archive/ui/screens/common/scan_modes.dart';
 
-class AddVinylFlowScreen extends StatelessWidget {
+class AddMusicFlowScreen extends StatelessWidget {
   final String householdId;
   final String? preSelectedContainerId;
 
-  const AddVinylFlowScreen({
+  const AddMusicFlowScreen({
     Key? key,
     required this.householdId,
     this.preSelectedContainerId,
@@ -54,7 +54,7 @@ class AddVinylFlowScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => VinylScanScreen(
+                            builder: (context) => MusicScanScreen(
                               householdId: householdId,
                               initialMode: ScanMode.camera,
                               preSelectedContainerId: preSelectedContainerId,
@@ -73,7 +73,7 @@ class AddVinylFlowScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => VinylScanScreen(
+                            builder: (context) => MusicScanScreen(
                               householdId: householdId,
                               initialMode: ScanMode.textSearch,
                               preSelectedContainerId: preSelectedContainerId,
@@ -92,7 +92,7 @@ class AddVinylFlowScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => AddVinylScreen(
+                            builder: (context) => AddMusicScreen(
                               householdId: householdId,
                               preSelectedContainerId: preSelectedContainerId,
                             ),

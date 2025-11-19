@@ -1,31 +1,31 @@
 import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/models/vinyl_metadata.dart';
+import '../../data/models/music_metadata.dart';
 import '../../data/models/item.dart';
 import '../../data/models/track.dart';
 import '../../data/models/discogs_search_result.dart';
 import '../../providers/providers.dart';
 import '../../providers/music_providers.dart';
-import '../../services/vinyl_lookup_service.dart';
+import '../../services/music_lookup_service.dart';
 import '../../utils/text_search_helper.dart';
 import '../widgets/common/search_results_view.dart';
 import '../widgets/scanner/camera_scanner_view.dart';
 import '../widgets/scanner/scan_mode_selector.dart';
 import '../widgets/scanner/track_preview_section.dart';
-import '../widgets/scanner/vinyl_selection_dialog.dart';
+import '../widgets/scanner/music_selection_dialog.dart';
 import 'mixins/base_scanner_mixin.dart';
 import 'mixins/duplicate_check_mixin.dart';
 import 'mixins/post_scan_navigation_mixin.dart';
 import 'common/scan_modes.dart';
-import 'add_vinyl_screen.dart';
+import 'add_music_screen.dart';
 
-class VinylScanScreen extends ConsumerStatefulWidget {
+class MusicScanScreen extends ConsumerStatefulWidget {
   final String householdId;
   final ScanMode initialMode;
   final String? preSelectedContainerId;
 
-  const VinylScanScreen({
+  const MusicScanScreen({
     super.key,
     required this.householdId,
     this.initialMode = ScanMode.camera,
@@ -33,10 +33,10 @@ class VinylScanScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<VinylScanScreen> createState() => _VinylScanScreenState();
+  ConsumerState<MusicScanScreen> createState() => _MusicScanScreenState();
 }
 
-class _VinylScanScreenState extends ConsumerState<VinylScanScreen>
+class _MusicScanScreenState extends ConsumerState<MusicScanScreen>
     with BaseScannerMixin, DuplicateCheckMixin, PostScanNavigationMixin {
 
   late ScanMode _currentMode;
@@ -60,10 +60,10 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen>
 
   // Text search for vinyl
   Future<void> _performTextSearch() async {
-    await TextSearchHelper.performSearchWithState<VinylMetadata>(
+    await TextSearchHelper.performSearchWithState<MusicMetadata>(
       context: context,
       query: textSearchController.text,
-      searchFunction: (query) => VinylLookupService.searchByText(query),
+      searchFunction: (query) => MusicLookupService.searchByText(query),
       setState: setState,
       setIsSearching: (value) => isSearching = value,
       setSearchResults: (results) => searchResults = results,
@@ -73,13 +73,13 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen>
   }
 
   // Handle tapping a search result
-  Future<void> _handleSearchResultTap(VinylMetadata vinyl) async {
+  Future<void> _handleSearchResultTap(MusicMetadata vinyl) async {
     if (!mounted) return;
 
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AddVinylScreen(
+        builder: (context) => AddMusicScreen(
           householdId: householdId,
           vinylData: vinyl,
           preSelectedContainerId: widget.preSelectedContainerId,
@@ -93,17 +93,17 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen>
     if (!shouldProcessBarcode(code)) return;
 
     startProcessing(code);
-    await _lookupVinyl(code);
+    await _lookupMusic(code);
   }
 
   // Lookup vinyl by barcode
-  Future<void> _lookupVinyl(String barcode) async {
+  Future<void> _lookupMusic(String barcode) async {
     try {
       final itemRepository = ref.read(itemRepositoryProvider);
 
       // Run API lookup with pagination and find ALL owned items in parallel
       final results = await Future.wait([
-        VinylLookupService.lookupByBarcodeWithPagination(barcode),
+        MusicLookupService.lookupByBarcodeWithPagination(barcode),
         itemRepository.findAllItemsByBarcode(householdId, barcode),
       ]);
 
@@ -120,7 +120,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen>
       }
 
       // Show selection dialog (always, even for single result, to show owned status)
-      final selectionResult = await showVinylSelectionDialog(
+      final selectionResult = await showMusicSelectionDialog(
         context: context,
         barcode: barcode,
         initialResults: searchResult.results,
@@ -183,13 +183,13 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen>
       );
 
       // Show preview dialog with track loading
-      final action = await _showVinylPreview(vinylMetadata, tempItem);
+      final action = await _showMusicPreview(vinylMetadata, tempItem);
 
       if (!mounted) return;
 
       await handlePostScanNavigation(
         action: action,
-        addScreen: AddVinylScreen(
+        addScreen: AddMusicScreen(
           householdId: householdId,
           vinylData: vinylMetadata,
           preSelectedContainerId: widget.preSelectedContainerId,
@@ -206,7 +206,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen>
   }
 
   // Show vinyl preview dialog with track loading
-  Future<String?> _showVinylPreview(VinylMetadata vinyl, Item tempItem) async {
+  Future<String?> _showMusicPreview(MusicMetadata vinyl, Item tempItem) async {
     List<Track>? tracks;
     bool loadingTracks = true;
 
@@ -219,7 +219,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen>
         final fetchedTracks = await trackService.getTracksForItem(tempItem, householdId);
         if (mounted) {
           tracks = fetchedTracks;
-          _loadedTracks = fetchedTracks; // Store for passing to AddVinylScreen
+          _loadedTracks = fetchedTracks; // Store for passing to AddMusicScreen
           loadingTracks = false;
         }
       } catch (e) {
@@ -276,7 +276,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen>
     );
   }
 
-  Widget _buildPreviewContent(VinylMetadata vinyl, Item tempItem, List<Track>? tracks, bool loadingTracks) {
+  Widget _buildPreviewContent(MusicMetadata vinyl, Item tempItem, List<Track>? tracks, bool loadingTracks) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -350,12 +350,12 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen>
         );
 
       case ScanMode.textSearch:
-        return SearchResultsView<VinylMetadata>(
+        return SearchResultsView<MusicMetadata>(
           controller: textSearchController,
           labelText: 'Search Discogs',
           hintText: 'Artist, album, or catalog number',
           isSearching: isSearching,
-          searchResults: searchResults.cast<VinylMetadata>(),
+          searchResults: searchResults.cast<MusicMetadata>(),
           onSearch: _performTextSearch,
           resultBuilder: (context, vinyl) => ListTile(
             leading: vinyl.coverUrl != null && vinyl.coverUrl!.isNotEmpty
