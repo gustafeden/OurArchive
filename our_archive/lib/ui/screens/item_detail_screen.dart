@@ -503,7 +503,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
 
                   // Music-specific information (if this is a music item)
                   if (ItemType.isMusicType(widget.item.type)) ...[
-                    _buildVinylInfoSection(),
+                    _buildMusicInfoSection(),
                     const SizedBox(height: 24),
                   ],
 
@@ -800,7 +800,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     );
   }
 
-  Widget _buildVinylInfoSection() {
+  Widget _buildMusicInfoSection() {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),

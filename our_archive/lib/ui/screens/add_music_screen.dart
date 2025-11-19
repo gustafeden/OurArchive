@@ -21,7 +21,7 @@ class AddMusicScreen extends ConsumerStatefulWidget {
   final Household? household;
   final String? householdId; // Alternative to household object
   final String? preSelectedContainerId;
-  final MusicMetadata? vinylData;
+  final MusicMetadata? musicData;
   final List<Track>? tracks; // Pre-loaded tracks from scanner
 
   const AddMusicScreen({
@@ -29,7 +29,7 @@ class AddMusicScreen extends ConsumerStatefulWidget {
     this.household,
     this.householdId,
     this.preSelectedContainerId,
-    this.vinylData,
+    this.musicData,
     this.tracks,
   }) : assert(household != null || householdId != null,
             'Either household or householdId must be provided');
@@ -63,17 +63,17 @@ class _AddMusicScreenState extends ConsumerState<AddMusicScreen> {
     super.initState();
     _selectedContainerId = widget.preSelectedContainerId;
 
-    if (widget.vinylData != null) {
-      _titleController.text = widget.vinylData!.title;
-      _artistController.text = widget.vinylData!.artist;
-      _labelController.text = widget.vinylData!.label ?? '';
-      _yearController.text = widget.vinylData!.year ?? '';
-      _genreController.text = widget.vinylData!.genre ?? '';
-      _catalogController.text = widget.vinylData!.catalogNumber ?? '';
+    if (widget.musicData != null) {
+      _titleController.text = widget.musicData!.title;
+      _artistController.text = widget.musicData!.artist;
+      _labelController.text = widget.musicData!.label ?? '';
+      _yearController.text = widget.musicData!.year ?? '';
+      _genreController.text = widget.musicData!.genre ?? '';
+      _catalogController.text = widget.musicData!.catalogNumber ?? '';
 
       // Auto-select format based on API data
-      if (widget.vinylData!.format != null && widget.vinylData!.format!.isNotEmpty) {
-        final formatLower = widget.vinylData!.format!.join(' ').toLowerCase();
+      if (widget.musicData!.format != null && widget.musicData!.format!.isNotEmpty) {
+        final formatLower = widget.musicData!.format!.join(' ').toLowerCase();
         if (formatLower.contains('cd')) {
           _selectedFormat = 'cd';
         } else if (formatLower.contains('vinyl') || formatLower.contains('lp')) {
@@ -85,8 +85,8 @@ class _AddMusicScreenState extends ConsumerState<AddMusicScreen> {
         }
       }
 
-      if (widget.vinylData!.coverUrl != null) {
-        _downloadCover(widget.vinylData!.coverUrl!);
+      if (widget.musicData!.coverUrl != null) {
+        _downloadCover(widget.musicData!.coverUrl!);
       }
     }
   }
@@ -108,7 +108,7 @@ class _AddMusicScreenState extends ConsumerState<AddMusicScreen> {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final tempDir = await getTemporaryDirectory();
-        final file = File('${tempDir.path}/vinyl_cover_${DateTime.now().millisecondsSinceEpoch}.jpg');
+        final file = File('${tempDir.path}/music_cover_${DateTime.now().millisecondsSinceEpoch}.jpg');
         await file.writeAsBytes(response.bodyBytes);
         if (mounted) setState(() => _photo = file);
       }
@@ -140,19 +140,19 @@ class _AddMusicScreenState extends ConsumerState<AddMusicScreen> {
         'releaseYear': _yearController.text.trim().isEmpty ? null : _yearController.text.trim(),
         'genre': _genreController.text.trim().isEmpty ? null : _genreController.text.trim(),
         'catalogNumber': _catalogController.text.trim().isEmpty ? null : _catalogController.text.trim(),
-        'coverUrl': widget.vinylData?.coverUrl,
+        'coverUrl': widget.musicData?.coverUrl,
         'description': _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
-        'discogsId': widget.vinylData?.discogsId,
-        'barcode': widget.vinylData?.barcode, // Store the actual UPC/EAN barcode
+        'discogsId': widget.musicData?.discogsId,
+        'barcode': widget.musicData?.barcode, // Store the actual UPC/EAN barcode
         'tracks': widget.tracks?.map((t) => t.toJson()).toList(), // Save pre-loaded tracks
       };
 
       // Save format based on user selection or API data
-      if (widget.vinylData != null && widget.vinylData!.format != null) {
+      if (widget.musicData != null && widget.musicData!.format != null) {
         // Use API format if available
-        itemData['format'] = widget.vinylData!.format;
-        itemData['styles'] = widget.vinylData!.styles;
-        itemData['country'] = widget.vinylData!.country;
+        itemData['format'] = widget.musicData!.format;
+        itemData['styles'] = widget.musicData!.styles;
+        itemData['country'] = widget.musicData!.country;
       } else {
         // Convert user selection to format array for manual entries
         switch (_selectedFormat) {
@@ -200,7 +200,7 @@ class _AddMusicScreenState extends ConsumerState<AddMusicScreen> {
 
   // Allow user to select a different release while preserving form inputs
   Future<void> _selectDifferentRelease() async {
-    if (widget.vinylData?.barcode == null) {
+    if (widget.musicData?.barcode == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No barcode available to search for other releases')),
       );
@@ -213,8 +213,8 @@ class _AddMusicScreenState extends ConsumerState<AddMusicScreen> {
       // Fetch all releases for this barcode
       final itemRepository = ref.read(itemRepositoryProvider);
       final results = await Future.wait([
-        MusicLookupService.lookupByBarcodeWithPagination(widget.vinylData!.barcode!),
-        itemRepository.findAllItemsByBarcode(_householdId, widget.vinylData!.barcode!),
+        MusicLookupService.lookupByBarcodeWithPagination(widget.musicData!.barcode!),
+        itemRepository.findAllItemsByBarcode(_householdId, widget.musicData!.barcode!),
       ]);
 
       final searchResult = results[0] as DiscogsSearchResult;
@@ -236,7 +236,7 @@ class _AddMusicScreenState extends ConsumerState<AddMusicScreen> {
       // Show selection dialog
       final selectionResult = await showMusicSelectionDialog(
         context: context,
-        barcode: widget.vinylData!.barcode!,
+        barcode: widget.musicData!.barcode!,
         initialResults: searchResult.results,
         initialPagination: searchResult.pagination,
         ownedItems: ownedItems.cast(),
@@ -244,21 +244,21 @@ class _AddMusicScreenState extends ConsumerState<AddMusicScreen> {
       );
 
       if (selectionResult != null && mounted) {
-        // Extract vinyl metadata from result
-        final selectedVinyl = selectionResult.vinyl;
+        // Extract music metadata from result
+        final selectedMusic = selectionResult.music;
 
         // Update metadata fields while preserving user inputs
         setState(() {
-          _titleController.text = selectedVinyl.title;
-          _artistController.text = selectedVinyl.artist;
-          _labelController.text = selectedVinyl.label ?? '';
-          _yearController.text = selectedVinyl.year ?? '';
-          _genreController.text = selectedVinyl.genre ?? '';
-          _catalogController.text = selectedVinyl.catalogNumber ?? '';
+          _titleController.text = selectedMusic.title;
+          _artistController.text = selectedMusic.artist;
+          _labelController.text = selectedMusic.label ?? '';
+          _yearController.text = selectedMusic.year ?? '';
+          _genreController.text = selectedMusic.genre ?? '';
+          _catalogController.text = selectedMusic.catalogNumber ?? '';
 
           // Update format based on new release
-          if (selectedVinyl.format != null && selectedVinyl.format!.isNotEmpty) {
-            final formatLower = selectedVinyl.format!.join(' ').toLowerCase();
+          if (selectedMusic.format != null && selectedMusic.format!.isNotEmpty) {
+            final formatLower = selectedMusic.format!.join(' ').toLowerCase();
             if (formatLower.contains('cd')) {
               _selectedFormat = 'cd';
             } else if (formatLower.contains('vinyl') || formatLower.contains('lp')) {
@@ -271,13 +271,13 @@ class _AddMusicScreenState extends ConsumerState<AddMusicScreen> {
           }
 
           // Download new cover
-          if (selectedVinyl.coverUrl != null) {
-            _downloadCover(selectedVinyl.coverUrl!);
+          if (selectedMusic.coverUrl != null) {
+            _downloadCover(selectedMusic.coverUrl!);
           }
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Switched to: ${selectedVinyl.title}')),
+          SnackBar(content: Text('Switched to: ${selectedMusic.title}')),
         );
       }
     } catch (e) {
@@ -296,7 +296,7 @@ class _AddMusicScreenState extends ConsumerState<AddMusicScreen> {
       appBar: AppBar(
         title: const Text('Add Music'),
         actions: [
-          if (widget.vinylData?.barcode != null)
+          if (widget.musicData?.barcode != null)
             TextButton.icon(
               onPressed: _selectDifferentRelease,
               icon: const Icon(Ionicons.swap_horizontal_outline),

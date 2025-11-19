@@ -17,7 +17,7 @@ class AddItemScreen extends ConsumerStatefulWidget {
   final String? householdId; // Alternative to household object
   final String? preSelectedContainerId;
   final BookMetadata? bookData;
-  final MusicMetadata? vinylData;
+  final MusicMetadata? musicData;
 
   const AddItemScreen({
     super.key,
@@ -25,7 +25,7 @@ class AddItemScreen extends ConsumerStatefulWidget {
     this.householdId,
     this.preSelectedContainerId,
     this.bookData,
-    this.vinylData,
+    this.musicData,
   }) : assert(household != null || householdId != null,
             'Either household or householdId must be provided');
 
@@ -74,27 +74,27 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
       }
     }
 
-    // Pre-fill form if vinyl data is provided
-    if (widget.vinylData != null) {
-      _titleController.text = widget.vinylData!.title;
+    // Pre-fill form if music data is provided
+    if (widget.musicData != null) {
+      _titleController.text = widget.musicData!.title;
       _selectedType = 'music';
 
-      // Add vinyl-specific info to tags
-      final vinylTags = <String>[];
-      if (widget.vinylData!.artist.isNotEmpty) {
-        vinylTags.add('artist:${widget.vinylData!.artist}');
+      // Add music-specific info to tags
+      final musicTags = <String>[];
+      if (widget.musicData!.artist.isNotEmpty) {
+        musicTags.add('artist:${widget.musicData!.artist}');
       }
-      if (widget.vinylData!.label != null) {
-        vinylTags.add('label:${widget.vinylData!.label}');
+      if (widget.musicData!.label != null) {
+        musicTags.add('label:${widget.musicData!.label}');
       }
-      if (widget.vinylData!.genre != null) {
-        vinylTags.add('genre:${widget.vinylData!.genre}');
+      if (widget.musicData!.genre != null) {
+        musicTags.add('genre:${widget.musicData!.genre}');
       }
-      _tagsController.text = vinylTags.join(', ');
+      _tagsController.text = musicTags.join(', ');
 
-      // Download vinyl cover if available
-      if (widget.vinylData!.coverUrl != null) {
-        _downloadBookCover(widget.vinylData!.coverUrl!);
+      // Download music cover if available
+      if (widget.musicData!.coverUrl != null) {
+        _downloadBookCover(widget.musicData!.coverUrl!);
       }
     }
   }
@@ -195,19 +195,19 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
         itemData['barcode'] = widget.bookData!.isbn;
       }
 
-      // Add vinyl-specific fields if available
-      if (widget.vinylData != null) {
-        itemData['artist'] = widget.vinylData!.artist;
-        itemData['label'] = widget.vinylData!.label;
-        itemData['releaseYear'] = widget.vinylData!.year;
-        itemData['genre'] = widget.vinylData!.genre;
-        itemData['styles'] = widget.vinylData!.styles;
-        itemData['catalogNumber'] = widget.vinylData!.catalogNumber;
-        itemData['coverUrl'] = widget.vinylData!.coverUrl;
-        itemData['format'] = widget.vinylData!.format;
-        itemData['country'] = widget.vinylData!.country;
-        itemData['discogsId'] = widget.vinylData!.discogsId;
-        itemData['barcode'] = '${widget.vinylData!.discogsId}'; // Use Discogs ID as barcode fallback
+      // Add music-specific fields if available
+      if (widget.musicData != null) {
+        itemData['artist'] = widget.musicData!.artist;
+        itemData['label'] = widget.musicData!.label;
+        itemData['releaseYear'] = widget.musicData!.year;
+        itemData['genre'] = widget.musicData!.genre;
+        itemData['styles'] = widget.musicData!.styles;
+        itemData['catalogNumber'] = widget.musicData!.catalogNumber;
+        itemData['coverUrl'] = widget.musicData!.coverUrl;
+        itemData['format'] = widget.musicData!.format;
+        itemData['country'] = widget.musicData!.country;
+        itemData['discogsId'] = widget.musicData!.discogsId;
+        itemData['barcode'] = '${widget.musicData!.discogsId}'; // Use Discogs ID as barcode fallback
       }
 
       await itemRepo.addItem(

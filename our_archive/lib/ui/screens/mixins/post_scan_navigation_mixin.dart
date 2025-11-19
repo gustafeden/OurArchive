@@ -26,7 +26,7 @@ mixin PostScanNavigationMixin<T extends ConsumerStatefulWidget>
   /// - [action]: The action chosen by user ('add', 'scanNext', or null)
   /// - [addScreen]: The widget to navigate to for adding the item
   /// - [successMessage]: Message to show when returning to scanner
-  /// - [itemLabel]: Label for item type (e.g., 'Book', 'Vinyl')
+  /// - [itemLabel]: Label for item type (e.g., 'Book', 'Music')
   Future<void> handlePostScanNavigation({
     required String? action,
     required Widget addScreen,

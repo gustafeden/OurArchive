@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 /// A widget that displays a network image with a fallback icon if loading fails.
 ///
-/// Commonly used in preview dialogs for scanned items (books, vinyl, etc.) to show
+/// Commonly used in preview dialogs for scanned items (books, music, etc.) to show
 /// cover art or thumbnail images with graceful error handling.
 ///
 /// Usage:

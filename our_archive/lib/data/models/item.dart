@@ -33,7 +33,7 @@ class Item {
   final int? pageCount;
   final String? description;
 
-  // Vinyl-specific fields
+  // Music-specific fields
   final String? artist;
   final String? label;
   final String? releaseYear;

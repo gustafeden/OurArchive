@@ -7,7 +7,7 @@ class ItemType {
   final String icon; // Material icon name
   final int? color; // Color value for UI theming (optional)
   final bool isDefault; // true for built-in types
-  final bool hasSpecializedForm; // true for book, vinyl, game (uses specialized screens)
+  final bool hasSpecializedForm; // true for book, music, game (uses specialized screens)
   final DateTime createdAt;
   final String createdBy;
 

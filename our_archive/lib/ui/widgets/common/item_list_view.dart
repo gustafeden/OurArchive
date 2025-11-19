@@ -49,7 +49,7 @@ class ItemListView extends ConsumerWidget {
   }
 
   Widget _buildGroupedItemList(BuildContext context, WidgetRef ref) {
-    // Group items by type, but split vinyl into music sub-types
+    // Group items by type, but split music into sub-types by format
     final groupedItems = <String, List<Item>>{};
     final categoryOrder = [
       'book',
@@ -134,7 +134,7 @@ class ItemListView extends ConsumerWidget {
   }
 
   Widget _buildBrowseView(BuildContext context, WidgetRef ref) {
-    // Group items by type, but split vinyl into music sub-types
+    // Group items by type, but split music into sub-types by format
     final groupedItems = <String, List<Item>>{};
     final categoryOrder = [
       'book',

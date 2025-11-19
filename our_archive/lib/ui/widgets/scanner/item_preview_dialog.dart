@@ -15,7 +15,7 @@ class ItemPreviewField {
   });
 }
 
-/// Shows a preview dialog for an item found via scanning (book, vinyl, etc.).
+/// Shows a preview dialog for an item found via scanning (book, music, etc.).
 ///
 /// This template replaces duplicated preview dialogs across scanner screens
 /// with a flexible, reusable implementation.

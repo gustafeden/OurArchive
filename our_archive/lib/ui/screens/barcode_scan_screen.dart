@@ -184,12 +184,12 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen>
     await _lookupItem(code);
   }
 
-  // Lookup item (tries vinyl first, then book)
+  // Lookup item (tries music first, then book)
   Future<void> _lookupItem(String code) async {
     try {
       final itemRepository = ref.read(itemRepositoryProvider);
 
-      // Try vinyl lookup and duplicate check in parallel
+      // Try music lookup and duplicate check in parallel
       final results = await Future.wait([
         MusicLookupService.lookupByBarcode(code),
         itemRepository.findItemByBarcode(householdId, code),
@@ -197,35 +197,35 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen>
 
       if (!mounted) return;
 
-      final vinylMetadata = results[0] as MusicMetadata?;
+      final musicMetadata = results[0] as MusicMetadata?;
       var existingItem = results[1] as Item?;
 
       // Check for old items stored with discogsId in barcode field
-      if (existingItem == null && vinylMetadata?.discogsId != null) {
+      if (existingItem == null && musicMetadata?.discogsId != null) {
         existingItem = await itemRepository.findItemByDiscogsId(
           householdId,
-          vinylMetadata!.discogsId!,
+          musicMetadata!.discogsId!,
         );
       }
 
       if (!mounted) return;
 
-      if (vinylMetadata != null) {
-        await _handleVinylFound(code, vinylMetadata, existingItem);
+      if (musicMetadata != null) {
+        await _handleMusicFound(code, musicMetadata, existingItem);
         return;
       }
     } catch (e) {
-      // Vinyl lookup failed, continue to book lookup
+      // Music lookup failed, continue to book lookup
     }
 
     // Fall back to book lookup
     await _lookupBook(code);
   }
 
-  // Handle vinyl found
-  Future<void> _handleVinylFound(
+  // Handle music found
+  Future<void> _handleMusicFound(
     String barcode,
-    MusicMetadata vinylMetadata,
+    MusicMetadata musicMetadata,
     Item? existingItem,
   ) async {
     try {
@@ -236,18 +236,18 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen>
       if (existingItem != null) {
         action = await handleDuplicateFlow(
           existingItem: existingItem,
-          itemTypeName: 'Vinyl',
+          itemTypeName: 'Music',
         );
 
         if (!mounted) return;
 
         if (action == 'addCopy') {
-          action = await _showVinylPreview(vinylMetadata);
+          action = await _showMusicPreview(musicMetadata);
         } else {
           return; // User chose to scan next or cancelled
         }
       } else {
-        action = await _showVinylPreview(vinylMetadata);
+        action = await _showMusicPreview(musicMetadata);
       }
 
       if (!mounted) return;
@@ -256,15 +256,15 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen>
         action: action,
         addScreen: AddMusicScreen(
           householdId: householdId,
-          vinylData: vinylMetadata,
+          musicData: musicMetadata,
           preSelectedContainerId: widget.preSelectedContainerId,
         ),
-        successMessage: 'Vinyl added! Scan next item',
-        itemLabel: 'Vinyl',
+        successMessage: 'Music added! Scan next item',
+        itemLabel: 'Music',
       );
     } catch (e) {
       if (!mounted) return;
-      showError('Error processing vinyl: $e');
+      showError('Error processing music: $e');
       resetScanning();
     }
   }
@@ -357,30 +357,30 @@ class _BarcodeScanScreenState extends ConsumerState<BarcodeScanScreen>
     );
   }
 
-  // Show vinyl preview dialog
-  Future<String?> _showVinylPreview(MusicMetadata vinyl) async {
+  // Show music preview dialog
+  Future<String?> _showMusicPreview(MusicMetadata music) async {
     return showItemPreviewDialog(
       context: context,
-      title: 'Vinyl Record Found',
-      imageUrl: vinyl.coverUrl,
+      title: 'Music Found',
+      imageUrl: music.coverUrl,
       fallbackIcon: Ionicons.disc_outline,
-      itemTitle: vinyl.title,
-      creator: vinyl.artist.isNotEmpty ? vinyl.artist : null,
+      itemTitle: music.title,
+      creator: music.artist.isNotEmpty ? music.artist : null,
       metadataFields: [
-        if (vinyl.label != null)
-          ItemPreviewField(label: 'Label', value: vinyl.label!),
-        if (vinyl.year != null)
-          ItemPreviewField(label: 'Year', value: vinyl.year.toString()),
-        if (vinyl.catalogNumber != null)
-          ItemPreviewField(label: 'Catalog #', value: vinyl.catalogNumber!),
-        if (vinyl.genre != null)
-          ItemPreviewField(label: 'Genre', value: vinyl.genre!),
-        if (vinyl.format != null && vinyl.format!.isNotEmpty)
-          ItemPreviewField(label: 'Format', value: vinyl.format!.join(', ')),
-        if (vinyl.country != null)
-          ItemPreviewField(label: 'Country', value: vinyl.country!),
+        if (music.label != null)
+          ItemPreviewField(label: 'Label', value: music.label!),
+        if (music.year != null)
+          ItemPreviewField(label: 'Year', value: music.year.toString()),
+        if (music.catalogNumber != null)
+          ItemPreviewField(label: 'Catalog #', value: music.catalogNumber!),
+        if (music.genre != null)
+          ItemPreviewField(label: 'Genre', value: music.genre!),
+        if (music.format != null && music.format!.isNotEmpty)
+          ItemPreviewField(label: 'Format', value: music.format!.join(', ')),
+        if (music.country != null)
+          ItemPreviewField(label: 'Country', value: music.country!),
       ],
-      primaryActionLabel: 'Add Vinyl',
+      primaryActionLabel: 'Add Music',
       showCancelButton: false,
     );
   }

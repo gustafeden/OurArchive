@@ -4,7 +4,7 @@ import 'package:ionicons/ionicons.dart';
 /// Standardized scan modes across all scanner screens
 ///
 /// This enum provides a consistent set of scanning modes that can be
-/// used by different scanner screens (books, vinyl, games, etc.).
+/// used by different scanner screens (books, music, games, etc.).
 /// Not all screens need to support all modes.
 enum ScanMode {
   /// Camera barcode/QR code scanning

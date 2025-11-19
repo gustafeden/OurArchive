@@ -210,7 +210,7 @@ class _TrackPreviewSectionState extends ConsumerState<TrackPreviewSection> {
       return const SizedBox.shrink();
     }
 
-    // Group tracks by side for vinyl
+    // Group tracks by side (for vinyl records)
     final tracksBySide = <String, List<Track>>{};
     for (final track in widget.tracks!) {
       final side = track.side ?? 'All';

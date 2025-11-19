@@ -8,18 +8,18 @@ import '../../../services/music_lookup_service.dart';
 import '../../../providers/providers.dart';
 import '../common/network_image_with_fallback.dart';
 
-/// Result from vinyl selection dialog
+/// Result from music selection dialog
 class MusicSelectionResult {
-  final MusicMetadata vinyl;
+  final MusicMetadata music;
   final String action; // 'add' or 'preview'
 
   MusicSelectionResult({
-    required this.vinyl,
+    required this.music,
     required this.action,
   });
 }
 
-/// Shows an enhanced selection dialog when multiple vinyl releases match a barcode.
+/// Shows an enhanced selection dialog when multiple music releases match a barcode.
 ///
 /// Features:
 /// - Visual indicators for owned releases (badge, color, location)
@@ -85,26 +85,26 @@ class _MusicSelectionDialogState extends ConsumerState<_MusicSelectionDialog> {
     final owned = <MusicMetadata>[];
     final notOwned = <MusicMetadata>[];
 
-    for (final vinyl in results) {
-      if (_isOwned(vinyl)) {
-        owned.add(vinyl);
+    for (final music in results) {
+      if (_isOwned(music)) {
+        owned.add(music);
       } else {
-        notOwned.add(vinyl);
+        notOwned.add(music);
       }
     }
 
     return [...owned, ...notOwned];
   }
 
-  /// Check if a vinyl release is owned
-  bool _isOwned(MusicMetadata vinyl) {
-    return widget.ownedItems.any((item) => item.discogsId != null && item.discogsId == vinyl.discogsId);
+  /// Check if a music release is owned
+  bool _isOwned(MusicMetadata music) {
+    return widget.ownedItems.any((item) => item.discogsId != null && item.discogsId == music.discogsId);
   }
 
-  /// Get owned item for a vinyl release
-  Item? _getOwnedItem(MusicMetadata vinyl) {
+  /// Get owned item for a music release
+  Item? _getOwnedItem(MusicMetadata music) {
     try {
-      return widget.ownedItems.firstWhere((item) => item.discogsId != null && item.discogsId == vinyl.discogsId);
+      return widget.ownedItems.firstWhere((item) => item.discogsId != null && item.discogsId == music.discogsId);
     } catch (e) {
       return null;
     }
@@ -192,24 +192,24 @@ class _MusicSelectionDialogState extends ConsumerState<_MusicSelectionDialog> {
                 itemCount: _results.length,
                 separatorBuilder: (context, index) => const Divider(),
                 itemBuilder: (context, index) {
-                  final vinyl = _results[index];
-                  final ownedItem = _getOwnedItem(vinyl);
+                  final music = _results[index];
+                  final ownedItem = _getOwnedItem(music);
                   final isOwned = ownedItem != null;
                   final containerName =
                       ownedItem != null && _containerNames != null ? _containerNames![ownedItem.id] : null;
 
                   return _MusicSelectionItem(
-                    vinyl: vinyl,
+                    music: music,
                     isOwned: isOwned,
                     ownedQuantity: ownedItem?.quantity ?? 0,
                     containerName: containerName,
                     onTap: () => Navigator.pop(
                       context,
-                      MusicSelectionResult(vinyl: vinyl, action: 'add'),
+                      MusicSelectionResult(music: music, action: 'add'),
                     ),
                     onPreview: () => Navigator.pop(
                       context,
-                      MusicSelectionResult(vinyl: vinyl, action: 'preview'),
+                      MusicSelectionResult(music: music, action: 'preview'),
                     ),
                   );
                 },
@@ -241,7 +241,7 @@ class _MusicSelectionDialogState extends ConsumerState<_MusicSelectionDialog> {
 }
 
 class _MusicSelectionItem extends StatelessWidget {
-  final MusicMetadata vinyl;
+  final MusicMetadata music;
   final bool isOwned;
   final int ownedQuantity;
   final String? containerName;
@@ -249,7 +249,7 @@ class _MusicSelectionItem extends StatelessWidget {
   final VoidCallback? onPreview;
 
   const _MusicSelectionItem({
-    required this.vinyl,
+    required this.music,
     required this.isOwned,
     required this.ownedQuantity,
     required this.containerName,
@@ -282,7 +282,7 @@ class _MusicSelectionItem extends StatelessWidget {
             SizedBox(
               width: 80,
               child: NetworkImageWithFallback(
-                imageUrl: vinyl.coverUrl,
+                imageUrl: music.coverUrl,
                 height: 80,
                 fallbackIcon: Ionicons.disc_outline,
                 fallbackIconSize: 40,
@@ -290,7 +290,7 @@ class _MusicSelectionItem extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            // Vinyl details
+            // Music details
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -316,7 +316,7 @@ class _MusicSelectionItem extends StatelessWidget {
                   ],
                   // Title
                   Text(
-                    vinyl.title,
+                    music.title,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -325,9 +325,9 @@ class _MusicSelectionItem extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   // Artist
-                  if (vinyl.artist.isNotEmpty)
+                  if (music.artist.isNotEmpty)
                     Text(
-                      vinyl.artist,
+                      music.artist,
                       style: Theme.of(context).textTheme.bodyMedium,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -338,30 +338,30 @@ class _MusicSelectionItem extends StatelessWidget {
                     spacing: 8,
                     runSpacing: 4,
                     children: [
-                      if (vinyl.format != null && vinyl.format!.isNotEmpty)
+                      if (music.format != null && music.format!.isNotEmpty)
                         _DetailChip(
-                          label: vinyl.format!.join(', '),
+                          label: music.format!.join(', '),
                           icon: Ionicons.disc_outline,
                         ),
-                      if (vinyl.country != null && vinyl.country!.isNotEmpty)
+                      if (music.country != null && music.country!.isNotEmpty)
                         _DetailChip(
-                          label: vinyl.country!,
+                          label: music.country!,
                           icon: Ionicons.flag_outline,
                         ),
-                      if (vinyl.year != null)
+                      if (music.year != null)
                         _DetailChip(
-                          label: vinyl.year.toString(),
+                          label: music.year.toString(),
                           icon: Ionicons.calendar_outline,
                         ),
                     ],
                   ),
                   // Label and catalog number
-                  if (vinyl.label != null && vinyl.label!.isNotEmpty) ...[
+                  if (music.label != null && music.label!.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
-                      vinyl.catalogNumber != null && vinyl.catalogNumber!.isNotEmpty
-                          ? '${vinyl.label!} - ${vinyl.catalogNumber!}'
-                          : vinyl.label!,
+                      music.catalogNumber != null && music.catalogNumber!.isNotEmpty
+                          ? '${music.label!} - ${music.catalogNumber!}'
+                          : music.label!,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Colors.grey[600],
                           ),

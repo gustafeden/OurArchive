@@ -35,7 +35,7 @@ class AddMusicFlowScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Vinyl, CD, cassette, or any format',
+                'All music formats (vinyl, CD, cassette, digital, etc.)',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey,
@@ -86,7 +86,7 @@ class AddMusicFlowScreen extends StatelessWidget {
                     _EntryMethodCard(
                       icon: Ionicons.create_outline,
                       title: 'Manual Entry',
-                      description: 'Enter vinyl details manually',
+                      description: 'Enter music details manually',
                       color: Colors.orange,
                       onTap: () {
                         Navigator.push(

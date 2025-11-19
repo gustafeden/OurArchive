@@ -44,7 +44,7 @@ class CameraScannerView extends StatelessWidget {
   /// Instruction text to display at bottom
   final String instructionText;
 
-  /// Label for scanned items counter (e.g., "Books scanned", "Vinyl scanned")
+  /// Label for scanned items counter (e.g., "Books scanned", "Music scanned")
   final String scannedItemLabel;
 
   const CameraScannerView({

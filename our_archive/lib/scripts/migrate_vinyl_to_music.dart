@@ -90,21 +90,21 @@ Future<void> migrateVinylToMusic({
 
       // Query items with type='vinyl' in this household
       log('DEBUG: Querying for vinyl items in household $householdId...');
-      QuerySnapshot vinylItemsSnapshot;
+      QuerySnapshot musicItemsSnapshot;
       try {
-        vinylItemsSnapshot = await firestore
+        musicItemsSnapshot = await firestore
             .collection('households')
             .doc(householdId)
             .collection('items')
             .where('type', isEqualTo: 'vinyl')
             .get();
-        log('DEBUG: Vinyl items query successful. Found ${vinylItemsSnapshot.docs.length} items');
+        log('DEBUG: Vinyl items query successful. Found ${musicItemsSnapshot.docs.length} items');
       } catch (itemQueryError) {
         log('❌ ERROR querying vinyl items: $itemQueryError');
         continue;
       }
 
-      final itemCount = vinylItemsSnapshot.docs.length;
+      final itemCount = musicItemsSnapshot.docs.length;
       totalItemsFound += itemCount;
 
       if (itemCount == 0) {
@@ -118,8 +118,8 @@ Future<void> migrateVinylToMusic({
       var householdUpdated = 0;
       var householdErrors = 0;
 
-      for (var j = 0; j < vinylItemsSnapshot.docs.length; j++) {
-        final item = vinylItemsSnapshot.docs[j];
+      for (var j = 0; j < musicItemsSnapshot.docs.length; j++) {
+        final item = musicItemsSnapshot.docs[j];
         final itemId = item.id;
         final itemData = item.data() as Map<String, dynamic>;
         final itemTitle = itemData['title'] ?? 'Untitled';

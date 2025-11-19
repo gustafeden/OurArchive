@@ -417,7 +417,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
 
     // Count items by music format
     final cdCount = allItems.where((i) => ItemType.isMusicType(i.type) && _getMusicSubType(i) == 'music-cd').length;
-    final vinylCount = allItems.where((i) => ItemType.isMusicType(i.type) && _getMusicSubType(i) == 'music-vinyl').length;
+    final musicCount = allItems.where((i) => ItemType.isMusicType(i.type) && _getMusicSubType(i) == 'music-vinyl').length;
     final cassetteCount = allItems.where((i) => ItemType.isMusicType(i.type) && _getMusicSubType(i) == 'music-cassette').length;
     final digitalCount = allItems.where((i) => ItemType.isMusicType(i.type) && _getMusicSubType(i) == 'music-digital').length;
 
@@ -443,10 +443,10 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
               ),
               const SizedBox(width: 8),
             ],
-            if (vinylCount > 0) ...[
+            if (musicCount > 0) ...[
               _MusicFormatChip(
                 label: 'Vinyl',
-                count: vinylCount,
+                count: musicCount,
                 isSelected: selectedMusicFormat == 'vinyl',
                 onTap: () => ref.read(selectedMusicFormatProvider.notifier).state = 'vinyl',
               ),

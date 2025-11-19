@@ -55,11 +55,11 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
       _lastScannedCode = code;
     });
 
-    // Detect barcode type - ISBN for books, UPC/EAN for vinyl
+    // Detect barcode type - ISBN for books, UPC/EAN for music
     if (_isIsbn(code)) {
       await _checkBook(code);
     } else {
-      await _checkVinyl(code);
+      await _checkMusic(code);
     }
   }
 
@@ -92,11 +92,11 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
       _isProcessing = true;
     });
 
-    // Detect barcode type - ISBN for books, UPC/EAN for vinyl
+    // Detect barcode type - ISBN for books, UPC/EAN for music
     if (_isIsbn(code)) {
       await _checkBook(code);
     } else {
-      await _checkVinyl(code);
+      await _checkMusic(code);
     }
   }
 
@@ -208,7 +208,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
     }
   }
 
-  Future<void> _checkVinyl(String barcode) async {
+  Future<void> _checkMusic(String barcode) async {
     try {
       final itemRepository = ref.read(itemRepositoryProvider);
 
@@ -321,7 +321,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
     );
   }
 
-  Future<String?> _showVinylFoundDialog(Item item) async {
+  Future<String?> _showMusicFoundDialog(Item item) async {
     List<Track>? tracks = item.tracks; // Use cached tracks if available
     bool loadingTracks = tracks == null || tracks.isEmpty;
 
@@ -493,27 +493,27 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
     }
   }
 
-  Future<String?> _showVinylNotFoundDialog(MusicMetadata vinyl) async {
+  Future<String?> _showMusicNotFoundDialog(MusicMetadata music) async {
     List<Track>? tracks;
     bool loadingTracks = true;
 
     // Create temporary item for track fetching
     final tempItem = Item(
       id: '', // Temporary ID
-      title: vinyl.title,
+      title: music.title,
       type: 'music',
       location: '',
       tags: [],
       lastModified: DateTime.now(),
       createdAt: DateTime.now(),
       createdBy: '',
-      searchText: vinyl.title.toLowerCase(),
+      searchText: music.title.toLowerCase(),
       barcode: '',
-      discogsId: vinyl.discogsId,
-      artist: vinyl.artist.isNotEmpty ? vinyl.artist : null,
-      label: vinyl.label,
-      releaseYear: vinyl.year?.toString(),
-      genre: vinyl.genre,
+      discogsId: music.discogsId,
+      artist: music.artist.isNotEmpty ? music.artist : null,
+      label: music.label,
+      releaseYear: music.year?.toString(),
+      genre: music.genre,
     );
 
     // Start loading tracks asynchronously
@@ -549,9 +549,9 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
             });
           }
 
-          return _buildVinylNotFoundDialog(
+          return _buildMusicNotFoundDialog(
             context: dialogContext,
-            vinyl: vinyl,
+            music: music,
             tempItem: tempItem,
             tracks: tracks,
             isLoadingTracks: loadingTracks,
@@ -561,9 +561,9 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
     );
   }
 
-  AlertDialog _buildVinylNotFoundDialog({
+  AlertDialog _buildMusicNotFoundDialog({
     required BuildContext context,
-    required MusicMetadata vinyl,
+    required MusicMetadata music,
     required Item tempItem,
     List<Track>? tracks,
     bool isLoadingTracks = false,
@@ -588,9 +588,9 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Cover image
-            if (vinyl.coverUrl != null && vinyl.coverUrl!.isNotEmpty)
+            if (music.coverUrl != null && music.coverUrl!.isNotEmpty)
               Image.network(
-                vinyl.coverUrl!,
+                music.coverUrl!,
                 height: 200,
                 errorBuilder: (context, error, stackTrace) =>
                     Icon(Ionicons.disc_outline, size: 100, color: Colors.grey[400]),
@@ -601,38 +601,38 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
 
             // Title
             Text(
-              vinyl.title,
+              music.title,
               style: Theme.of(context).textTheme.titleLarge,
             ),
 
             // Artist
-            if (vinyl.artist.isNotEmpty) ...[
+            if (music.artist.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
-                'By ${vinyl.artist}',
+                'By ${music.artist}',
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
             ],
 
             // Metadata fields
-            if (vinyl.label != null && vinyl.label!.isNotEmpty) ...[
+            if (music.label != null && music.label!.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
-                'Label: ${vinyl.label!}',
+                'Label: ${music.label!}',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
-            if (vinyl.year != null) ...[
+            if (music.year != null) ...[
               const SizedBox(height: 4),
               Text(
-                'Year: ${vinyl.year}',
+                'Year: ${music.year}',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
-            if (vinyl.format != null && vinyl.format!.isNotEmpty) ...[
+            if (music.format != null && music.format!.isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(
-                'Format: ${vinyl.format!.join(', ')}',
+                'Format: ${music.format!.join(', ')}',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
@@ -664,28 +664,28 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
     );
   }
 
-  /// Show preview dialog for a vinyl release (tracks + audio preview)
-  Future<String?> _showVinylPreviewDialog(MusicMetadata vinyl) async {
+  /// Show preview dialog for a music release (tracks + audio preview)
+  Future<String?> _showMusicPreviewDialog(MusicMetadata music) async {
     List<Track>? tracks;
     bool loadingTracks = true;
 
     // Create temporary item for track fetching
     final tempItem = Item(
       id: '', // Temporary ID
-      title: vinyl.title,
+      title: music.title,
       type: 'music',
       location: '',
       tags: [],
       lastModified: DateTime.now(),
       createdAt: DateTime.now(),
       createdBy: '',
-      searchText: vinyl.title.toLowerCase(),
+      searchText: music.title.toLowerCase(),
       barcode: '',
-      discogsId: vinyl.discogsId,
-      artist: vinyl.artist.isNotEmpty ? vinyl.artist : null,
-      label: vinyl.label,
-      releaseYear: vinyl.year?.toString(),
-      genre: vinyl.genre,
+      discogsId: music.discogsId,
+      artist: music.artist.isNotEmpty ? music.artist : null,
+      label: music.label,
+      releaseYear: music.year?.toString(),
+      genre: music.genre,
     );
 
     // Start loading tracks asynchronously
@@ -740,10 +740,10 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Cover image
-                  if (vinyl.coverUrl != null && vinyl.coverUrl!.isNotEmpty)
+                  if (music.coverUrl != null && music.coverUrl!.isNotEmpty)
                     Center(
                       child: Image.network(
-                        vinyl.coverUrl!,
+                        music.coverUrl!,
                         height: 200,
                         errorBuilder: (context, error, stackTrace) =>
                             Icon(Ionicons.disc_outline, size: 100, color: Colors.grey[400]),
@@ -757,45 +757,45 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
 
                   // Title
                   Text(
-                    vinyl.title,
+                    music.title,
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
 
                   // Artist
-                  if (vinyl.artist.isNotEmpty) ...[
+                  if (music.artist.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Text(
-                      'By ${vinyl.artist}',
+                      'By ${music.artist}',
                       style: Theme.of(context).textTheme.bodyLarge,
                     ),
                   ],
 
                   // Metadata fields
-                  if (vinyl.label != null && vinyl.label!.isNotEmpty) ...[
+                  if (music.label != null && music.label!.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Text(
-                      'Label: ${vinyl.label!}',
+                      'Label: ${music.label!}',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
-                  if (vinyl.year != null) ...[
+                  if (music.year != null) ...[
                     const SizedBox(height: 4),
                     Text(
-                      'Year: ${vinyl.year}',
+                      'Year: ${music.year}',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
-                  if (vinyl.format != null && vinyl.format!.isNotEmpty) ...[
+                  if (music.format != null && music.format!.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
-                      'Format: ${vinyl.format!.join(', ')}',
+                      'Format: ${music.format!.join(', ')}',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
-                  if (vinyl.country != null && vinyl.country!.isNotEmpty) ...[
+                  if (music.country != null && music.country!.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
-                      'Country: ${vinyl.country!}',
+                      'Country: ${music.country!}',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
@@ -923,7 +923,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
 
       if (result.action == 'preview') {
         // Show preview dialog
-        final previewAction = await _showVinylPreviewDialog(result.vinyl);
+        final previewAction = await _showMusicPreviewDialog(result.music);
 
         if (!mounted) return;
 
@@ -934,7 +934,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
             MaterialPageRoute(
               builder: (context) => AddMusicScreen(
                 householdId: widget.householdId,
-                vinylData: result.vinyl,
+                musicData: result.music,
               ),
             ),
           );
@@ -968,7 +968,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
           MaterialPageRoute(
             builder: (context) => AddMusicScreen(
               householdId: widget.householdId,
-              vinylData: result.vinyl,
+              musicData: result.music,
             ),
           ),
         );

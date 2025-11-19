@@ -222,7 +222,7 @@ class ItemTypeSelectionScreen extends ConsumerWidget {
         case 'book':
           return 'Scan, search, or add manually';
         case 'music':
-          return 'Vinyl, CD, cassette, or other formats';
+          return 'All music formats (vinyl, CD, cassette, digital, etc.)';
         case 'game':
           return 'Add your video game collection';
         case 'general':
