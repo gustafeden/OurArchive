@@ -13,6 +13,10 @@ class ThemePersistence {
   static const String _keyCustomAccent = 'custom_accent';
   static const String _keyIsCustomTheme = 'is_custom_theme';
   static const String _keyUseDenseCoverFlow = 'use_dense_coverflow';
+  static const String _keyCoverFlowBackgroundStyle = 'coverflow_background_style';
+  static const String _keyFloorReflection = 'coverflow_floor_reflection';
+  static const String _keyCardReflections = 'coverflow_card_reflections';
+  static const String _keyBlurredAlbumEffect = 'coverflow_blurred_album_effect';
 
   /// Loads the saved theme preset name.
   /// Returns 'defaultTheme' if no preference is saved.
@@ -130,6 +134,57 @@ class ThemePersistence {
     await prefs.setBool(_keyUseDenseCoverFlow, useDense);
   }
 
+  /// Loads the CoverFlow background style preference.
+  /// Returns 'radialSpotlight' if no preference is saved.
+  static Future<String> loadCoverFlowBackgroundStyle() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_keyCoverFlowBackgroundStyle) ?? 'radialSpotlight';
+  }
+
+  /// Saves the CoverFlow background style preference.
+  static Future<void> saveCoverFlowBackgroundStyle(String style) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyCoverFlowBackgroundStyle, style);
+  }
+
+  /// Loads the floor reflection preference.
+  /// Returns true (enabled) if no preference is saved.
+  static Future<bool> loadFloorReflection() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyFloorReflection) ?? true; // Default to enabled
+  }
+
+  /// Saves the floor reflection preference.
+  static Future<void> saveFloorReflection(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyFloorReflection, enabled);
+  }
+
+  /// Loads the card reflections preference.
+  /// Returns true (enabled) if no preference is saved.
+  static Future<bool> loadCardReflections() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyCardReflections) ?? true; // Default to enabled
+  }
+
+  /// Saves the card reflections preference.
+  static Future<void> saveCardReflections(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyCardReflections, enabled);
+  }
+
+  /// Loads the blurred album background effect preference.
+  static Future<bool> loadBlurredAlbumEffect() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyBlurredAlbumEffect) ?? false; // Default to disabled
+  }
+
+  /// Saves the blurred album background effect preference.
+  static Future<void> saveBlurredAlbumEffect(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyBlurredAlbumEffect, enabled);
+  }
+
   /// Clears all theme preferences (reset to defaults).
   static Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
@@ -142,5 +197,8 @@ class ThemePersistence {
     await prefs.remove(_keyCustomAccent);
     await prefs.remove(_keyIsCustomTheme);
     await prefs.remove(_keyUseDenseCoverFlow);
+    await prefs.remove(_keyCoverFlowBackgroundStyle);
+    await prefs.remove(_keyFloorReflection);
+    await prefs.remove(_keyCardReflections);
   }
 }

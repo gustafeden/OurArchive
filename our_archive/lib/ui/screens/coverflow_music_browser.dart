@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/coverflow/coverflow_controller.dart';
 import '../widgets/coverflow/coverflow_viewport.dart';
+import '../widgets/coverflow/coverflow_background.dart';
 import '../widgets/coverflow/track_overlay_panel.dart';
 import '../../data/models/item.dart';
 import '../../data/models/track.dart';
 import '../../providers/music_providers.dart';
 import '../../providers/providers.dart';
+import '../../providers/theme_provider.dart';
 import 'item_detail_screen.dart';
 
 /// iPod-style CoverFlow music browser
@@ -107,8 +109,33 @@ class _CoverFlowMusicBrowserState extends ConsumerState<CoverFlowMusicBrowser>
   }
 
   Widget _buildBody(List<Item> musicItems) {
+    final backgroundStyle = ref.watch(coverFlowBackgroundStyleProvider);
+    final blurredAlbumEnabled = ref.watch(blurredAlbumEffectProvider);
+    final centerIndex = _controller!.centeredIndex.clamp(0, musicItems.length - 1);
+    final currentItem = centerIndex < musicItems.length ? musicItems[centerIndex] : null;
+
     return Stack(
       children: [
+        // Background layer
+        Positioned.fill(
+          child: CoverFlowBackground(
+            style: backgroundStyle,
+            currentItem: currentItem,
+            width: double.infinity,
+            height: double.infinity,
+          ),
+        ),
+
+        // Blurred album effect layer (if enabled)
+        if (blurredAlbumEnabled)
+          Positioned.fill(
+            child: BlurredAlbumBackground(
+              item: currentItem,
+              width: double.infinity,
+              height: double.infinity,
+            ),
+          ),
+
         // CoverFlow viewport
         CoverFlowViewport(
           items: musicItems,

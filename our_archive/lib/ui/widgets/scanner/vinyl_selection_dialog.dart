@@ -8,6 +8,17 @@ import '../../../services/vinyl_lookup_service.dart';
 import '../../../providers/providers.dart';
 import '../common/network_image_with_fallback.dart';
 
+/// Result from vinyl selection dialog
+class VinylSelectionResult {
+  final VinylMetadata vinyl;
+  final String action; // 'add' or 'preview'
+
+  VinylSelectionResult({
+    required this.vinyl,
+    required this.action,
+  });
+}
+
 /// Shows an enhanced selection dialog when multiple vinyl releases match a barcode.
 ///
 /// Features:
@@ -15,8 +26,8 @@ import '../common/network_image_with_fallback.dart';
 /// - Pagination support with "Load More" button
 /// - Owned releases sorted to top of list
 ///
-/// Returns the selected VinylMetadata or null if cancelled.
-Future<VinylMetadata?> showVinylSelectionDialog({
+/// Returns the VinylSelectionResult or null if cancelled.
+Future<VinylSelectionResult?> showVinylSelectionDialog({
   required BuildContext context,
   required String barcode,
   required List<VinylMetadata> initialResults,
@@ -24,7 +35,7 @@ Future<VinylMetadata?> showVinylSelectionDialog({
   required List<Item> ownedItems,
   required String householdId,
 }) async {
-  return showDialog<VinylMetadata>(
+  return showDialog<VinylSelectionResult>(
     context: context,
     builder: (dialogContext) => _VinylSelectionDialog(
       barcode: barcode,
@@ -87,19 +98,13 @@ class _VinylSelectionDialogState extends ConsumerState<_VinylSelectionDialog> {
 
   /// Check if a vinyl release is owned
   bool _isOwned(VinylMetadata vinyl) {
-    return widget.ownedItems.any((item) =>
-      item.discogsId != null &&
-      item.discogsId == vinyl.discogsId
-    );
+    return widget.ownedItems.any((item) => item.discogsId != null && item.discogsId == vinyl.discogsId);
   }
 
   /// Get owned item for a vinyl release
   Item? _getOwnedItem(VinylMetadata vinyl) {
     try {
-      return widget.ownedItems.firstWhere((item) =>
-        item.discogsId != null &&
-        item.discogsId == vinyl.discogsId
-      );
+      return widget.ownedItems.firstWhere((item) => item.discogsId != null && item.discogsId == vinyl.discogsId);
     } catch (e) {
       return null;
     }
@@ -111,9 +116,7 @@ class _VinylSelectionDialogState extends ConsumerState<_VinylSelectionDialog> {
     final containerService = ref.read(containerServiceProvider);
 
     try {
-      final containers = await containerService
-          .getAllContainers(widget.householdId)
-          .first;
+      final containers = await containerService.getAllContainers(widget.householdId).first;
 
       for (final item in widget.ownedItems) {
         if (item.containerId != null) {
@@ -173,9 +176,8 @@ class _VinylSelectionDialogState extends ConsumerState<_VinylSelectionDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final showingText = _pagination.hasMore
-        ? 'showing ${_results.length} of ${_pagination.totalItems}'
-        : '${_results.length} matches';
+    final showingText =
+        _pagination.hasMore ? 'showing ${_results.length} of ${_pagination.totalItems}' : '${_results.length} matches';
 
     return AlertDialog(
       title: Text('Select Release ($showingText)'),
@@ -193,16 +195,22 @@ class _VinylSelectionDialogState extends ConsumerState<_VinylSelectionDialog> {
                   final vinyl = _results[index];
                   final ownedItem = _getOwnedItem(vinyl);
                   final isOwned = ownedItem != null;
-                  final containerName = ownedItem != null && _containerNames != null
-                      ? _containerNames![ownedItem.id]
-                      : null;
+                  final containerName =
+                      ownedItem != null && _containerNames != null ? _containerNames![ownedItem.id] : null;
 
                   return _VinylSelectionItem(
                     vinyl: vinyl,
                     isOwned: isOwned,
                     ownedQuantity: ownedItem?.quantity ?? 0,
                     containerName: containerName,
-                    onTap: () => Navigator.pop(context, vinyl),
+                    onTap: () => Navigator.pop(
+                      context,
+                      VinylSelectionResult(vinyl: vinyl, action: 'add'),
+                    ),
+                    onPreview: () => Navigator.pop(
+                      context,
+                      VinylSelectionResult(vinyl: vinyl, action: 'preview'),
+                    ),
                   );
                 },
               ),
@@ -216,9 +224,7 @@ class _VinylSelectionDialogState extends ConsumerState<_VinylSelectionDialog> {
                 OutlinedButton.icon(
                   onPressed: _loadMore,
                   icon: const Icon(Ionicons.chevron_down_outline),
-                  label: Text(
-                    'Load More Results (${_pagination.totalItems - _results.length} remaining)'
-                  ),
+                  label: Text('Load More Results (${_pagination.totalItems - _results.length} remaining)'),
                 ),
             ],
           ],
@@ -240,6 +246,7 @@ class _VinylSelectionItem extends StatelessWidget {
   final int ownedQuantity;
   final String? containerName;
   final VoidCallback onTap;
+  final VoidCallback? onPreview;
 
   const _VinylSelectionItem({
     required this.vinyl,
@@ -247,21 +254,20 @@ class _VinylSelectionItem extends StatelessWidget {
     required this.ownedQuantity,
     required this.containerName,
     required this.onTap,
+    this.onPreview,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: isOwned ? Colors.green.withValues(alpha: 0.08) : null,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return Container(
+      decoration: BoxDecoration(
+        color: isOwned ? Colors.green.withValues(alpha: 0.08) : null,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
             // Owned checkmark
             if (isOwned)
               Padding(
@@ -392,16 +398,39 @@ class _VinylSelectionItem extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            // Selection indicator
-            Icon(
-              Ionicons.chevron_forward_outline,
-              color: Theme.of(context).colorScheme.primary,
+            const SizedBox(width: 12),
+            // Vertical button stack
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Preview button (if callback provided)
+                if (onPreview != null) ...[
+                  IconButton(
+                    icon: const Icon(Ionicons.play_circle_outline),
+                    onPressed: onPreview,
+                    tooltip: 'Preview tracks',
+                    color: Theme.of(context).colorScheme.primary,
+                    iconSize: 32,
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(),
+                  ),
+                  const SizedBox(height: 4),
+                ],
+                // Selection arrow button
+                IconButton(
+                  icon: const Icon(Ionicons.chevron_forward_outline),
+                  onPressed: onTap,
+                  tooltip: 'Add to collection',
+                  color: Theme.of(context).colorScheme.primary,
+                  iconSize: 28,
+                  padding: const EdgeInsets.all(8),
+                  constraints: const BoxConstraints(),
+                ),
+              ],
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 }
 

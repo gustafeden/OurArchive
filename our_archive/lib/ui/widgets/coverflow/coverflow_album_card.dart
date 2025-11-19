@@ -7,6 +7,15 @@ import '../../../providers/theme_provider.dart';
 
 /// Individual album card in the CoverFlow with 3D transforms
 class CoverFlowAlbumCard extends ConsumerWidget {
+  // ============================================================================
+  // CARD REFLECTION CONFIGURATION - Tune these values!
+  // ============================================================================
+  static const double _reflectionHeightMultiplier = 0.20;  // Height as fraction of cover (0.20 = 20%)
+  static const double _reflectionOpacity = 0.25;           // Max opacity (0.0-1.0)
+  static const double _reflectionMaxDistance = 4.0;        // Show on cards within this distance from center
+
+  // ============================================================================
+
   // === DENSE MODE CONSTANTS (DEFAULT) ===
   // Rotation angles for dense mode
   static const double _denseLandscapeBaseAngle = 0.20;
@@ -50,6 +59,7 @@ class CoverFlowAlbumCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final absDelta = delta.abs();
     final useDenseMode = ref.watch(denseCoverFlowProvider);
+    final showCardReflections = ref.watch(cardReflectionsProvider);
 
     // Transform math based on delta
     final scale = _computeScale(absDelta);
@@ -63,7 +73,7 @@ class CoverFlowAlbumCard extends ConsumerWidget {
       ..setEntry(3, 2, 0.001) // Perspective
       ..translate(translationX, 0.0, translationZ)
       ..rotateY(rotationY)
-      ..scale(scale);
+      ..scale(scale, scale, scale);
 
     return Transform(
       transform: matrix,
@@ -81,8 +91,9 @@ class CoverFlowAlbumCard extends ConsumerWidget {
                 // Main album cover
                 _buildAlbumCover(context, absDelta),
 
-                // Reflection
-                if (absDelta < 2.0) _buildReflection(context),
+                // Reflection (follows the card as it scrolls)
+                if (showCardReflections && absDelta < _reflectionMaxDistance)
+                  _buildReflection(context),
 
                 // Album info (title and artist)
                 if (absDelta < 2.0)
@@ -115,7 +126,7 @@ class CoverFlowAlbumCard extends ConsumerWidget {
         boxShadow: isCentered
             ? [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.4),
+                  color: Colors.black.withValues(alpha: 0.4),
                   blurRadius: 20,
                   spreadRadius: 2,
                   offset: const Offset(0, 10),
@@ -123,7 +134,7 @@ class CoverFlowAlbumCard extends ConsumerWidget {
               ]
             : [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
+                  color: Colors.black.withValues(alpha: 0.2),
                   blurRadius: 8,
                   spreadRadius: 1,
                   offset: const Offset(0, 4),
@@ -180,30 +191,32 @@ class CoverFlowAlbumCard extends ConsumerWidget {
   Widget _buildReflection(BuildContext context) {
     final imageUrl = item.coverUrl ?? item.photoThumbPath;
 
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return SizedBox(height: coverSize * _reflectionHeightMultiplier);
+    }
+
     return SizedBox(
-      height: coverSize * 0.15, // Subtle reflection
-      child: Transform(
-        transform: Matrix4.identity()..scale(1.0, -1.0, 1.0), // Flip vertically
-        alignment: Alignment.topCenter,
-        child: ShaderMask(
-          shaderCallback: (bounds) {
-            return LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.white.withOpacity(0.1),
-                Colors.transparent,
-              ],
-            ).createShader(bounds);
-          },
-          blendMode: BlendMode.dstIn,
-          child: imageUrl != null && imageUrl.isNotEmpty
-              ? CachedNetworkImage(
-                  imageUrl: imageUrl,
-                  fit: BoxFit.cover,
-                  errorWidget: (context, url, error) => const SizedBox(),
-                )
-              : Container(color: Colors.grey[800]),
+      height: coverSize * _reflectionHeightMultiplier,
+      child: ClipRect(
+        child: OverflowBox(
+          minHeight: coverSize,
+          maxHeight: coverSize,
+          child: Transform(
+            transform: Matrix4.identity()
+              ..translate(0.0, -coverSize)
+              ..scale(1.0, -1.0, 1.0), // Flip vertically
+            alignment: Alignment.bottomCenter,
+            child: Opacity(
+              opacity: _reflectionOpacity,
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.cover,
+                width: coverSize,
+                height: coverSize,
+                errorWidget: (context, url, error) => const SizedBox.shrink(),
+              ),
+            ),
+          ),
         ),
       ),
     );

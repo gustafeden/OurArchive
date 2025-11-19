@@ -150,13 +150,14 @@ Future<String?> showItemFoundDialog({
               ),
             ],
 
-            // Track preview section
-            TrackPreviewSection(
-              tracks: tracks,
-              isLoading: isLoadingTracks,
-              onLoadTracks: onLoadTracks,
-              item: item, // Pass item for iTunes preview lookup
-            ),
+            // Track preview section (only for music/vinyl items)
+            if (item.type == 'vinyl' || item.type == 'music')
+              TrackPreviewSection(
+                tracks: tracks,
+                isLoading: isLoadingTracks,
+                onLoadTracks: onLoadTracks,
+                item: item, // Pass item for iTunes preview lookup
+              ),
           ],
         ),
       ),

@@ -120,7 +120,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen>
       }
 
       // Show selection dialog (always, even for single result, to show owned status)
-      final vinylMetadata = await showVinylSelectionDialog(
+      final selectionResult = await showVinylSelectionDialog(
         context: context,
         barcode: barcode,
         initialResults: searchResult.results,
@@ -130,10 +130,13 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen>
       );
 
       // User cancelled selection
-      if (vinylMetadata == null) {
+      if (selectionResult == null) {
         resetScanning();
         return;
       }
+
+      // Extract vinyl metadata from result
+      final vinylMetadata = selectionResult.vinyl;
 
       if (!mounted) return;
 

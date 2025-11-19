@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/base_colors.dart';
 import '../core/theme/theme_builder.dart';
 import '../core/theme/theme_persistence.dart';
+import '../ui/widgets/coverflow/coverflow_background.dart';
 
 /// Notifier for managing base colors with persistence.
 class BaseColorsNotifier extends StateNotifier<BaseColors> {
@@ -84,6 +85,87 @@ class DenseCoverFlowNotifier extends StateNotifier<bool> {
   }
 }
 
+/// Notifier for managing CoverFlow background style with persistence.
+class CoverFlowBackgroundStyleNotifier extends StateNotifier<CoverFlowBackgroundStyle> {
+  CoverFlowBackgroundStyleNotifier() : super(CoverFlowBackgroundStyle.radialSpotlight) {
+    _loadSavedStyle();
+  }
+
+  Future<void> _loadSavedStyle() async {
+    final styleName = await ThemePersistence.loadCoverFlowBackgroundStyle();
+    final style = CoverFlowBackgroundStyle.values.firstWhere(
+      (s) => s.name == styleName,
+      orElse: () => CoverFlowBackgroundStyle.radialSpotlight,
+    );
+    state = style;
+  }
+
+  Future<void> setStyle(CoverFlowBackgroundStyle style) async {
+    state = style;
+    await ThemePersistence.saveCoverFlowBackgroundStyle(style.name);
+  }
+}
+
+/// Notifier for managing floor reflection effect with persistence.
+class FloorReflectionNotifier extends StateNotifier<bool> {
+  FloorReflectionNotifier() : super(true) {
+    _loadSavedState();
+  }
+
+  Future<void> _loadSavedState() async {
+    state = await ThemePersistence.loadFloorReflection();
+  }
+
+  Future<void> setEnabled(bool enabled) async {
+    state = enabled;
+    await ThemePersistence.saveFloorReflection(enabled);
+  }
+
+  Future<void> toggle() async {
+    await setEnabled(!state);
+  }
+}
+
+/// Notifier for managing per-card reflections with persistence.
+class CardReflectionsNotifier extends StateNotifier<bool> {
+  CardReflectionsNotifier() : super(true) {
+    _loadSavedState();
+  }
+
+  Future<void> _loadSavedState() async {
+    state = await ThemePersistence.loadCardReflections();
+  }
+
+  Future<void> setEnabled(bool enabled) async {
+    state = enabled;
+    await ThemePersistence.saveCardReflections(enabled);
+  }
+
+  Future<void> toggle() async {
+    await setEnabled(!state);
+  }
+}
+
+/// Notifier for managing blurred album background effect with persistence.
+class BlurredAlbumEffectNotifier extends StateNotifier<bool> {
+  BlurredAlbumEffectNotifier() : super(false) {
+    _loadSavedState();
+  }
+
+  Future<void> _loadSavedState() async {
+    state = await ThemePersistence.loadBlurredAlbumEffect();
+  }
+
+  Future<void> setEnabled(bool enabled) async {
+    state = enabled;
+    await ThemePersistence.saveBlurredAlbumEffect(enabled);
+  }
+
+  Future<void> toggle() async {
+    await setEnabled(!state);
+  }
+}
+
 /// Provider for the current base color palette.
 /// Change this to instantly update the entire app's theme.
 final baseColorsProvider =
@@ -101,6 +183,30 @@ final themeModeProvider =
 final denseCoverFlowProvider =
     StateNotifierProvider<DenseCoverFlowNotifier, bool>((ref) {
   return DenseCoverFlowNotifier();
+});
+
+/// Provider for the CoverFlow background style.
+final coverFlowBackgroundStyleProvider =
+    StateNotifierProvider<CoverFlowBackgroundStyleNotifier, CoverFlowBackgroundStyle>((ref) {
+  return CoverFlowBackgroundStyleNotifier();
+});
+
+/// Provider for the floor reflection effect.
+final floorReflectionProvider =
+    StateNotifierProvider<FloorReflectionNotifier, bool>((ref) {
+  return FloorReflectionNotifier();
+});
+
+/// Provider for per-card reflections.
+final cardReflectionsProvider =
+    StateNotifierProvider<CardReflectionsNotifier, bool>((ref) {
+  return CardReflectionsNotifier();
+});
+
+/// Provider for blurred album background effect.
+final blurredAlbumEffectProvider =
+    StateNotifierProvider<BlurredAlbumEffectNotifier, bool>((ref) {
+  return BlurredAlbumEffectNotifier();
 });
 
 /// Provider that builds the light theme from the current base colors.
@@ -175,5 +281,40 @@ extension ThemeExtensions on WidgetRef {
   /// Set CoverFlow view mode.
   Future<void> setDenseCoverFlow(bool useDense) async {
     await read(denseCoverFlowProvider.notifier).setMode(useDense);
+  }
+
+  /// Set CoverFlow background style.
+  Future<void> setCoverFlowBackgroundStyle(CoverFlowBackgroundStyle style) async {
+    await read(coverFlowBackgroundStyleProvider.notifier).setStyle(style);
+  }
+
+  /// Toggle floor reflection effect.
+  Future<void> toggleFloorReflection() async {
+    await read(floorReflectionProvider.notifier).toggle();
+  }
+
+  /// Set floor reflection effect.
+  Future<void> setFloorReflection(bool enabled) async {
+    await read(floorReflectionProvider.notifier).setEnabled(enabled);
+  }
+
+  /// Toggle per-card reflections.
+  Future<void> toggleCardReflections() async {
+    await read(cardReflectionsProvider.notifier).toggle();
+  }
+
+  /// Set per-card reflections.
+  Future<void> setCardReflections(bool enabled) async {
+    await read(cardReflectionsProvider.notifier).setEnabled(enabled);
+  }
+
+  /// Toggle blurred album background effect.
+  Future<void> toggleBlurredAlbumEffect() async {
+    await read(blurredAlbumEffectProvider.notifier).toggle();
+  }
+
+  /// Set blurred album background effect.
+  Future<void> setBlurredAlbumEffect(bool enabled) async {
+    await read(blurredAlbumEffectProvider.notifier).setEnabled(enabled);
   }
 }

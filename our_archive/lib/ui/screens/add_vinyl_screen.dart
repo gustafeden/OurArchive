@@ -182,14 +182,8 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
       );
 
       if (mounted) {
-        // Pop all screens and return to the main list/container screen
-        Navigator.popUntil(
-          context,
-          (route) =>
-              route.settings.name == '/item_list' ||
-              route.settings.name == '/container' ||
-              route.isFirst,
-        );
+        // Pop with success result
+        Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Music added successfully!')),
         );
@@ -240,7 +234,7 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
       }
 
       // Show selection dialog
-      final selectedVinyl = await showVinylSelectionDialog(
+      final selectionResult = await showVinylSelectionDialog(
         context: context,
         barcode: widget.vinylData!.barcode!,
         initialResults: searchResult.results,
@@ -249,7 +243,10 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
         householdId: _householdId,
       );
 
-      if (selectedVinyl != null && mounted) {
+      if (selectionResult != null && mounted) {
+        // Extract vinyl metadata from result
+        final selectedVinyl = selectionResult.vinyl;
+
         // Update metadata fields while preserving user inputs
         setState(() {
           _titleController.text = selectedVinyl.title;
