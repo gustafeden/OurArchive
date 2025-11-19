@@ -156,7 +156,7 @@ class ItemTypeSelectionScreen extends ConsumerWidget {
                 ),
               );
               break;
-            case 'vinyl':
+            case 'music':
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -201,7 +201,7 @@ class ItemTypeSelectionScreen extends ConsumerWidget {
       switch (type.name) {
         case 'book':
           return Colors.blue;
-        case 'vinyl':
+        case 'music':
           return Colors.purple;
         case 'game':
           return Colors.green;
@@ -221,7 +221,7 @@ class ItemTypeSelectionScreen extends ConsumerWidget {
       switch (type.name) {
         case 'book':
           return 'Scan, search, or add manually';
-        case 'vinyl':
+        case 'music':
           return 'Vinyl, CD, cassette, or other formats';
         case 'game':
           return 'Add your video game collection';

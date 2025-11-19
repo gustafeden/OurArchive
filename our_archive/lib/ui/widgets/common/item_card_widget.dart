@@ -13,7 +13,7 @@ import '../../screens/item_detail_screen.dart';
 ///
 /// This widget handles:
 /// - Item thumbnail with async loading
-/// - Type-aware subtitles (book authors, vinyl artists, game platforms)
+/// - Type-aware subtitles (book authors, music artists, game platforms)
 /// - Navigation to item detail screen
 /// - Optional edit mode with move/delete buttons
 /// - Optional sync status indicator
@@ -119,7 +119,7 @@ class ItemCardWidget extends ConsumerWidget {
         }
         return const Text('Unknown Author');
 
-      case 'vinyl':
+      case 'music':
         if (item.artist != null && item.artist!.isNotEmpty) {
           return Text(item.artist!);
         }

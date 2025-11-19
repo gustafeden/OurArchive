@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ionicons/ionicons.dart';
 import '../../../data/models/item.dart';
+import '../../../data/models/item_type.dart';
 import '../../../data/models/household.dart';
 import '../../../providers/providers.dart';
 import '../../../utils/icon_helper.dart';
@@ -69,8 +70,8 @@ class ItemListView extends ConsumerWidget {
     ];
 
     for (final item in items) {
-      if (item.type == 'vinyl') {
-        // Split vinyl items by format
+      if (ItemType.isMusicType(item.type)) {
+        // Split music items by format
         final subType = _getMusicSubType(item);
         groupedItems.putIfAbsent(subType, () => []).add(item);
       } else {
@@ -154,8 +155,8 @@ class ItemListView extends ConsumerWidget {
     ];
 
     for (final item in items) {
-      if (item.type == 'vinyl') {
-        // Split vinyl items by format
+      if (ItemType.isMusicType(item.type)) {
+        // Split music items by format
         final subType = _getMusicSubType(item);
         groupedItems.putIfAbsent(subType, () => []).add(item);
       } else {

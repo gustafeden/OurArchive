@@ -501,7 +501,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
     final tempItem = Item(
       id: '', // Temporary ID
       title: vinyl.title,
-      type: 'vinyl',
+      type: 'music',
       location: '',
       tags: [],
       lastModified: DateTime.now(),
@@ -673,7 +673,7 @@ class _ScanToCheckScreenState extends ConsumerState<ScanToCheckScreen> {
     final tempItem = Item(
       id: '', // Temporary ID
       title: vinyl.title,
-      type: 'vinyl',
+      type: 'music',
       location: '',
       tags: [],
       lastModified: DateTime.now(),

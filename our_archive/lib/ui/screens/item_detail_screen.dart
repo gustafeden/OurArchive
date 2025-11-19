@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../data/models/item.dart';
+import '../../data/models/item_type.dart';
 import '../../data/models/household.dart';
 import '../../data/models/container.dart' as model;
 import '../../data/models/track.dart';
@@ -55,8 +56,8 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     _selectedContainerId = widget.item.containerId;
     _loadPhotoUrl();
 
-    // Load tracks for vinyl/music items
-    if (widget.item.type == 'vinyl') {
+    // Load tracks for music items
+    if (ItemType.isMusicType(widget.item.type)) {
       _loadTracks();
     }
   }
@@ -500,8 +501,8 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                     const SizedBox(height: 24),
                   ],
 
-                  // Vinyl/Music-specific information (if this is a vinyl/music item)
-                  if (widget.item.type == 'vinyl') ...[
+                  // Music-specific information (if this is a music item)
+                  if (ItemType.isMusicType(widget.item.type)) ...[
                     _buildVinylInfoSection(),
                     const SizedBox(height: 24),
                   ],

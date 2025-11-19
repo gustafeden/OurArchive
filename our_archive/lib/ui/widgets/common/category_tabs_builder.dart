@@ -9,7 +9,7 @@ import 'category_tab.dart';
 
 /// Configuration for a category tab
 class CategoryConfig {
-  final String typeKey; // Internal type key (e.g., 'book', 'vinyl')
+  final String typeKey; // Internal type key (e.g., 'book', 'music')
   final String label; // Display label (e.g., 'Books', 'Music')
   final VoidCallback? onTap; // Optional custom onTap (for special handling)
 
@@ -65,7 +65,7 @@ class CategoryTabsBuilder extends ConsumerWidget {
       householdId: householdId,
       staticCategories: [
         const CategoryConfig(typeKey: 'book', label: 'Books'),
-        CategoryConfig(typeKey: 'vinyl', label: 'Music', onTap: onMusicTap),
+        CategoryConfig(typeKey: 'music', label: 'Music', onTap: onMusicTap),
         const CategoryConfig(typeKey: 'game', label: 'Games'),
         const CategoryConfig(typeKey: 'tool', label: 'Tools'),
       ],
@@ -162,7 +162,7 @@ class CategoryTabsBuilder extends ConsumerWidget {
       error: (error, stack) => const SizedBox.shrink(),
       data: (itemTypes) {
         // Primary types to show as main tabs
-        final primaryTypes = ['book', 'vinyl', 'game', 'tool', 'general'];
+        final primaryTypes = ['book', 'music', 'game', 'tool', 'general'];
 
         // Count items for each primary type
         final typeCounts = <String, int>{};

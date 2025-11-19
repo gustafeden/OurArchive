@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/providers.dart';
 import '../../data/models/household.dart';
 import '../../data/models/item.dart';
+import '../../data/models/item_type.dart';
 import 'item_type_selection_screen.dart';
 import 'book_scan_screen.dart';
 import 'vinyl_scan_screen.dart';
@@ -244,13 +245,13 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
               items: filteredItems,
               householdId: widget.household.id,
               onMusicTap: () {
-                ref.read(selectedTypeProvider.notifier).state = 'vinyl';
+                ref.read(selectedTypeProvider.notifier).state = 'music';
                 ref.read(selectedMusicFormatProvider.notifier).state = null;
               },
             ),
 
           // Music sub-category filter (show only when Music tab is selected)
-          if (viewMode == ViewMode.list && selectedType == 'vinyl')
+          if (viewMode == ViewMode.list && ItemType.isMusicType(selectedType))
             _buildMusicFormatFilter(ref, filteredItems),
 
           // Items list
@@ -415,10 +416,10 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
     final selectedMusicFormat = ref.watch(selectedMusicFormatProvider);
 
     // Count items by music format
-    final cdCount = allItems.where((i) => i.type == 'vinyl' && _getMusicSubType(i) == 'music-cd').length;
-    final vinylCount = allItems.where((i) => i.type == 'vinyl' && _getMusicSubType(i) == 'music-vinyl').length;
-    final cassetteCount = allItems.where((i) => i.type == 'vinyl' && _getMusicSubType(i) == 'music-cassette').length;
-    final digitalCount = allItems.where((i) => i.type == 'vinyl' && _getMusicSubType(i) == 'music-digital').length;
+    final cdCount = allItems.where((i) => ItemType.isMusicType(i.type) && _getMusicSubType(i) == 'music-cd').length;
+    final vinylCount = allItems.where((i) => ItemType.isMusicType(i.type) && _getMusicSubType(i) == 'music-vinyl').length;
+    final cassetteCount = allItems.where((i) => ItemType.isMusicType(i.type) && _getMusicSubType(i) == 'music-cassette').length;
+    final digitalCount = allItems.where((i) => ItemType.isMusicType(i.type) && _getMusicSubType(i) == 'music-digital').length;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -428,7 +429,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
           children: [
             _MusicFormatChip(
               label: 'All Music',
-              count: allItems.where((i) => i.type == 'vinyl').length,
+              count: allItems.where((i) => ItemType.isMusicType(i.type)).length,
               isSelected: selectedMusicFormat == null,
               onTap: () => ref.read(selectedMusicFormatProvider.notifier).state = null,
             ),

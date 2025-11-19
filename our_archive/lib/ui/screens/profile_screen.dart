@@ -1,8 +1,10 @@
 import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/providers.dart';
 import '../../data/services/log_export_service.dart';
+import '../../debug/debug_screen.dart';
 import 'theme_settings_screen.dart';
 import 'general_settings_screen.dart';
 
@@ -189,6 +191,23 @@ class ProfileScreen extends ConsumerWidget {
             trailing: const Icon(Ionicons.chevron_forward_outline, size: 16),
             onTap: () => _sendLogs(context, ref),
           ),
+
+          // Debug Tools - only visible in debug builds
+          if (kDebugMode)
+            ListTile(
+              leading: const Icon(Ionicons.build_outline, color: Colors.red),
+              title: const Text('Debug Tools'),
+              subtitle: const Text('Development and migration tools'),
+              trailing: const Icon(Ionicons.chevron_forward_outline, size: 16),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const DebugScreen(),
+                  ),
+                );
+              },
+            ),
 
           ListTile(
             leading: Icon(Ionicons.log_out_outline, color: Colors.red[700]),

@@ -2,6 +2,7 @@ import 'package:ionicons/ionicons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/item.dart';
+import '../../../data/models/item_type.dart';
 import '../../../data/models/container.dart' as model;
 import '../../../data/models/track.dart';
 import '../../../providers/providers.dart';
@@ -150,8 +151,8 @@ Future<String?> showItemFoundDialog({
               ),
             ],
 
-            // Track preview section (only for music/vinyl items)
-            if (item.type == 'vinyl' || item.type == 'music')
+            // Track preview section (only for music items)
+            if (ItemType.isMusicType(item.type))
               TrackPreviewSection(
                 tracks: tracks,
                 isLoading: isLoadingTracks,

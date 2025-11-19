@@ -167,7 +167,7 @@ class _VinylScanScreenState extends ConsumerState<VinylScanScreen>
       final tempItem = Item(
         id: '', // Temporary ID
         title: vinylMetadata.title,
-        type: 'vinyl',
+        type: 'music',
         location: '',
         tags: [],
         lastModified: DateTime.now(),

@@ -128,7 +128,7 @@ class _AddVinylScreenState extends ConsumerState<AddVinylScreen> {
 
       final itemData = {
         'title': _titleController.text.trim(),
-        'type': 'vinyl',
+        'type': 'music',
         'location': '',
         'quantity': 1,
         'tags': [],

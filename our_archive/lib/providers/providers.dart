@@ -84,12 +84,13 @@ final filteredItemsProvider = Provider<List<Item>>((ref) {
       return false;
     }
 
+    // Handle type filtering
     if (selectedType != null && item.type != selectedType) {
       return false;
     }
 
-    // Music format sub-filtering (only applies when viewing vinyl type)
-    if (selectedType == 'vinyl' && selectedMusicFormat != null) {
+    // Music format sub-filtering (only applies when viewing music type)
+    if (ItemType.isMusicType(selectedType) && selectedMusicFormat != null) {
       if (item.format == null || item.format!.isEmpty) {
         return false;
       }

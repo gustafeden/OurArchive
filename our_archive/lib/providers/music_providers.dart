@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/item.dart';
+import '../data/models/item_type.dart';
 import '../data/models/track.dart';
 import '../data/services/track_service.dart';
 import '../data/services/music_preview_player.dart';
@@ -68,7 +69,7 @@ final allMusicItemsProvider = StreamProvider<List<Item>>((ref) async* {
     // Single household - use stream directly
     await for (final items in itemRepo.getItems(households[0].id)) {
       final musicItems = items
-          .where((item) => item.type == 'vinyl' && !item.archived)
+          .where((item) => ItemType.isMusicType(item.type) && !item.archived)
           .toList();
       yield musicItems;
     }
@@ -82,7 +83,7 @@ final allMusicItemsProvider = StreamProvider<List<Item>>((ref) async* {
         try {
           final items = await itemRepo.getItems(household.id).first;
           final musicItems = items.where(
-            (item) => item.type == 'vinyl' && !item.archived,
+            (item) => ItemType.isMusicType(item.type) && !item.archived,
           );
           allMusicItems.addAll(musicItems);
         } catch (e) {
@@ -106,7 +107,7 @@ final householdMusicItemsProvider =
   final itemRepo = ref.watch(itemRepositoryProvider);
   return itemRepo.getItems(householdId).map((items) {
     return items
-        .where((item) => item.type == 'vinyl' && !item.archived)
+        .where((item) => ItemType.isMusicType(item.type) && !item.archived)
         .toList();
   });
 });

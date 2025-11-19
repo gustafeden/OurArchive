@@ -77,7 +77,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
     // Pre-fill form if vinyl data is provided
     if (widget.vinylData != null) {
       _titleController.text = widget.vinylData!.title;
-      _selectedType = 'vinyl';
+      _selectedType = 'music';
 
       // Add vinyl-specific info to tags
       final vinylTags = <String>[];

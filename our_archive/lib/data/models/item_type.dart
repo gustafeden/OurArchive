@@ -80,7 +80,7 @@ class ItemType {
           'hasSpecializedForm': true,
         },
         {
-          'name': 'vinyl',
+          'name': 'music',
           'displayName': 'Music',
           'icon': 'album',
           'isDefault': true,
@@ -150,4 +150,9 @@ class ItemType {
           'hasSpecializedForm': false,
         },
       ];
+
+  /// Helper method to check if a type string represents music
+  static bool isMusicType(String? type) {
+    return type == 'music';
+  }
 }

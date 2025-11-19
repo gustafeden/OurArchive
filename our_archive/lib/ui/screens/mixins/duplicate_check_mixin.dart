@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ionicons/ionicons.dart';
 import 'package:our_archive/providers/music_providers.dart';
 import '../../../data/models/item.dart';
+import '../../../data/models/item_type.dart';
 import '../../../data/models/track.dart';
 import '../../../providers/providers.dart';
 import '../../widgets/common/item_found_dialog.dart';
@@ -43,11 +44,11 @@ mixin DuplicateCheckMixin<T extends ConsumerStatefulWidget>
     // Determine fallback icon based on item type
     final fallbackIcon = _getFallbackIcon(existingItem.type);
 
-    // Load tracks for vinyl items
+    // Load tracks for music items
     List<Track>? tracks;
     bool isLoadingTracks = false;
 
-    if (existingItem.type == 'vinyl') {
+    if (ItemType.isMusicType(existingItem.type)) {
       tracks = existingItem.tracks; // Use cached tracks if available
       isLoadingTracks = tracks == null || tracks.isEmpty;
 
@@ -95,7 +96,7 @@ mixin DuplicateCheckMixin<T extends ConsumerStatefulWidget>
     switch (itemType) {
       case 'book':
         return Ionicons.book_outline;
-      case 'vinyl':
+      case 'music':
         return Ionicons.disc_outline;
       case 'game':
         return Ionicons.game_controller_outline;
