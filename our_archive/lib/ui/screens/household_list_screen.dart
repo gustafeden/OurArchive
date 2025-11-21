@@ -11,6 +11,7 @@ import 'item_list_screen.dart';
 import 'profile_screen.dart';
 import 'scan_to_check_screen.dart';
 import 'coverflow_music_browser.dart';
+import 'book_grid_browser.dart';
 
 class HouseholdListScreen extends ConsumerStatefulWidget {
   const HouseholdListScreen({super.key});
@@ -202,75 +203,116 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                     if (isOwner && pendingCount > 0)
                       _PendingMembersSection(household: household),
 
-                    // Navigation buttons
+                    // Navigation buttons (2x2 grid)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                      child: Row(
+                      child: Column(
                         children: [
-                          Expanded(
-                            child: FilledButton.icon(
-                              onPressed: () {
-                                ref.read(currentHouseholdIdProvider.notifier).state = household.id;
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    settings: const RouteSettings(name: '/item_list'),
-                                    builder: (context) => ItemListScreen(
-                                      household: household,
-                                    ),
+                          // First row: Items, Organize
+                          Row(
+                            children: [
+                              Expanded(
+                                child: FilledButton.icon(
+                                  onPressed: () {
+                                    ref.read(currentHouseholdIdProvider.notifier).state = household.id;
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        settings: const RouteSettings(name: '/item_list'),
+                                        builder: (context) => ItemListScreen(
+                                          household: household,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Ionicons.list_outline),
+                                  label: const Text('Items'),
+                                  style: FilledButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                                   ),
-                                );
-                              },
-                              icon: const Icon(Ionicons.list_outline),
-                              label: const Text('Items'),
-                              style: FilledButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: FilledButton.tonalIcon(
+                                  onPressed: () {
+                                    ref.read(currentHouseholdIdProvider.notifier).state = household.id;
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        settings: const RouteSettings(name: '/container'),
+                                        builder: (context) => ContainerScreen(
+                                          householdId: household.id,
+                                          householdName: household.name,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Ionicons.cube_outline),
+                                  label: const Text('Organize'),
+                                  style: FilledButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: FilledButton.tonalIcon(
-                              onPressed: () {
-                                ref.read(currentHouseholdIdProvider.notifier).state = household.id;
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    settings: const RouteSettings(name: '/container'),
-                                    builder: (context) => ContainerScreen(
-                                      householdId: household.id,
-                                      householdName: household.name,
-                                    ),
+                          const SizedBox(height: 8),
+                          // Second row: Books, Music
+                          Row(
+                            children: [
+                              Expanded(
+                                child: FilledButton.tonalIcon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        settings: const RouteSettings(name: '/books'),
+                                        builder: (context) => BookGridBrowser(
+                                          householdId: household.id,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Ionicons.book_outline),
+                                  label: const Text('Books'),
+                                  style: FilledButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                                   ),
-                                );
-                              },
-                              icon: const Icon(Ionicons.cube_outline),
-                              label: const Text('Organize'),
-                              style: FilledButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: FilledButton.tonalIcon(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    settings: const RouteSettings(name: '/coverflow'),
-                                    builder: (context) => CoverFlowMusicBrowser(
-                                      householdId: household.id,
-                                    ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: FilledButton.tonalIcon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      PageRouteBuilder(
+                                        opaque: true,
+                                        barrierColor: Colors.black,
+                                        settings: const RouteSettings(name: '/coverflow'),
+                                        pageBuilder: (context, animation, secondaryAnimation) =>
+                                          CoverFlowMusicBrowser(
+                                            householdId: household.id,
+                                          ),
+                                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                          // Fade transition for smooth entry/exit
+                                          return FadeTransition(
+                                            opacity: animation,
+                                            child: child,
+                                          );
+                                        },
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Ionicons.disc_outline),
+                                  label: const Text('Music'),
+                                  style: FilledButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                                   ),
-                                );
-                              },
-                              icon: const Icon(Ionicons.disc_outline),
-                              label: const Text('Music'),
-                              style: FilledButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                ),
                               ),
-                            ),
+                            ],
                           ),
                         ],
                       ),

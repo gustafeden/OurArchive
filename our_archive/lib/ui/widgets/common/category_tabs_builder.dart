@@ -58,13 +58,14 @@ class CategoryTabsBuilder extends ConsumerWidget {
   factory CategoryTabsBuilder.static({
     required List<Item> items,
     required String householdId,
+    VoidCallback? onBooksTap,
     VoidCallback? onMusicTap,
   }) {
     return CategoryTabsBuilder(
       items: items,
       householdId: householdId,
       staticCategories: [
-        const CategoryConfig(typeKey: 'book', label: 'Books'),
+        CategoryConfig(typeKey: 'book', label: 'Books', onTap: onBooksTap),
         CategoryConfig(typeKey: 'music', label: 'Music', onTap: onMusicTap),
         const CategoryConfig(typeKey: 'game', label: 'Games'),
         const CategoryConfig(typeKey: 'tool', label: 'Tools'),

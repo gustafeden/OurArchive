@@ -63,7 +63,7 @@ class CoverFlowController extends ChangeNotifier {
 
     if (distance.abs() < 0.01) return; // Already there
 
-    // Create spring animation
+    // Smooth tap animation
     final animation = CurvedAnimation(
       parent: _animationController,
       curve: Curves.easeOutCubic,
@@ -77,7 +77,7 @@ class CoverFlowController extends ChangeNotifier {
     _animationController.reset();
     await _animationController.animateTo(
       1.0,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 280), // Slightly faster for responsiveness
     );
 
     animation.removeListener(() {});
@@ -91,24 +91,23 @@ class CoverFlowController extends ChangeNotifier {
 
     // Ballistic simulation
     final startPosition = _position;
-    final distance = velocity * 0.3; // Scale velocity to distance
+    final distance = velocity * 0.28; // Optimized for smooth easeOutCubic feel
 
     // Animate the fling
     final animation = CurvedAnimation(
       parent: _animationController,
-      curve: Curves.decelerate,
+      curve: Curves.easeOut, // Matches the smooth snap curve
     );
 
     animation.addListener(() {
-      _position = (startPosition + distance * animation.value)
-          .clamp(0.0, (itemCount - 1).toDouble());
+      _position = (startPosition + distance * animation.value).clamp(0.0, (itemCount - 1).toDouble());
       notifyListeners();
     });
 
     _animationController.reset();
     await _animationController.animateTo(
       1.0,
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 380), // Slightly shorter for responsive feel
     );
 
     animation.removeListener(() {});
@@ -131,10 +130,10 @@ class CoverFlowController extends ChangeNotifier {
     final startPosition = _position;
     final distance = target - startPosition;
 
-    // Spring snap animation
+    // Smooth snap animation
     final animation = CurvedAnimation(
       parent: _animationController,
-      curve: Curves.easeOutBack, // Slight overshoot for spring feel
+      curve: Curves.easeOutCubic, // Smooth, no overshoot
     );
 
     animation.addListener(() {
@@ -145,7 +144,7 @@ class CoverFlowController extends ChangeNotifier {
     _animationController.reset();
     await _animationController.animateTo(
       1.0,
-      duration: const Duration(milliseconds: 250),
+      duration: const Duration(milliseconds: 220), // Quick but smooth
     );
 
     animation.removeListener(() {});
@@ -172,8 +171,8 @@ class CoverFlowController extends ChangeNotifier {
 
     final velocity = -details.velocity.pixelsPerSecond.dx / itemWidth;
 
-    if (velocity.abs() > 2.0) {
-      // Fling gesture
+    if (velocity.abs() > 2.2) {
+      // Fling gesture (slightly higher threshold for smoother feel)
       await fling(velocity);
     } else {
       // Snap to nearest

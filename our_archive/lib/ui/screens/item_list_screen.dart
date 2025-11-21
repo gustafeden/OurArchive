@@ -12,6 +12,7 @@ import 'music_scan_screen.dart';
 import 'container_screen.dart';
 import 'manage_types_screen.dart';
 import 'common/scan_modes.dart';
+import 'book_grid_browser.dart';
 import '../../utils/icon_helper.dart';
 import '../widgets/common/category_tabs_builder.dart';
 import '../widgets/common/item_card_widget.dart';
@@ -244,6 +245,17 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
             CategoryTabsBuilder.static(
               items: filteredItems,
               householdId: widget.household.id,
+              onBooksTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    settings: const RouteSettings(name: '/books'),
+                    builder: (context) => BookGridBrowser(
+                      householdId: widget.household.id,
+                    ),
+                  ),
+                );
+              },
               onMusicTap: () {
                 ref.read(selectedTypeProvider.notifier).state = 'music';
                 ref.read(selectedMusicFormatProvider.notifier).state = null;
