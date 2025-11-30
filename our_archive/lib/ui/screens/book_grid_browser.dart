@@ -151,9 +151,11 @@ class _BookGridBrowserState extends ConsumerState<BookGridBrowser> {
         final filterState = ref.watch(bookFilterStateProvider);
 
         return Scaffold(
+          extendBody: true,
           appBar: _buildAppBar(filterState, books.length),
           body: books.isEmpty ? _buildEmptyState() : _buildBookGrid(books),
           floatingActionButton: FloatingActionButton(
+            heroTag: 'book_grid_fab',
             onPressed: _navigateToAddBook,
             child: const Icon(Icons.add),
           ),
@@ -262,11 +264,17 @@ class _BookGridBrowserState extends ConsumerState<BookGridBrowser> {
 
     return RefreshIndicator(
       onRefresh: () async {
-        // Refresh is handled automatically by Riverpod stream
-        await Future.delayed(const Duration(milliseconds: 500));
+        if (widget.householdId == null) {
+          ref.invalidate(allBooksItemsProvider);
+          await ref.read(allBooksItemsProvider.future);
+        } else {
+          ref.invalidate(householdBooksItemsProvider(widget.householdId!));
+          await ref.read(householdBooksItemsProvider(widget.householdId!).future);
+        }
       },
       child: GridView.builder(
         controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(12),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: columnCount,

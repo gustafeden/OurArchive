@@ -131,6 +131,7 @@ class _AddGameScreenState extends ConsumerState<AddGameScreen> {
           (route) =>
               route.settings.name == '/item_list' ||
               route.settings.name == '/container' ||
+              route.settings.name == '/household_home' ||
               route.isFirst,
         );
         ScaffoldMessenger.of(context).showSnackBar(
@@ -161,20 +162,68 @@ class _AddGameScreenState extends ConsumerState<AddGameScreen> {
       ),
       body: Form(
         key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            // Basic Information Section
+            Padding(
+              padding: const EdgeInsets.only(top: 0, bottom: 8),
+              child: Text(
+                'BASIC INFORMATION',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+
+            TextFormField(
+              controller: _titleController,
+              decoration: const InputDecoration(
+                labelText: 'Title *',
+                hintText: 'Enter game title',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Ionicons.text_outline),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Title is required';
+                }
+                if (value.trim().length < 2) {
+                  return 'Title must be at least 2 characters';
+                }
+                return null;
+              },
+              textCapitalization: TextCapitalization.words,
+            ),
+            const SizedBox(height: 16),
             PhotoPickerWidget(
               photo: _photo,
               onPhotoChanged: (photo) => setState(() => _photo = photo),
               placeholderIcon: Ionicons.game_controller_outline,
               placeholderText: 'Tap to add cover photo',
             ),
-            const SizedBox(height: 24),
-            TextFormField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder(), prefixIcon: Icon(Ionicons.text_outline)), validator: (v) => v?.trim().isEmpty ?? true ? 'Title is required' : null, textCapitalization: TextCapitalization.words),
             const SizedBox(height: 16),
+
+            // Game Details Section
+            Padding(
+              padding: const EdgeInsets.only(top: 24, bottom: 8),
+              child: Text(
+                'GAME DETAILS',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+
             DropdownButtonFormField<String>(
-              value: _selectedPlatform,
+              initialValue: _selectedPlatform,
               decoration: const InputDecoration(labelText: 'Platform', border: OutlineInputBorder(), prefixIcon: Icon(Ionicons.game_controller_outline)),
               items: _platforms.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
               onChanged: (v) => setState(() => _selectedPlatform = v),
@@ -192,11 +241,41 @@ class _AddGameScreenState extends ConsumerState<AddGameScreen> {
               Expanded(child: TextFormField(controller: _playersController, decoration: const InputDecoration(labelText: 'Players', border: OutlineInputBorder(), prefixIcon: Icon(Ionicons.people_outline), hintText: '1-4'))),
             ]),
             const SizedBox(height: 16),
+
+            // Organization Section
+            Padding(
+              padding: const EdgeInsets.only(top: 24, bottom: 8),
+              child: Text(
+                'ORGANIZATION',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+
             ContainerSelectorField(
               selectedContainerId: _selectedContainerId,
               onChanged: (v) => setState(() => _selectedContainerId = v),
             ),
             const SizedBox(height: 16),
+
+            // Notes Section
+            Padding(
+              padding: const EdgeInsets.only(top: 24, bottom: 8),
+              child: Text(
+                'NOTES',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+
             NotesField(controller: _notesController),
             const SizedBox(height: 24),
           ],

@@ -6,6 +6,7 @@ import '../../providers/providers.dart';
 import '../../data/models/household.dart';
 import '../../data/models/item.dart';
 import '../../data/models/item_type.dart';
+import '../services/ui_service.dart';
 import 'item_type_selection_screen.dart';
 import 'book_scan_screen.dart';
 import 'music_scan_screen.dart';
@@ -76,6 +77,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
     final isOwner = widget.household.isOwner(currentUser.uid);
 
     return Scaffold(
+      extendBody: true,
       appBar: AppBar(
         title: _isSearching
             ? TextField(
@@ -94,6 +96,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
           // Search button
           IconButton(
             icon: Icon(_isSearching ? Ionicons.close_outline : Ionicons.search_outline),
+            tooltip: _isSearching ? 'Close search' : 'Search items',
             onPressed: () {
               setState(() {
                 _isSearching = !_isSearching;
@@ -106,6 +109,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
           ),
           // Three-dot menu
           PopupMenuButton<String>(
+            tooltip: 'More options',
             onSelected: (value) {
               if (value == 'view_mode') {
                 ref.read(viewModeProvider.notifier).state =
@@ -159,13 +163,12 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                               ),
                               IconButton(
                                 icon: const Icon(Ionicons.copy_outline),
+                                tooltip: 'Copy household code',
                                 onPressed: () {
                                   Clipboard.setData(
                                     ClipboardData(text: widget.household.code),
                                   );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Code copied!')),
-                                  );
+                                  UiService.showSuccess('Code copied!');
                                 },
                               ),
                             ],
@@ -174,7 +177,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
                       ],
                     ),
                     actions: [
-                      TextButton(
+                      FilledButton(
                         onPressed: () => Navigator.pop(context),
                         child: const Text('Close'),
                       ),
@@ -276,37 +279,56 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
               data: (items) {
                 // Use the filtered items from filteredItemsProvider
                 if (filteredItems.isEmpty) {
-                  return EmptyStateWidget(
-                    icon: searchQuery.isNotEmpty ? Ionicons.close_circle_outline : Ionicons.cube_outline,
-                    title: searchQuery.isNotEmpty ? 'No items found' : 'No items yet',
-                    subtitle: searchQuery.isNotEmpty
-                        ? 'Try a different search term'
-                        : 'Tap + to add your first item',
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      ref.invalidate(householdItemsProvider);
+                      await ref.read(householdItemsProvider.future);
+                    },
+                    child: EmptyStateWidget(
+                      icon: searchQuery.isNotEmpty ? Ionicons.close_circle_outline : Ionicons.cube_outline,
+                      title: searchQuery.isNotEmpty ? 'No items found' : 'No items yet',
+                      subtitle: searchQuery.isNotEmpty
+                          ? 'Try a different search term'
+                          : 'Tap + to add your first item',
+                    ),
                   );
                 }
 
                 // Browse mode or grouped list mode: use ItemListView
                 if (viewMode == ViewMode.browse || selectedType == null) {
-                  return ItemListView(
-                    items: filteredItems,
-                    household: widget.household,
-                    viewMode: viewMode,
-                    showSyncStatus: true,
-                    showLocationInSubtitle: true,
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      ref.invalidate(householdItemsProvider);
+                      await ref.read(householdItemsProvider.future);
+                    },
+                    child: ItemListView(
+                      items: filteredItems,
+                      household: widget.household,
+                      viewMode: viewMode,
+                      showSyncStatus: true,
+                      showLocationInSubtitle: true,
+                    ),
                   );
                 } else {
                   // Flat list when specific type is selected
-                  return ListView.builder(
-                    itemCount: filteredItems.length,
-                    itemBuilder: (context, index) {
-                      final item = filteredItems[index];
-                      return ItemCardWidget(
-                        item: item,
-                        household: widget.household,
-                        showSyncStatus: true,
-                        showLocationInSubtitle: true,
-                      );
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      ref.invalidate(householdItemsProvider);
+                      await ref.read(householdItemsProvider.future);
                     },
+                    child: ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemCount: filteredItems.length,
+                      itemBuilder: (context, index) {
+                        final item = filteredItems[index];
+                        return ItemCardWidget(
+                          item: item,
+                          household: widget.household,
+                          showSyncStatus: true,
+                          showLocationInSubtitle: true,
+                        );
+                      },
+                    ),
                   );
                 }
               },
@@ -314,103 +336,138 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
           ),
         ],
       ),
-      floatingActionButton: GestureDetector(
-        onLongPress: () {
-          _showQuickAddMenu(context);
-        },
-        child: FloatingActionButton.extended(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ItemTypeSelectionScreen(
-                  householdId: widget.household.id,
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'item_list_fab',
+        onPressed: () => _showAddItemSheet(context),
+        tooltip: 'Add item',
+        child: const Icon(Ionicons.add_outline),
+      ),
+    );
+  }
+
+  void _showAddItemSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        margin: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[400],
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-            );
-          },
-          icon: const Icon(Ionicons.add_outline),
-          label: const Text('Add Item'),
+              const SizedBox(height: 8),
+              // Title
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Text(
+                  'Add Item',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const Divider(),
+              // Quick scan options
+              _buildAddOption(
+                context,
+                icon: Ionicons.scan_outline,
+                iconColor: Colors.blue,
+                title: 'Scan Book',
+                subtitle: 'Scan ISBN barcode',
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BookScanScreen(
+                        householdId: widget.household.id,
+                        initialMode: ScanMode.camera,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              _buildAddOption(
+                context,
+                icon: Ionicons.disc_outline,
+                iconColor: Colors.purple,
+                title: 'Scan Music',
+                subtitle: 'Scan album barcode',
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MusicScanScreen(
+                        householdId: widget.household.id,
+                        initialMode: ScanMode.camera,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const Divider(),
+              _buildAddOption(
+                context,
+                icon: Ionicons.create_outline,
+                iconColor: Colors.grey[600]!,
+                title: 'Add Manually',
+                subtitle: 'Choose item type and enter details',
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ItemTypeSelectionScreen(
+                        householdId: widget.household.id,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  void _showQuickAddMenu(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Ionicons.qr_code_outline, color: Colors.blue),
-              ),
-              title: const Text('Scan Book'),
-              subtitle: const Text('Quick scan ISBN barcode'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => BookScanScreen(
-                      householdId: widget.household.id,
-                      initialMode: ScanMode.camera,
-                    ),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.purple.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Ionicons.disc_outline, color: Colors.purple),
-              ),
-              title: const Text('Scan Music'),
-              subtitle: const Text('Quick scan music barcode'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => MusicScanScreen(
-                      householdId: widget.household.id,
-                      initialMode: ScanMode.camera,
-                    ),
-                  ),
-                );
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Ionicons.add_circle_outline),
-              title: const Text('Show All Options'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ItemTypeSelectionScreen(
-                      householdId: widget.household.id,
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
+  Widget _buildAddOption(
+    BuildContext context, {
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: iconColor.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
         ),
+        child: Icon(icon, color: iconColor, size: 24),
       ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+      subtitle: Text(subtitle, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+      trailing: Icon(Ionicons.chevron_forward_outline, color: Colors.grey[400], size: 20),
+      onTap: onTap,
     );
   }
 
@@ -687,9 +744,7 @@ class _ItemListScreenState extends ConsumerState<ItemListScreen> {
 
   void _showTagFilter(WidgetRef ref, List<String> tags) {
     if (tags.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No tags found in items')),
-      );
+      UiService.showInfo('No tags found in items');
       return;
     }
 
@@ -736,12 +791,15 @@ class _FilterButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 18),
-      label: Text(label),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    return Tooltip(
+      message: 'Filter by $label',
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 18),
+        label: Text(label),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        ),
       ),
     );
   }

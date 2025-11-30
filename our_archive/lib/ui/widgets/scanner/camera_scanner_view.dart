@@ -26,9 +26,10 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 ///   itemsScanned: _booksScanned,
 ///   instructionText: 'Position ISBN barcode in frame',
 ///   scannedItemLabel: 'Books scanned',
+///   onSwitchToManualEntry: () => setState(() => _currentMode = ScanMode.manual),
 /// )
 /// ```
-class CameraScannerView extends StatelessWidget {
+class CameraScannerView extends StatefulWidget {
   /// Controller for the mobile scanner
   final MobileScannerController controller;
 
@@ -47,6 +48,9 @@ class CameraScannerView extends StatelessWidget {
   /// Label for scanned items counter (e.g., "Books scanned", "Music scanned")
   final String scannedItemLabel;
 
+  /// Optional callback to switch to manual entry mode
+  final VoidCallback? onSwitchToManualEntry;
+
   const CameraScannerView({
     super.key,
     required this.controller,
@@ -55,20 +59,28 @@ class CameraScannerView extends StatelessWidget {
     this.itemsScanned = 0,
     required this.instructionText,
     this.scannedItemLabel = 'Items scanned',
+    this.onSwitchToManualEntry,
   });
 
   @override
+  State<CameraScannerView> createState() => _CameraScannerViewState();
+}
+
+class _CameraScannerViewState extends State<CameraScannerView> {
+  @override
   Widget build(BuildContext context) {
+    // MobileScanner handles permissions internally
+    // It will show its own permission UI if needed
     return Stack(
       children: [
         // Camera scanner
         MobileScanner(
-          controller: controller,
-          onDetect: onDetect,
+          controller: widget.controller,
+          onDetect: widget.onDetect,
         ),
 
         // Processing overlay
-        if (isProcessing)
+        if (widget.isProcessing)
           Container(
             color: Colors.black54,
             child: const Center(
@@ -85,9 +97,9 @@ class CameraScannerView extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             color: Colors.black54,
             child: Text(
-              itemsScanned > 0
-                  ? '$scannedItemLabel: $itemsScanned\n$instructionText'
-                  : instructionText,
+              widget.itemsScanned > 0
+                  ? '${widget.scannedItemLabel}: ${widget.itemsScanned}\n${widget.instructionText}'
+                  : widget.instructionText,
               style: const TextStyle(color: Colors.white),
               textAlign: TextAlign.center,
             ),

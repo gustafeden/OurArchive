@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/providers.dart';
 import '../../data/services/log_export_service.dart';
+import '../services/ui_service.dart';
 import '../../debug/debug_screen.dart';
 import 'theme_settings_screen.dart';
 import 'general_settings_screen.dart';
@@ -28,11 +29,15 @@ class ProfileScreen extends ConsumerWidget {
     final userId = user.uid;
     final createdAt = user.metadata.creationTime;
 
+    final bottomPadding = MediaQuery.of(context).viewPadding.bottom;
+
     return Scaffold(
+      extendBody: true,
       appBar: AppBar(
         title: const Text('Profile'),
       ),
       body: ListView(
+        padding: EdgeInsets.only(bottom: bottomPadding + 16),
         children: [
           // Profile header
           Container(
@@ -104,10 +109,7 @@ class ProfileScreen extends ConsumerWidget {
             value: '${userId.substring(0, 8)}...',
             subtitle: 'Tap to copy full ID',
             onTap: () {
-              // Could add clipboard copy here
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('User ID: $userId')),
-              );
+              UiService.showInfo('User ID: $userId');
             },
           ),
 
@@ -146,11 +148,7 @@ class ProfileScreen extends ConsumerWidget {
               onTap: () {
                 // Navigate back and show welcome screen which has sign-up
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Tap "Sign in with Email" to upgrade your account'),
-                  ),
-                );
+                UiService.showInfo('Tap "Sign in with Email" to upgrade your account');
               },
             ),
 
@@ -269,16 +267,14 @@ class ProfileScreen extends ConsumerWidget {
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          TextButton(
+          FilledButton(
             onPressed: () async {
               Navigator.pop(context); // Close dialog
               Navigator.pop(context); // Close profile screen
               await ref.read(authServiceProvider).signOut();
             },
-            child: Text(
-              'Sign Out',
-              style: TextStyle(color: Colors.red[700]),
-            ),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Sign Out'),
           ),
         ],
       ),
@@ -396,9 +392,7 @@ class _DisplayNameTileState extends ConsumerState<_DisplayNameTile> {
   Future<void> _saveName() async {
     final name = _controller.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name cannot be empty')),
-      );
+      UiService.showWarning('Name cannot be empty');
       return;
     }
 
@@ -418,15 +412,11 @@ class _DisplayNameTileState extends ConsumerState<_DisplayNameTile> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Display name updated!')),
-        );
+        UiService.showSuccess('Display name updated!');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        UiService.showError('Error: ${e.toString()}');
       }
     }
   }

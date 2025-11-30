@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/theme_provider.dart';
 import '../widgets/coverflow/coverflow_background.dart';
+import 'theme_settings_screen.dart';
 
 /// General app settings screen for non-theme related preferences.
 class GeneralSettingsScreen extends ConsumerWidget {
@@ -16,13 +17,37 @@ class GeneralSettingsScreen extends ConsumerWidget {
     final blurredAlbumEnabled = ref.watch(blurredAlbumEffectProvider);
     final backgroundStyle = ref.watch(coverFlowBackgroundStyleProvider);
 
+    final bottomPadding = MediaQuery.of(context).viewPadding.bottom;
+
     return Scaffold(
+      extendBody: true,
       appBar: AppBar(
         title: const Text('General Settings'),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPadding + 16),
         children: [
+          // Theme & Appearance Section
+          _buildSectionHeader('Appearance'),
+          const SizedBox(height: 8),
+          Card(
+            child: ListTile(
+              leading: const Icon(Ionicons.color_palette_outline),
+              title: const Text('Theme & Colors'),
+              subtitle: const Text('Color themes, light/dark mode'),
+              trailing: const Icon(Ionicons.chevron_forward_outline),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ThemeSettingsScreen(),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 24),
+
           // CoverFlow Display Section
           _buildSectionHeader('CoverFlow Display'),
           const SizedBox(height: 8),

@@ -4,14 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/providers.dart';
 import '../../data/models/household.dart';
+import '../services/ui_service.dart';
 import 'create_household_screen.dart';
 import 'join_household_screen.dart';
-import 'container_screen.dart';
-import 'item_list_screen.dart';
-import 'profile_screen.dart';
+import 'household_home_screen.dart';
 import 'scan_to_check_screen.dart';
-import 'coverflow_music_browser.dart';
-import 'book_grid_browser.dart';
 
 class HouseholdListScreen extends ConsumerStatefulWidget {
   const HouseholdListScreen({super.key});
@@ -52,32 +49,9 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
     final currentUser = authService.currentUser;
 
     return Scaffold(
+      extendBody: true,
       appBar: AppBar(
         title: const Text('My Households'),
-        actions: [
-          IconButton(
-            icon: CircleAvatar(
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              radius: 16,
-              child: Icon(
-                currentUser?.isAnonymous == true
-                    ? Ionicons.person_outline
-                    : Ionicons.person_outline,
-                size: 20,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            tooltip: 'Profile',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ProfileScreen(),
-                ),
-              );
-            },
-          ),
-        ],
       ),
       body: householdsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -110,17 +84,23 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
             );
           }
 
-          return ListView.builder(
-            itemCount: households.length,
-            itemBuilder: (context, index) {
-              final household = households[index];
-              final isOwner = household.isOwner(currentUser!.uid);
-              final memberCount = household.members.length;
-              final pendingCount = household.members.values
-                  .where((role) => role == 'pending')
-                  .length;
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(userHouseholdsProvider);
+              await ref.read(userHouseholdsProvider.future);
+            },
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: households.length,
+              itemBuilder: (context, index) {
+                final household = households[index];
+                final isOwner = household.isOwner(currentUser!.uid);
+                final memberCount = household.members.length;
+                final pendingCount = household.members.values
+                    .where((role) => role == 'pending')
+                    .length;
 
-              return Card(
+                return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Column(
                   children: [
@@ -141,12 +121,7 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                                 InkWell(
                                   onTap: () {
                                     Clipboard.setData(ClipboardData(text: household.code));
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Code copied!'),
-                                        duration: Duration(seconds: 1),
-                                      ),
-                                    );
+                                    UiService.showSuccess('Code copied!');
                                   },
                                   borderRadius: BorderRadius.circular(4),
                                   child: Padding(
@@ -187,10 +162,9 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            settings: const RouteSettings(name: '/container'),
-                            builder: (context) => ContainerScreen(
-                              householdId: household.id,
-                              householdName: household.name,
+                            settings: const RouteSettings(name: '/household_home'),
+                            builder: (context) => HouseholdHomeScreen(
+                              household: household,
                             ),
                           ),
                         );
@@ -203,125 +177,10 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                     if (isOwner && pendingCount > 0)
                       _PendingMembersSection(household: household),
 
-                    // Navigation buttons (2x2 grid)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                      child: Column(
-                        children: [
-                          // First row: Items, Organize
-                          Row(
-                            children: [
-                              Expanded(
-                                child: FilledButton.icon(
-                                  onPressed: () {
-                                    ref.read(currentHouseholdIdProvider.notifier).state = household.id;
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        settings: const RouteSettings(name: '/item_list'),
-                                        builder: (context) => ItemListScreen(
-                                          household: household,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  icon: const Icon(Ionicons.list_outline),
-                                  label: const Text('Items'),
-                                  style: FilledButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: FilledButton.tonalIcon(
-                                  onPressed: () {
-                                    ref.read(currentHouseholdIdProvider.notifier).state = household.id;
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        settings: const RouteSettings(name: '/container'),
-                                        builder: (context) => ContainerScreen(
-                                          householdId: household.id,
-                                          householdName: household.name,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  icon: const Icon(Ionicons.cube_outline),
-                                  label: const Text('Organize'),
-                                  style: FilledButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          // Second row: Books, Music
-                          Row(
-                            children: [
-                              Expanded(
-                                child: FilledButton.tonalIcon(
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        settings: const RouteSettings(name: '/books'),
-                                        builder: (context) => BookGridBrowser(
-                                          householdId: household.id,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  icon: const Icon(Ionicons.book_outline),
-                                  label: const Text('Books'),
-                                  style: FilledButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: FilledButton.tonalIcon(
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      PageRouteBuilder(
-                                        opaque: true,
-                                        barrierColor: Colors.black,
-                                        settings: const RouteSettings(name: '/coverflow'),
-                                        pageBuilder: (context, animation, secondaryAnimation) =>
-                                          CoverFlowMusicBrowser(
-                                            householdId: household.id,
-                                          ),
-                                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                          // Fade transition for smooth entry/exit
-                                          return FadeTransition(
-                                            opacity: animation,
-                                            child: child,
-                                          );
-                                        },
-                                      ),
-                                    );
-                                  },
-                                  icon: const Icon(Ionicons.disc_outline),
-                                  label: const Text('Music'),
-                                  style: FilledButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-
                     // Scan to Check button
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                      child: FilledButton.tonalIcon(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      child: OutlinedButton.icon(
                         onPressed: () {
                           Navigator.push(
                             context,
@@ -333,17 +192,18 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                             ),
                           );
                         },
-                        icon: const Icon(Ionicons.qr_code_outline),
-                        label: const Text('Scan to Check if We Have It'),
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 40),
+                        icon: const Icon(Ionicons.scan_outline),
+                        label: const Text('Quick Scan'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 44),
                         ),
                       ),
                     ),
                   ],
                 ),
               );
-            },
+              },
+            ),
           );
         },
       ),
@@ -529,9 +389,10 @@ class _PendingMembersSection extends ConsumerWidget {
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
-          TextButton(
+          FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Deny', style: TextStyle(color: Colors.red)),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Deny'),
           ),
         ],
       ),
@@ -799,20 +660,11 @@ class _MemberCard extends ConsumerWidget {
                   );
 
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Role updated successfully'),
-                      ),
-                    );
+                    UiService.showSuccess('Role updated successfully');
                   }
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Error: ${e.toString()}'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
+                    UiService.showError('Error: ${e.toString()}');
                   }
                 }
               },
@@ -837,12 +689,10 @@ class _MemberCard extends ConsumerWidget {
                         onPressed: () => Navigator.pop(context, false),
                         child: const Text('Cancel'),
                       ),
-                      TextButton(
+                      FilledButton(
                         onPressed: () => Navigator.pop(context, true),
-                        child: const Text(
-                          'Remove',
-                          style: TextStyle(color: Colors.red),
-                        ),
+                        style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                        child: const Text('Remove'),
                       ),
                     ],
                   ),
@@ -858,20 +708,11 @@ class _MemberCard extends ConsumerWidget {
                     );
 
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Member removed successfully'),
-                        ),
-                      );
+                      UiService.showSuccess('Member removed successfully');
                     }
                   } catch (e) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Error: ${e.toString()}'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
+                      UiService.showError('Error: ${e.toString()}');
                     }
                   }
                 }
@@ -1010,7 +851,7 @@ void _showAddExistingUserDialog(
                 ),
               ),
               actions: [
-                TextButton(
+                FilledButton(
                   onPressed: () => Navigator.pop(dialogContext),
                   child: const Text('Close'),
                 ),
@@ -1082,7 +923,7 @@ void _showEditHouseholdDialog(BuildContext context, WidgetRef ref, Household hou
             title: const Text('Error'),
             content: Text('Failed to load household: $error'),
             actions: [
-              TextButton(
+              FilledButton(
                 onPressed: () => Navigator.pop(dialogContext),
                 child: const Text('Close'),
               ),

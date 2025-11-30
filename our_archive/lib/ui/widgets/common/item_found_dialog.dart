@@ -163,20 +163,25 @@ Future<String?> showItemFoundDialog({
         ),
       ),
       actions: [
-        if (showAddCopyOption)
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, 'close'),
+          child: const Text('Close'),
+        ),
+        if (!showAddCopyOption)
           TextButton(
+            onPressed: () => Navigator.pop(dialogContext, 'scanNext'),
+            child: const Text('Scan Next'),
+          ),
+        if (showAddCopyOption) ...[
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, 'scanNext'),
+            child: const Text('Scan Next'),
+          ),
+          FilledButton(
             onPressed: () => Navigator.pop(dialogContext, 'addCopy'),
             child: const Text('Add Another Copy'),
           ),
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext, 'scanNext'),
-          child: const Text('Scan Next'),
-        ),
-        if (!showAddCopyOption)
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, 'close'),
-            child: const Text('Close'),
-          ),
+        ],
       ],
     ),
   );

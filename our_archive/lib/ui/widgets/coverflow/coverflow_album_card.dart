@@ -75,15 +75,24 @@ class CoverFlowAlbumCard extends ConsumerWidget {
       ..rotateY(rotationY)
       ..scale(scale, scale, scale);
 
+    final artistText = item.artist != null && item.artist!.isNotEmpty
+        ? ' by ${item.artist}'
+        : '';
+
     return Transform(
       transform: matrix,
       alignment: Alignment.center,
       child: Opacity(
         opacity: opacity,
-        child: GestureDetector(
-          onTap: onTap,
-          onLongPress: onLongPress,
-          child: SizedBox(
+        child: Semantics(
+          label: 'Album: ${item.title}$artistText',
+          button: true,
+          child: Tooltip(
+            message: '${item.title}$artistText',
+            child: GestureDetector(
+              onTap: onTap,
+              onLongPress: onLongPress,
+              child: SizedBox(
             width: coverSize,
             height: coverSize * 1.5, // Include reflection and text height
             child: Column(
@@ -107,6 +116,8 @@ class CoverFlowAlbumCard extends ConsumerWidget {
                     ),
                   ),
               ],
+            ),
+          ),
             ),
           ),
         ),
@@ -203,8 +214,8 @@ class CoverFlowAlbumCard extends ConsumerWidget {
           maxHeight: coverSize,
           child: Transform(
             transform: Matrix4.identity()
-              ..translate(0.0, -coverSize)
-              ..scale(1.0, -1.0, 1.0), // Flip vertically
+              ..setEntry(1, 3, -coverSize) // translate Y
+              ..setEntry(1, 1, -1.0), // flip Y
             alignment: Alignment.bottomCenter,
             child: Opacity(
               opacity: _reflectionOpacity,

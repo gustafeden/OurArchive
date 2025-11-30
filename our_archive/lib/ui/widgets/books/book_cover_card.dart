@@ -46,12 +46,21 @@ class _BookCoverCardState extends State<BookCoverCard>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return GestureDetector(
-      onTapDown: _handleTapDown,
-      onTapUp: _handleTapUp,
-      onTapCancel: _handleTapCancel,
-      onLongPress: widget.onLongPress,
-      child: AnimatedScale(
+    final authorText = widget.book.authors != null && widget.book.authors!.isNotEmpty
+        ? ' by ${widget.book.authors!.join(', ')}'
+        : '';
+
+    return Semantics(
+      label: 'Book: ${widget.book.title}$authorText',
+      button: true,
+      child: Tooltip(
+        message: '${widget.book.title}$authorText',
+        child: GestureDetector(
+          onTapDown: _handleTapDown,
+          onTapUp: _handleTapUp,
+          onTapCancel: _handleTapCancel,
+          onLongPress: widget.onLongPress,
+          child: AnimatedScale(
         scale: _isPressed ? 1.08 : 1.0,
         duration: const Duration(milliseconds: 80),
         curve: Curves.easeOut,
@@ -80,6 +89,8 @@ class _BookCoverCardState extends State<BookCoverCard>
               ],
             ),
           ),
+        ),
+      ),
         ),
       ),
     );

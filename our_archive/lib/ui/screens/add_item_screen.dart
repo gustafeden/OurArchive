@@ -11,6 +11,7 @@ import '../../data/models/music_metadata.dart';
 import '../../utils/icon_helper.dart';
 import 'barcode_scan_screen.dart';
 import '../widgets/common/photo_picker_widget.dart';
+import '../widgets/form/hierarchical_container_picker.dart';
 
 class AddItemScreen extends ConsumerStatefulWidget {
   final Household? household;
@@ -224,6 +225,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
           (route) =>
               route.settings.name == '/item_list' ||
               route.settings.name == '/container' ||
+              route.settings.name == '/household_home' ||
               route.isFirst,
         );
         ScaffoldMessenger.of(context).showSnackBar(
@@ -260,16 +262,23 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
       ),
       body: Form(
         key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Photo section
-            PhotoPickerWidget(
-              photo: _photo,
-              onPhotoChanged: (photo) => setState(() => _photo = photo),
+            // Basic Information Section
+            Padding(
+              padding: const EdgeInsets.only(top: 0, bottom: 8),
+              child: Text(
+                'BASIC INFORMATION',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
             ),
-
-            const SizedBox(height: 24),
 
             // Title
             TextFormField(
@@ -281,11 +290,15 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Please enter a title';
+                  return 'Title is required';
+                }
+                if (value.trim().length < 2) {
+                  return 'Title must be at least 2 characters';
                 }
                 return null;
               },
               enabled: !_isLoading,
+              textCapitalization: TextCapitalization.words,
             ),
 
             const SizedBox(height: 16),
@@ -312,7 +325,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
                     }
 
                     return DropdownButtonFormField<String>(
-                      value: _selectedType,
+                      initialValue: _selectedType,
                       decoration: const InputDecoration(
                         labelText: 'Type',
                         border: OutlineInputBorder(),
@@ -342,10 +355,66 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
 
             const SizedBox(height: 16),
 
-            // Container dropdown
-            _buildContainerDropdown(),
+            // Photo section
+            PhotoPickerWidget(
+              photo: _photo,
+              onPhotoChanged: (photo) => setState(() => _photo = photo),
+            ),
 
             const SizedBox(height: 16),
+
+            // Organization Section
+            Padding(
+              padding: const EdgeInsets.only(top: 24, bottom: 8),
+              child: Text(
+                'ORGANIZATION',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+
+            // Container picker
+            HierarchicalContainerPicker(
+              selectedContainerId: _selectedContainerId,
+              onChanged: (value) {
+                setState(() => _selectedContainerId = value);
+              },
+            ),
+
+            const SizedBox(height: 16),
+
+            // Tags
+            TextFormField(
+              controller: _tagsController,
+              decoration: const InputDecoration(
+                labelText: 'Tags',
+                hintText: 'e.g., power tools, red, birthday gift',
+                helperText: 'Separate tags with commas',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Ionicons.pricetag_outline),
+              ),
+              enabled: !_isLoading,
+            ),
+
+            const SizedBox(height: 16),
+
+            // Notes Section
+            Padding(
+              padding: const EdgeInsets.only(top: 24, bottom: 8),
+              child: Text(
+                'NOTES',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
 
             // Location
             TextFormField(
@@ -379,21 +448,6 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
               enabled: !_isLoading,
             ),
 
-            const SizedBox(height: 16),
-
-            // Tags
-            TextFormField(
-              controller: _tagsController,
-              decoration: const InputDecoration(
-                labelText: 'Tags',
-                hintText: 'e.g., power tools, red, birthday gift',
-                helperText: 'Separate tags with commas',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Ionicons.pricetag_outline),
-              ),
-              enabled: !_isLoading,
-            ),
-
             const SizedBox(height: 24),
 
             // Save button
@@ -414,148 +468,4 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
     );
   }
 
-  Widget _buildContainerDropdown() {
-    final allContainersAsync = ref.watch(allContainersProvider);
-
-    return allContainersAsync.when(
-      loading: () => const LinearProgressIndicator(),
-      error: (error, stack) => Text('Error loading containers: $error'),
-      data: (containers) {
-        if (containers.isEmpty) {
-          return Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Row(
-              children: [
-                Icon(Ionicons.information_circle_outline, color: Colors.grey[600]),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'No containers yet. Create rooms and containers to organize your items.',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        // Build hierarchical list of containers
-        final containerItems = _buildContainerMenuItems(containers);
-
-        return DropdownButtonFormField<String?>(
-          value: _selectedContainerId,
-          decoration: const InputDecoration(
-            labelText: 'Container (optional)',
-            hintText: 'Select a room or container',
-            border: OutlineInputBorder(),
-            prefixIcon: Icon(Ionicons.cube_outline),
-          ),
-          items: [
-            const DropdownMenuItem<String?>(
-              value: null,
-              child: Text('None (unorganized)'),
-            ),
-            ...containerItems,
-          ],
-          onChanged: _isLoading
-              ? null
-              : (value) {
-                  setState(() => _selectedContainerId = value);
-                },
-        );
-      },
-    );
-  }
-
-  List<DropdownMenuItem<String?>> _buildContainerMenuItems(List containers) {
-    // Create a map for quick parent lookup
-    final containerMap = {for (var c in containers) c.id: c};
-
-    // Get top-level containers (rooms)
-    final topLevel = containers.where((c) => c.parentId == null).toList();
-    topLevel.sort((a, b) => a.name.compareTo(b.name));
-
-    final items = <DropdownMenuItem<String?>>[];
-
-    for (final container in topLevel) {
-      // Add the top-level container
-      items.add(
-        DropdownMenuItem<String?>(
-          value: container.id,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(_getContainerIconForType(container.containerType), size: 20),
-              const SizedBox(width: 8),
-              Text(container.name),
-            ],
-          ),
-        ),
-      );
-
-      // Add children recursively
-      _addChildContainers(items, containers, container.id, containerMap, 1);
-    }
-
-    return items;
-  }
-
-  void _addChildContainers(
-    List<DropdownMenuItem<String?>> items,
-    List containers,
-    String parentId,
-    Map containerMap,
-    int depth,
-  ) {
-    final children = containers.where((c) => c.parentId == parentId).toList();
-    children.sort((a, b) => a.name.compareTo(b.name));
-
-    for (final child in children) {
-      final indent = '  ' * depth;
-      items.add(
-        DropdownMenuItem<String?>(
-          value: child.id,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(indent),
-              Icon(_getContainerIconForType(child.containerType), size: 20),
-              const SizedBox(width: 8),
-              Text(child.name),
-            ],
-          ),
-        ),
-      );
-
-      // Recursively add children
-      _addChildContainers(items, containers, child.id, containerMap, depth + 1);
-    }
-  }
-
-  IconData _getContainerIconForType(String type) {
-    switch (type) {
-      case 'room':
-        return Ionicons.business_outline;
-      case 'shelf':
-        return Ionicons.albums_outline;
-      case 'box':
-        return Ionicons.cube_outline;
-      case 'fridge':
-        return Ionicons.restaurant_outline;
-      case 'drawer':
-        return Ionicons.restaurant_outline;
-      case 'cabinet':
-        return Ionicons.exit_outline;
-      case 'closet':
-        return Ionicons.shirt_outline;
-      case 'bin':
-        return Ionicons.trash_outline;
-      default:
-        return Ionicons.cube_outline;
-    }
-  }
 }

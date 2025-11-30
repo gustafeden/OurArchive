@@ -86,6 +86,9 @@ dependencies:
 
   # Logging utilities
   url_launcher: ^6.3.1
+
+  # iOS-style liquid glass effects
+  liquid_glass_renderer: ^0.2.0-dev.4
   package_info_plus: ^8.1.0
   intl: ^0.19.0
 

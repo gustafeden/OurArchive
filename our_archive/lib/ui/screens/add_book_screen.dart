@@ -9,7 +9,7 @@ import '../../data/models/household.dart';
 import '../../data/models/book_metadata.dart';
 import '../widgets/common/photo_picker_widget.dart';
 import '../widgets/common/loading_button.dart';
-import '../widgets/form/container_selector_field.dart';
+import '../widgets/form/hierarchical_container_picker.dart';
 import '../widgets/form/year_field.dart';
 import '../widgets/form/notes_field.dart';
 
@@ -187,6 +187,7 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
           (route) =>
               route.settings.name == '/item_list' ||
               route.settings.name == '/container' ||
+              route.settings.name == '/household_home' ||
               route.isFirst,
         );
         ScaffoldMessenger.of(context).showSnackBar(
@@ -217,23 +218,30 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
       ),
       body: Form(
         key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: ListView(
           padding: const EdgeInsets.all(16.0),
           children: [
-            // Photo Section
-            PhotoPickerWidget(
-              photo: _photo,
-              onPhotoChanged: (photo) => setState(() => _photo = photo),
-              placeholderIcon: Ionicons.book_outline,
-              placeholderText: 'Tap to add cover photo',
+            // Basic Information Section
+            Padding(
+              padding: const EdgeInsets.only(top: 0, bottom: 8),
+              child: Text(
+                'BASIC INFORMATION',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
             ),
-            const SizedBox(height: 24),
 
             // Title (Required)
             TextFormField(
               controller: _titleController,
               decoration: const InputDecoration(
-                labelText: 'Title',
+                labelText: 'Title *',
+                hintText: 'Enter book title',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Ionicons.text_outline),
               ),
@@ -241,11 +249,37 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
                 if (value == null || value.trim().isEmpty) {
                   return 'Title is required';
                 }
+                if (value.trim().length < 2) {
+                  return 'Title must be at least 2 characters';
+                }
                 return null;
               },
               textCapitalization: TextCapitalization.words,
             ),
             const SizedBox(height: 16),
+
+            // Photo Section
+            PhotoPickerWidget(
+              photo: _photo,
+              onPhotoChanged: (photo) => setState(() => _photo = photo),
+              placeholderIcon: Ionicons.book_outline,
+              placeholderText: 'Tap to add cover photo',
+            ),
+            const SizedBox(height: 16),
+
+            // Authors & Publication Section
+            Padding(
+              padding: const EdgeInsets.only(top: 24, bottom: 8),
+              child: Text(
+                'AUTHORS & PUBLICATION',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
 
             // Authors (Multi-entry)
             const Text('Authors', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
@@ -289,11 +323,23 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
             TextFormField(
               controller: _isbnController,
               decoration: const InputDecoration(
-                labelText: 'ISBN (optional)',
+                labelText: 'ISBN',
+                hintText: 'ISBN-10 or ISBN-13',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Ionicons.keypad_outline),
               ),
-              keyboardType: TextInputType.number,
+              keyboardType: TextInputType.text,
+              validator: (value) {
+                if (value == null || value.isEmpty) return null; // Optional
+                final cleaned = value.replaceAll(RegExp(r'[-\s]'), '');
+                if (cleaned.length != 10 && cleaned.length != 13) {
+                  return 'ISBN must be 10 or 13 digits';
+                }
+                if (!RegExp(r'^[0-9X]+$').hasMatch(cleaned)) {
+                  return 'ISBN can only contain numbers and X';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 16),
 
@@ -320,12 +366,40 @@ class _AddBookScreenState extends ConsumerState<AddBookScreen> {
             ),
             const SizedBox(height: 16),
 
+            // Organization Section
+            Padding(
+              padding: const EdgeInsets.only(top: 24, bottom: 8),
+              child: Text(
+                'ORGANIZATION',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+
             // Container/Location
-            ContainerSelectorField(
+            HierarchicalContainerPicker(
               selectedContainerId: _selectedContainerId,
               onChanged: (value) => setState(() => _selectedContainerId = value),
             ),
             const SizedBox(height: 16),
+
+            // Notes Section
+            Padding(
+              padding: const EdgeInsets.only(top: 24, bottom: 8),
+              child: Text(
+                'NOTES',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
 
             // Notes/Description
             NotesField(

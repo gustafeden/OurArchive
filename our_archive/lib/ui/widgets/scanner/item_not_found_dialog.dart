@@ -138,12 +138,12 @@ Future<String?> showItemNotFoundDialog({
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(dialogContext, 'scanNext'),
-          child: const Text('Scan Next'),
-        ),
-        TextButton(
           onPressed: () => Navigator.pop(dialogContext, 'close'),
           child: const Text('Close'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, 'scanNext'),
+          child: const Text('Scan Next'),
         ),
         FilledButton.icon(
           onPressed: () => Navigator.pop(dialogContext, 'add'),

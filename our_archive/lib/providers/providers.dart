@@ -8,6 +8,7 @@ import '../data/services/logger_service.dart';
 import '../data/services/type_service.dart';
 import '../data/services/thumbnail_preload_service.dart';
 import '../services/music_lookup_service.dart';
+import '../ui/services/ui_service.dart';
 import '../data/repositories/item_repository.dart';
 import '../data/repositories/container_repository.dart';
 import '../core/sync/sync_queue.dart';
@@ -26,6 +27,7 @@ final musicLookupServiceProvider = Provider((ref) => MusicLookupService());
 final syncQueueProvider = Provider((ref) => SyncQueue());
 final loggerServiceProvider = Provider((ref) => LoggerService());
 final typeServiceProvider = Provider((ref) => TypeService());
+final uiServiceProvider = Provider((ref) => UiService());
 
 final itemRepositoryProvider = Provider((ref) {
   final syncQueue = ref.watch(syncQueueProvider);

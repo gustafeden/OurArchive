@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/providers.dart';
 import 'welcome_screen.dart';
-import 'household_list_screen.dart';
+import 'main_home_screen.dart';
 
 class AuthGate extends ConsumerWidget {
   const AuthGate({super.key});
@@ -22,7 +22,7 @@ class AuthGate extends ConsumerWidget {
         }
 
         if (snapshot.hasData) {
-          return const HouseholdListScreen();
+          return const MainHomeScreen();
         }
 
         return const WelcomeScreen();

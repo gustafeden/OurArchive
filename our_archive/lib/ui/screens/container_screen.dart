@@ -8,6 +8,7 @@ import '../../providers/providers.dart';
 import '../../data/models/container.dart' as model;
 import '../../data/models/item.dart';
 import '../../data/models/household.dart';
+import '../services/ui_service.dart';
 import 'item_type_selection_screen.dart';
 import 'item_list_screen.dart';
 import 'book_scan_screen.dart';
@@ -69,6 +70,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
     final title = widget.breadcrumb.isEmpty ? widget.householdName : widget.breadcrumb.last.name;
 
     return Scaffold(
+      extendBody: true,
       appBar: AppBar(
         title: _isSearching
             ? TextField(
@@ -99,6 +101,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
           // Search button
           IconButton(
             icon: Icon(_isSearching ? Ionicons.close_outline : Ionicons.search_outline),
+            tooltip: _isSearching ? 'Close search' : 'Search containers and items',
             onPressed: () {
               setState(() {
                 _isSearching = !_isSearching;
@@ -111,6 +114,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
           ),
           // Three-dot menu
           PopupMenuButton<String>(
+            tooltip: 'More options',
             onSelected: (value) {
               if (value == 'edit') {
                 setState(() {
@@ -263,60 +267,72 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
 
                   // Content list
                   Expanded(
-                    child: CustomScrollView(
-                      slivers: [
-                        // Unorganized items card at top level
-                        if (widget.breadcrumb.isEmpty && filteredItems.isNotEmpty)
-                          SliverToBoxAdapter(
-                            child: _buildUnorganizedItemsCard(context, ref, filteredItems),
-                          ),
+                    child: RefreshIndicator(
+                      onRefresh: () async {
+                        if (widget.parentContainerId == null) {
+                          ref.invalidate(householdContainersProvider);
+                          await ref.read(householdContainersProvider.future);
+                        } else {
+                          ref.invalidate(childContainersProvider(widget.parentContainerId!));
+                          await ref.read(childContainersProvider(widget.parentContainerId!).future);
+                        }
+                      },
+                      child: CustomScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        slivers: [
+                          // Unorganized items card at top level
+                          if (widget.breadcrumb.isEmpty && filteredItems.isNotEmpty)
+                            SliverToBoxAdapter(
+                              child: _buildUnorganizedItemsCard(context, ref, filteredItems),
+                            ),
 
-                        // Containers in a grid
-                        if (filteredContainers.isNotEmpty)
-                          SliverPadding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            sliver: SliverGrid(
-                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                childAspectRatio: 1.2,
-                                crossAxisSpacing: 8,
-                                mainAxisSpacing: 8,
+                          // Containers in a grid
+                          if (filteredContainers.isNotEmpty)
+                            SliverPadding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              sliver: SliverGrid(
+                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  childAspectRatio: 1.2,
+                                  crossAxisSpacing: 8,
+                                  mainAxisSpacing: 8,
+                                ),
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, index) {
+                                    final container = filteredContainers[index];
+                                    return _buildContainerCard(context, ref, container);
+                                  },
+                                  childCount: filteredContainers.length,
+                                ),
                               ),
+                            ),
+
+                          // Items list at the end
+                          if (filteredItems.isNotEmpty && widget.breadcrumb.isNotEmpty)
+                            SliverList(
                               delegate: SliverChildBuilderDelegate(
                                 (context, index) {
-                                  final container = filteredContainers[index];
-                                  return _buildContainerCard(context, ref, container);
+                                  final household = Household(
+                                    id: widget.householdId,
+                                    name: widget.householdName,
+                                    createdBy: '',
+                                    members: {},
+                                    createdAt: DateTime.now(),
+                                    code: '',
+                                  );
+                                  return ItemCardWidget(
+                                    item: filteredItems[index],
+                                    household: household,
+                                    showEditActions: _isEditMode,
+                                    onMoveItem: () => _showMoveItemDialog(context, ref, filteredItems[index]),
+                                    onDeleteItem: () => _showDeleteItemConfirmation(context, ref, filteredItems[index]),
+                                  );
                                 },
-                                childCount: filteredContainers.length,
+                                childCount: filteredItems.length,
                               ),
                             ),
-                          ),
-
-                        // Items list at the end
-                        if (filteredItems.isNotEmpty && widget.breadcrumb.isNotEmpty)
-                          SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) {
-                                final household = Household(
-                                  id: widget.householdId,
-                                  name: widget.householdName,
-                                  createdBy: '',
-                                  members: {},
-                                  createdAt: DateTime.now(),
-                                  code: '',
-                                );
-                                return ItemCardWidget(
-                                  item: filteredItems[index],
-                                  household: household,
-                                  showEditActions: _isEditMode,
-                                  onMoveItem: () => _showMoveItemDialog(context, ref, filteredItems[index]),
-                                  onDeleteItem: () => _showDeleteItemConfirmation(context, ref, filteredItems[index]),
-                                );
-                              },
-                              childCount: filteredItems.length,
-                            ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -651,6 +667,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                     children: [
                       IconButton(
                         icon: const Icon(Ionicons.create_outline, color: Colors.white),
+                        tooltip: 'Edit container',
                         style: IconButton.styleFrom(
                           backgroundColor: Colors.black.withOpacity(0.5),
                         ),
@@ -659,6 +676,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                       const SizedBox(width: 4),
                       IconButton(
                         icon: const Icon(Ionicons.trash_outline, color: Colors.white),
+                        tooltip: 'Delete container',
                         style: IconButton.styleFrom(
                           backgroundColor: Colors.red.withOpacity(0.7),
                         ),
@@ -967,17 +985,11 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                                 createdBy: '',
                               ))
                           .displayName;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('$typeDisplayName created!'),
-                        ),
-                      );
+                      UiService.showSuccess('$typeDisplayName created!');
                     }
                   } catch (e) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error: ${e.toString()}')),
-                      );
+                      UiService.showError('Error: ${e.toString()}');
                     }
                   }
                 },
@@ -1149,15 +1161,11 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
 
                     if (context.mounted) {
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Container updated!')),
-                      );
+                      UiService.showSuccess('Container updated!');
                     }
                   } catch (e) {
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error: ${e.toString()}')),
-                      );
+                      UiService.showError('Error: ${e.toString()}');
                     }
                   }
                 },
@@ -1227,7 +1235,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
             child: Text(itemCount > 0 || childCount > 0 ? 'OK' : 'Cancel'),
           ),
           if (itemCount == 0 && childCount == 0)
-            TextButton(
+            FilledButton(
               onPressed: () async {
                 try {
                   final containerService = ref.read(containerServiceProvider);
@@ -1248,7 +1256,8 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                   }
                 }
               },
-              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('Delete'),
             ),
         ],
       ),
@@ -1266,7 +1275,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          TextButton(
+          FilledButton(
             onPressed: () async {
               Navigator.pop(context);
 
@@ -1287,7 +1296,8 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
                 }
               }
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -1397,7 +1407,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: Colors.blue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Ionicons.qr_code_outline, color: Colors.blue),
@@ -1422,7 +1432,7 @@ class _ContainerScreenState extends ConsumerState<ContainerScreen> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.purple.withOpacity(0.1),
+                  color: Colors.purple.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Ionicons.disc_outline, color: Colors.purple),

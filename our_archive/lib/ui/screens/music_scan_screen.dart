@@ -347,6 +347,11 @@ class _MusicScanScreenState extends ConsumerState<MusicScanScreen>
           itemsScanned: itemsScanned,
           instructionText: 'Position barcode in frame',
           scannedItemLabel: 'Music scanned',
+          onSwitchToManualEntry: () {
+            setState(() {
+              _currentMode = ScanMode.textSearch;
+            });
+          },
         );
 
       case ScanMode.textSearch:

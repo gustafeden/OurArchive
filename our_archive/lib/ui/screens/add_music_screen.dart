@@ -13,7 +13,7 @@ import '../../services/music_lookup_service.dart';
 import '../widgets/scanner/music_selection_dialog.dart';
 import '../widgets/common/photo_picker_widget.dart';
 import '../widgets/common/loading_button.dart';
-import '../widgets/form/container_selector_field.dart';
+import '../widgets/form/hierarchical_container_picker.dart';
 import '../widgets/form/year_field.dart';
 import '../widgets/form/notes_field.dart';
 
@@ -188,6 +188,7 @@ class _AddMusicScreenState extends ConsumerState<AddMusicScreen> {
           (route) =>
               route.settings.name == '/item_list' ||
               route.settings.name == '/container' ||
+              route.settings.name == '/household_home' ||
               route.isFirst,
         );
         ScaffoldMessenger.of(context).showSnackBar(
@@ -316,20 +317,77 @@ class _AddMusicScreenState extends ConsumerState<AddMusicScreen> {
       ),
       body: Form(
         key: _formKey,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            // Basic Information Section
+            Padding(
+              padding: const EdgeInsets.only(top: 0, bottom: 8),
+              child: Text(
+                'BASIC INFORMATION',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+
+            TextFormField(
+              controller: _titleController,
+              decoration: const InputDecoration(
+                labelText: 'Title *',
+                hintText: 'Enter album title',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Ionicons.text_outline),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Title is required';
+                }
+                if (value.trim().length < 2) {
+                  return 'Title must be at least 2 characters';
+                }
+                return null;
+              },
+              textCapitalization: TextCapitalization.words,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _artistController,
+              decoration: const InputDecoration(
+                labelText: 'Artist',
+                hintText: 'Enter artist name',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Ionicons.person_outline),
+              ),
+              textCapitalization: TextCapitalization.words,
+            ),
+            const SizedBox(height: 16),
             PhotoPickerWidget(
               photo: _photo,
               onPhotoChanged: (photo) => setState(() => _photo = photo),
               placeholderIcon: Ionicons.disc_outline,
               placeholderText: 'Tap to add cover photo',
             ),
-            const SizedBox(height: 24),
-            TextFormField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder(), prefixIcon: Icon(Ionicons.text_outline)), validator: (v) => v?.trim().isEmpty ?? true ? 'Title is required' : null, textCapitalization: TextCapitalization.words),
             const SizedBox(height: 16),
-            TextFormField(controller: _artistController, decoration: const InputDecoration(labelText: 'Artist', border: OutlineInputBorder(), prefixIcon: Icon(Ionicons.person_outline)), textCapitalization: TextCapitalization.words),
-            const SizedBox(height: 16),
+
+            // Album Details Section
+            Padding(
+              padding: const EdgeInsets.only(top: 24, bottom: 8),
+              child: Text(
+                'ALBUM DETAILS',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+
             DropdownButtonFormField<String>(
               value: _selectedFormat,
               decoration: const InputDecoration(
@@ -362,11 +420,41 @@ class _AddMusicScreenState extends ConsumerState<AddMusicScreen> {
               Expanded(child: TextFormField(controller: _catalogController, decoration: const InputDecoration(labelText: 'Catalog #', border: OutlineInputBorder()))),
             ]),
             const SizedBox(height: 16),
-            ContainerSelectorField(
+
+            // Organization Section
+            Padding(
+              padding: const EdgeInsets.only(top: 24, bottom: 8),
+              child: Text(
+                'ORGANIZATION',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+
+            HierarchicalContainerPicker(
               selectedContainerId: _selectedContainerId,
               onChanged: (v) => setState(() => _selectedContainerId = v),
             ),
             const SizedBox(height: 16),
+
+            // Notes Section
+            Padding(
+              padding: const EdgeInsets.only(top: 24, bottom: 8),
+              child: Text(
+                'NOTES',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+
             NotesField(controller: _notesController),
             const SizedBox(height: 24),
           ],

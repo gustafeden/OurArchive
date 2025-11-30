@@ -281,6 +281,11 @@ class _BookScanScreenState extends ConsumerState<BookScanScreen>
           itemsScanned: itemsScanned,
           instructionText: 'Position ISBN barcode in frame',
           scannedItemLabel: 'Books scanned',
+          onSwitchToManualEntry: () {
+            setState(() {
+              _currentMode = ScanMode.manual;
+            });
+          },
         );
 
       case ScanMode.manual:

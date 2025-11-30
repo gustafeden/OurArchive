@@ -7,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:async';
 import 'firebase_options.dart';
 import 'ui/screens/auth_gate.dart';
+import 'ui/services/ui_service.dart';
 import 'data/services/logger_service.dart';
 import 'providers/theme_provider.dart';
 
@@ -59,6 +60,7 @@ class OurArchiveApp extends ConsumerWidget {
 
     return MaterialApp(
       title: 'OurArchive',
+      scaffoldMessengerKey: UiService.scaffoldMessengerKey,
       theme: lightTheme,
       darkTheme: darkTheme,
       themeMode: themeMode,

@@ -68,34 +68,42 @@ class PhotoPickerWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _showPhotoOptions(context),
-      child: Container(
-        height: height,
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey[400]!),
-        ),
-        child: photo != null
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.file(
-                  photo!,
-                  fit: BoxFit.cover,
-                ),
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(placeholderIcon, size: 64, color: Colors.grey),
-                  const SizedBox(height: 8),
-                  Text(
-                    placeholderText,
-                    style: const TextStyle(color: Colors.grey),
+    return Semantics(
+      label: photo != null ? 'Photo selected. Tap to change or remove photo' : placeholderText,
+      button: true,
+      image: photo != null,
+      child: Tooltip(
+        message: photo != null ? 'Tap to change or remove photo' : placeholderText,
+        child: GestureDetector(
+          onTap: () => _showPhotoOptions(context),
+          child: Container(
+            height: height,
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[400]!),
+            ),
+            child: photo != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.file(
+                      photo!,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(placeholderIcon, size: 64, color: Colors.grey),
+                      const SizedBox(height: 8),
+                      Text(
+                        placeholderText,
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+          ),
+        ),
       ),
     );
   }

@@ -71,6 +71,7 @@ class _CoverFlowMusicBrowserState extends ConsumerState<CoverFlowMusicBrowser>
 
         if (musicItems.isEmpty) {
           return Scaffold(
+            extendBody: true,
             backgroundColor: Colors.black,
             appBar: AppBar(
               title: Text(widget.householdId == null ? 'All Music' : 'Music'),
@@ -95,6 +96,7 @@ class _CoverFlowMusicBrowserState extends ConsumerState<CoverFlowMusicBrowser>
         }
 
         return Scaffold(
+          extendBody: true,
           backgroundColor: Colors.black,
           appBar: AppBar(
             title: Text(widget.householdId == null ? 'All Music' : 'Music'),

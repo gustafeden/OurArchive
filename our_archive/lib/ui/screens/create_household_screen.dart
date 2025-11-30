@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/providers.dart';
+import '../services/ui_service.dart';
 
 class CreateHouseholdScreen extends ConsumerStatefulWidget {
   const CreateHouseholdScreen({super.key});
@@ -77,9 +78,7 @@ class _CreateHouseholdScreenState extends ConsumerState<CreateHouseholdScreen> {
                         icon: const Icon(Ionicons.copy_outline),
                         onPressed: () {
                           Clipboard.setData(ClipboardData(text: newHousehold.code));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Code copied!')),
-                          );
+                          UiService.showSuccess('Code copied!');
                         },
                       ),
                     ],
@@ -101,9 +100,7 @@ class _CreateHouseholdScreenState extends ConsumerState<CreateHouseholdScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        UiService.showError('Error: ${e.toString()}');
       }
     } finally {
       if (mounted) {
