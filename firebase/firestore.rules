@@ -99,6 +99,18 @@ service cloud.firestore {
       }
     }
 
+    // Portfolio collections - public read, admin write
+    match /portfolio_collections/{collectionId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == '7gKizGf14jbphpxTftSlIbK6D3f2';
+    }
+
+    // Portfolio photos - public read, admin write
+    match /portfolio_photos/{photoId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == '7gKizGf14jbphpxTftSlIbK6D3f2';
+    }
+
     // Global containers
     match /containers/{containerId} {
       allow create: if request.auth != null

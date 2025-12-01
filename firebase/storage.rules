@@ -22,7 +22,7 @@ service firebase.storage {
     // Portfolio photos: public read, admin write only
     match /portfolio/{allPaths=**} {
       allow read: if true;
-      allow write: if false; // Admin SDK bypasses rules
+      allow write: if request.auth != null && request.auth.uid == '7gKizGf14jbphpxTftSlIbK6D3f2';
     }
   }
 }

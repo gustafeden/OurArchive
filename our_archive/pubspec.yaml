@@ -59,6 +59,7 @@ dependencies:
   flutter_image_compress: ^2.3.0
   cached_network_image: ^3.4.1
   image_picker: ^1.1.2
+  exif: ^3.3.0
 
   # File & path utilities
   path_provider: ^2.1.4
