@@ -3,13 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/providers.dart';
-import '../../providers/portfolio_providers.dart';
 import '../../data/services/log_export_service.dart';
 import '../services/ui_service.dart';
 import '../../debug/debug_screen.dart';
 import 'theme_settings_screen.dart';
 import 'general_settings_screen.dart';
-import 'portfolio/portfolio_collections_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -204,23 +202,6 @@ class ProfileScreen extends ConsumerWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const DebugScreen(),
-                  ),
-                );
-              },
-            ),
-
-          // Portfolio Management - only visible to admin
-          if (user.uid == portfolioAdminUid)
-            ListTile(
-              leading: const Icon(Ionicons.images_outline, color: Colors.indigo),
-              title: const Text('Portfolio'),
-              subtitle: const Text('Manage photo collections'),
-              trailing: const Icon(Ionicons.chevron_forward_outline, size: 16),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const PortfolioCollectionsScreen(),
                   ),
                 );
               },
