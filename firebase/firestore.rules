@@ -111,6 +111,12 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == '7gKizGf14jbphpxTftSlIbK6D3f2';
     }
 
+    // Public stats - written by Cloud Function, readable by anyone
+    match /public_stats/{docId} {
+      allow read: if true;
+      allow write: if false; // Only Cloud Functions with admin SDK can write
+    }
+
     // Global containers
     match /containers/{containerId} {
       allow create: if request.auth != null
